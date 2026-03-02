@@ -459,6 +459,134 @@
     #mainForm main {
       padding-bottom: 140px;
     }
+  <style>
+  /* Animations */
+  @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+  /* Tabs */
+  .admin-tab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 16px; border-radius: 10px;
+    font-size: 13px; font-weight: 700;
+    white-space: nowrap; transition: all .15s;
+    background: transparent; color: #6B7280;
+    border: 1.5px solid transparent;
+  }
+  .admin-tab:hover { background: #FFF5F2; color: #FF5C00; }
+  .admin-tab.active { background: #1F2937; color: white; border-color: #1F2937; }
+
+  /* Pills (sub-tabs) */
+  .adm-pill {
+    padding: 8px 16px; border-radius: 20px;
+    font-size: 12px; font-weight: 700;
+    background: #F3F4F6; color: #6B7280;
+    border: none; transition: all .15s; cursor: pointer;
+  }
+  .adm-pill:hover { background: #E5E7EB; }
+  .adm-pill.active { background: #FF5C00; color: white; }
+
+  /* Form elements */
+  .adm-label { display: block; font-size: 11px; font-weight: 700; color: #6B7280; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .adm-input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #E5E7EB; font-size: 13px; transition: border-color .15s; background: white; outline: none; color: #1F2937; }
+  .adm-input:focus { border-color: #FF5C00; box-shadow: 0 0 0 3px rgba(255,92,0,0.08); }
+  .adm-select { padding: 8px 12px; border-radius: 10px; border: 1.5px solid #E5E7EB; font-size: 13px; background: white; outline: none; cursor: pointer; }
+  .adm-select:focus { border-color: #FF5C00; }
+
+  /* Buttons */
+  .adm-btn-primary {
+    display: inline-flex; align-items: center;
+    padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 700;
+    background: #FF5C00; color: white;
+    border: none; cursor: pointer; transition: all .15s;
+  }
+  .adm-btn-primary:hover { background: #E05000; transform: translateY(-1px); }
+  .adm-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .adm-btn-secondary {
+    display: inline-flex; align-items: center;
+    padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 700;
+    background: #F3F4F6; color: #374151;
+    border: none; cursor: pointer; transition: all .15s;
+  }
+  .adm-btn-secondary:hover { background: #E5E7EB; }
+
+  /* Cards */
+  .adm-card { background: white; border-radius: 12px; border: 1.5px solid #E5E7EB; transition: all .15s; }
+  .adm-card:hover { border-color: #D1D5DB; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+
+  /* Utility */
+  .adm-loading { text-align: center; padding: 48px 0; color: #9CA3AF; font-size: 14px; font-weight: 600; }
+  .adm-spinner { width: 36px; height: 36px; border: 3px solid #E5E7EB; border-top-color: #FF5C00; border-radius: 50%; animation: spin 0.6s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .adm-empty { text-align: center; padding: 60px 0; }
+
+  /* Status badges */
+  .sts { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+  .sts-active { background: #D1FAE5; color: #065F46; }
+  .sts-pending { background: #FEF3C7; color: #92400E; }
+  .sts-draft { background: #E5E7EB; color: #374151; }
+  .sts-approved { background: #DBEAFE; color: #1E40AF; }
+  .sts-rejected { background: #FEE2E2; color: #991B1B; }
+  .sts-inactive { background: #F3F4F6; color: #6B7280; }
+
+  /* Role badges */
+  .role-owner { background: #F3E8FF; color: #7C3AED; }
+  .role-admin { background: #DBEAFE; color: #2563EB; }
+  .role-editor { background: #D1FAE5; color: #059669; }
+  .role-viewer { background: #F3F4F6; color: #6B7280; }
+
+  /* Template card */
+  .tpl-card { background:white; border-radius:14px; border:1.5px solid #E5E7EB; padding:16px 20px; transition:all .15s; }
+  .tpl-card:hover { border-color:#D1D5DB; box-shadow:0 3px 12px rgba(0,0,0,0.05); }
+  .tpl-card.pending-highlight { border-color: #F59E0B; background: #FFFBEB; }
+
+  /* Folder tree */
+  .folder-item { padding:12px 16px; border-radius:10px; background:white; border:1.5px solid #E5E7EB; }
+  .folder-item:hover { border-color:#D1D5DB; }
+  .folder-file { padding:8px 12px; border-radius:8px; background:#F9FAFB; margin-left:32px; }
+  .scrollbar-hide::-webkit-scrollbar { display:none; }
+  .scrollbar-hide { -ms-overflow-style:none; scrollbar-width:none; }
+  /* ===== TEMPLATE WIZARD STYLES ===== */
+.tw-stepper { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 2.5rem; }
+.tw-step { display: flex; align-items: center; gap: 0.5rem; }
+.tw-step-circle { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem; border: 2.5px solid #e5e7eb; background: #fff; color: #9ca3af; transition: all 0.3s ease; position: relative; z-index: 1; }
+.tw-step.active .tw-step-circle { background: #FF4500; border-color: #FF4500; color: #fff; box-shadow: 0 0 0 4px rgba(255,69,0,0.15); }
+.tw-step.done .tw-step-circle { background: #22c55e; border-color: #22c55e; color: #fff; }
+.tw-step-label { font-size: 0.75rem; font-weight: 700; color: #9ca3af; transition: color 0.3s; display: none; }
+.tw-step.active .tw-step-label, .tw-step.done .tw-step-label { color: #374151; display: block; }
+.tw-connector { height: 2px; width: 48px; background: #e5e7eb; transition: background 0.3s; flex-shrink: 0; }
+.tw-connector.done { background: #22c55e; }
+.tw-source-tab { padding: 0.6rem 1.2rem; border-radius: 0.65rem; font-weight: 700; font-size: 0.82rem; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; color: #6b7280; background: #f3f4f6; }
+.tw-source-tab.active { background: #fff1ee; color: #FF4500; border-color: #FF4500; }
+.tw-mapping-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.tw-mapping-table thead th { background: #1a1a2e; color: #fff; padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+.tw-mapping-table thead th:first-child { border-radius: 0.5rem 0 0 0.5rem; }
+.tw-mapping-table thead th:last-child { border-radius: 0 0.5rem 0.5rem 0; }
+.tw-mapping-table tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.15s; }
+.tw-mapping-table tbody tr:hover { background: #fafafa; }
+.tw-mapping-table tbody td { padding: 0.75rem 1rem; vertical-align: middle; }
+.badge-HIGH { background: #dcfce7; color: #16a34a; } .badge-MEDIUM { background: #fef9c3; color: #b45309; } .badge-LOW { background: #fee2e2; color: #dc2626; }
+.tw-placeholder-chip { display: inline-flex; align-items: center; gap: 0.4rem; background: #fff1ee; color: #FF4500; border: 1.5px solid #FF4500; border-radius: 0.4rem; padding: 0.2rem 0.6rem; font-size: 0.78rem; font-weight: 800; font-family: 'Courier New', monospace; cursor: pointer; }
+.tw-placeholder-chip.editing { background: #fff; border-style: dashed; }
+.tw-placeholder-input { border: none; outline: none; background: transparent; font-family: 'Courier New', monospace; font-weight: 800; font-size: 0.78rem; color: #FF4500; width: 160px; text-transform: uppercase; }
+.tw-confirm-toggle { width: 40px; height: 22px; border-radius: 11px; background: #e5e7eb; position: relative; cursor: pointer; transition: background 0.2s; border: none; flex-shrink: 0; }
+.tw-confirm-toggle.confirmed { background: #22c55e; }
+.tw-confirm-toggle::after { content: ''; width: 16px; height: 16px; border-radius: 50%; background: #fff; position: absolute; top: 3px; left: 3px; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.tw-confirm-toggle.confirmed::after { transform: translateX(18px); }
+.tw-preview-box { background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 0.75rem; padding: 1.5rem; font-size: 0.82rem; line-height: 1.7; max-height: 400px; overflow-y: auto; font-family: Georgia, serif; white-space: pre-wrap; }
+.tw-placeholder-highlight { background: #fff1ee; color: #FF4500; font-weight: 800; border-radius: 3px; padding: 0 3px; font-family: 'Courier New', monospace; font-size: 0.78em; }
+.tw-wizard-card { background: #fff; border: 1.5px solid #f0f0f0; border-radius: 1.25rem; padding: 2rem; box-shadow: 0 2px 16px rgba(0,0,0,0.05); }
+.tw-fade-in { animation: twFadeIn 0.35s ease forwards; }
+@keyframes twFadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.tw-analyzing { display: flex; align-items: center; gap: 1rem; padding: 1.5rem; background: linear-gradient(135deg, #fff1ee, #fff); border: 1.5px solid #FF4500; border-radius: 0.75rem; }
+.tw-analyzing-dot { width: 10px; height: 10px; border-radius: 50%; background: #FF4500; animation: twPulse 1.4s infinite; }
+.tw-analyzing-dot:nth-child(2) { animation-delay: 0.2s; }
+.tw-analyzing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes twPulse { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+/* ================================== */
+</style>
   </style>
 </head>
 
@@ -528,14 +656,16 @@
         <p class="text-xl text-white/90 mb-8 font-semibold">
           La forma más rápida y segura de crear Términos y Condiciones <br class="hidden md:inline"/>para tus campañas en toda Latinoamérica
         </p>
-        <button 
-          onclick="showResponsibilityModal()" 
-          class="btn-primary text-white px-8 py-4 rounded-full text-lg font-bold inline-flex items-center gap-3 pulse-glow"
-        >
-          <i class="fa-solid fa-rocket"></i>
-          Comenzar Ahora
-          <i class="fa-solid fa-arrow-right"></i>
-        </button>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <button onclick="showResponsibilityModal()" class="btn-primary text-white px-8 py-4 rounded-full text-lg font-bold inline-flex items-center gap-3 pulse-glow w-full sm:w-auto justify-center">
+            <i class="fa-solid fa-rocket"></i>
+            Nueva Campaña
+          </button>
+          <button onclick="showTCGeneralesModal()" class="bg-white text-gray-800 border-2 border-gray-200 hover:border-rappi hover:text-rappi px-8 py-4 rounded-full text-lg font-bold inline-flex items-center gap-3 transition shadow-sm hover:shadow-md w-full sm:w-auto justify-center">
+            <i class="fa-solid fa-book-open"></i>
+            T&C Generales
+          </button>
+        </div>
       </div>
     </div>
 
@@ -654,14 +784,16 @@
         <p class="text-gray-700 mb-6">
           Genera tus T&C en minutos y sin complicaciones
         </p>
-        <button 
-          onclick="showResponsibilityModal()" 
-          class="btn-primary text-white px-8 py-4 rounded-full text-lg font-bold inline-flex items-center gap-3 pulse-glow"
-        >
-          <i class="fa-solid fa-rocket"></i>
-          Comenzar Ahora
-          <i class="fa-solid fa-arrow-right"></i>
-        </button>
+       <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <button onclick="showResponsibilityModal()" class="btn-primary text-white px-8 py-4 rounded-full text-lg font-bold inline-flex items-center gap-3 pulse-glow w-full sm:w-auto justify-center">
+            <i class="fa-solid fa-rocket"></i>
+            Nueva Campaña
+          </button>
+          <button onclick="showTCGeneralesModal()" class="bg-white text-gray-800 border-2 border-gray-200 hover:border-rappi hover:text-rappi px-8 py-4 rounded-full text-lg font-bold inline-flex items-center gap-3 transition shadow-sm hover:shadow-md w-full sm:w-auto justify-center">
+            <i class="fa-solid fa-book-open"></i>
+            T&C Generales
+          </button>
+        </div>
       </div>
     </div>
 
@@ -867,7 +999,47 @@
       </div>
     </div>
   </div>
+<div id="tcGeneralesModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-slide-in shadow-2xl p-8 text-center">
+      <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100">
+        <i class="fa-solid fa-globe text-blue-600 text-3xl"></i>
+      </div>
+      <h2 class="text-2xl font-black text-gray-900 mb-2">T&C Generales</h2>
+      <p class="text-gray-600 mb-6 text-sm">Selecciona el país para obtener el link oficial de los términos base aplicables a descuentos y cupones comunes.</p>
+      
+      <div class="space-y-3 mb-6 text-left">
+         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide">País</label>
+         <select id="tcGenCountrySelect" class="custom-input cursor-pointer" onchange="updateTCGenLink()">
+           <option value="" disabled selected>Selecciona un país...</option>
+           <option value="CO">🇨🇴 Colombia</option>
+           <option value="MX">🇲🇽 México</option>
+           <option value="CR">🇨🇷 Costa Rica</option>
+           <option value="BR">🇧🇷 Brasil</option>
+           <option value="AR">🇦🇷 Argentina</option>
+           <option value="UY">🇺🇾 Uruguay</option>
+           <option value="CL">🇨🇱 Chile</option>
+           <option value="EC">🇪🇨 Ecuador</option>
+         </select>
+      </div>
 
+      <div id="tcGenLinkContainer" class="hidden text-left bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 animate-slide-in">
+        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Enlace Oficial</label>
+        <div class="flex gap-2">
+          <input type="text" id="tcGenLinkInput" readonly class="flex-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-blue-600 font-mono outline-none">
+          <a id="tcGenOpenBtn" href="#" target="_blank" class="bg-white border border-gray-300 hover:border-blue-500 text-gray-600 hover:text-blue-600 rounded-lg px-3 py-2 transition flex items-center justify-center" title="Abrir enlace">
+            <i class="fa-solid fa-external-link-alt"></i>
+          </a>
+        </div>
+        <button onclick="copyTCGenLink()" class="w-full mt-3 bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 rounded-lg text-sm transition">
+          <i class="fa-solid fa-copy mr-2"></i> Copiar Link
+        </button>
+      </div>
+
+      <button onclick="hideTCGeneralesModal()" class="w-full text-gray-500 hover:text-gray-700 font-semibold py-2 text-sm">
+        Cerrar
+      </button>
+    </div>
+  </div>
   <!-- ============================================ -->
   <!-- DATA TRANSFER AGREEMENT MODAL -->
   <!-- ============================================ -->
@@ -3217,8 +3389,52 @@
       if (announcementDate) announcementDate.addEventListener('change', updateProgress);
       
       updateProgress();
+      checkAdminAccess(); // <-- Integrado aquí
     });
-  </script>
+    
+    // ============================================
+    // REPOSITORIO DE T&C GENERALES (NUEVO)
+    // ============================================
+    const TC_GENERALES_REPO = {
+      'CO': 'https://promos.rappi.com/colombia/terminos-y-condiciones-generales',
+      'MX': 'https://promos.rappi.com/mexico/terminos-y-condiciones-generales',
+      'CR': 'https://promos.rappi.com/costa-rica/terminos-y-condiciones-generales',
+      'BR': 'https://promos.rappi.com/brasil/termos-e-condicoes-gerais',
+      'AR': 'https://promos.rappi.com/argentina/terminos-y-condiciones-generales',
+      'UY': 'https://promos.rappi.com/uruguay/terminos-y-condiciones-generales',
+      'CL': 'https://promos.rappi.com/chile/terminos-y-condiciones-generales',
+      'EC': 'https://promos.rappi.com/ecuador/terminos-y-condiciones-generales'
+    };
+
+    function showTCGeneralesModal() {
+      document.getElementById('tcGeneralesModal').classList.remove('hidden');
+      document.getElementById('tcGenCountrySelect').value = '';
+      document.getElementById('tcGenLinkContainer').classList.add('hidden');
+    }
+
+    function hideTCGeneralesModal() { document.getElementById('tcGeneralesModal').classList.add('hidden'); }
+
+    function updateTCGenLink() {
+      const code = document.getElementById('tcGenCountrySelect').value;
+      const link = TC_GENERALES_REPO[code];
+      if (link) {
+        document.getElementById('tcGenLinkInput').value = link;
+        document.getElementById('tcGenOpenBtn').href = link;
+        document.getElementById('tcGenLinkContainer').classList.remove('hidden');
+      }
+    }
+
+    function copyTCGenLink() {
+      const input = document.getElementById('tcGenLinkInput');
+      input.select();
+      navigator.clipboard.writeText(input.value).then(() => {
+        alert('✅ Link oficial copiado al portapapeles');
+      }).catch(err => {
+        document.execCommand('copy');
+        alert('✅ Link oficial copiado al portapapeles');
+      });
+    }
+
   <button onclick="toggleChat()" class="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-rappi-coral to-purple-700 rounded-full shadow-2xl flex items-center justify-center z-50 hover:scale-110 transition-transform duration-300 group border-4 border-white">
     <i class="fa-solid fa-sparkles text-white text-2xl group-hover:hidden"></i>
     <i class="fa-solid fa-robot text-white text-2xl hidden group-hover:block animate-bounce"></i>
@@ -4094,138 +4310,6 @@
     </div>
   </div>
 </div>
-
-<!-- ============================================ -->
-<!-- ESTILOS DEL ADMIN PANEL                      -->
-<!-- ============================================ -->
-<style>
-  /* Animations */
-  @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-
-  /* Tabs */
-  .admin-tab {
-    display: flex; align-items: center; gap: 6px;
-    padding: 10px 16px; border-radius: 10px;
-    font-size: 13px; font-weight: 700;
-    white-space: nowrap; transition: all .15s;
-    background: transparent; color: #6B7280;
-    border: 1.5px solid transparent;
-  }
-  .admin-tab:hover { background: #FFF5F2; color: #FF5C00; }
-  .admin-tab.active { background: #1F2937; color: white; border-color: #1F2937; }
-
-  /* Pills (sub-tabs) */
-  .adm-pill {
-    padding: 8px 16px; border-radius: 20px;
-    font-size: 12px; font-weight: 700;
-    background: #F3F4F6; color: #6B7280;
-    border: none; transition: all .15s; cursor: pointer;
-  }
-  .adm-pill:hover { background: #E5E7EB; }
-  .adm-pill.active { background: #FF5C00; color: white; }
-
-  /* Form elements */
-  .adm-label { display: block; font-size: 11px; font-weight: 700; color: #6B7280; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .adm-input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1.5px solid #E5E7EB; font-size: 13px; transition: border-color .15s; background: white; outline: none; color: #1F2937; }
-  .adm-input:focus { border-color: #FF5C00; box-shadow: 0 0 0 3px rgba(255,92,0,0.08); }
-  .adm-select { padding: 8px 12px; border-radius: 10px; border: 1.5px solid #E5E7EB; font-size: 13px; background: white; outline: none; cursor: pointer; }
-  .adm-select:focus { border-color: #FF5C00; }
-
-  /* Buttons */
-  .adm-btn-primary {
-    display: inline-flex; align-items: center;
-    padding: 10px 18px; border-radius: 10px;
-    font-size: 13px; font-weight: 700;
-    background: #FF5C00; color: white;
-    border: none; cursor: pointer; transition: all .15s;
-  }
-  .adm-btn-primary:hover { background: #E05000; transform: translateY(-1px); }
-  .adm-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-  .adm-btn-secondary {
-    display: inline-flex; align-items: center;
-    padding: 10px 18px; border-radius: 10px;
-    font-size: 13px; font-weight: 700;
-    background: #F3F4F6; color: #374151;
-    border: none; cursor: pointer; transition: all .15s;
-  }
-  .adm-btn-secondary:hover { background: #E5E7EB; }
-
-  /* Cards */
-  .adm-card { background: white; border-radius: 12px; border: 1.5px solid #E5E7EB; transition: all .15s; }
-  .adm-card:hover { border-color: #D1D5DB; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-
-  /* Utility */
-  .adm-loading { text-align: center; padding: 48px 0; color: #9CA3AF; font-size: 14px; font-weight: 600; }
-  .adm-spinner { width: 36px; height: 36px; border: 3px solid #E5E7EB; border-top-color: #FF5C00; border-radius: 50%; animation: spin 0.6s linear infinite; margin: 0 auto 12px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .adm-empty { text-align: center; padding: 60px 0; }
-
-  /* Status badges */
-  .sts { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
-  .sts-active { background: #D1FAE5; color: #065F46; }
-  .sts-pending { background: #FEF3C7; color: #92400E; }
-  .sts-draft { background: #E5E7EB; color: #374151; }
-  .sts-approved { background: #DBEAFE; color: #1E40AF; }
-  .sts-rejected { background: #FEE2E2; color: #991B1B; }
-  .sts-inactive { background: #F3F4F6; color: #6B7280; }
-
-  /* Role badges */
-  .role-owner { background: #F3E8FF; color: #7C3AED; }
-  .role-admin { background: #DBEAFE; color: #2563EB; }
-  .role-editor { background: #D1FAE5; color: #059669; }
-  .role-viewer { background: #F3F4F6; color: #6B7280; }
-
-  /* Template card */
-  .tpl-card { background:white; border-radius:14px; border:1.5px solid #E5E7EB; padding:16px 20px; transition:all .15s; }
-  .tpl-card:hover { border-color:#D1D5DB; box-shadow:0 3px 12px rgba(0,0,0,0.05); }
-  .tpl-card.pending-highlight { border-color: #F59E0B; background: #FFFBEB; }
-
-  /* Folder tree */
-  .folder-item { padding:12px 16px; border-radius:10px; background:white; border:1.5px solid #E5E7EB; }
-  .folder-item:hover { border-color:#D1D5DB; }
-  .folder-file { padding:8px 12px; border-radius:8px; background:#F9FAFB; margin-left:32px; }
-  .scrollbar-hide::-webkit-scrollbar { display:none; }
-  .scrollbar-hide { -ms-overflow-style:none; scrollbar-width:none; }
-  /* ===== TEMPLATE WIZARD STYLES ===== */
-.tw-stepper { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 2.5rem; }
-.tw-step { display: flex; align-items: center; gap: 0.5rem; }
-.tw-step-circle { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem; border: 2.5px solid #e5e7eb; background: #fff; color: #9ca3af; transition: all 0.3s ease; position: relative; z-index: 1; }
-.tw-step.active .tw-step-circle { background: #FF4500; border-color: #FF4500; color: #fff; box-shadow: 0 0 0 4px rgba(255,69,0,0.15); }
-.tw-step.done .tw-step-circle { background: #22c55e; border-color: #22c55e; color: #fff; }
-.tw-step-label { font-size: 0.75rem; font-weight: 700; color: #9ca3af; transition: color 0.3s; display: none; }
-.tw-step.active .tw-step-label, .tw-step.done .tw-step-label { color: #374151; display: block; }
-.tw-connector { height: 2px; width: 48px; background: #e5e7eb; transition: background 0.3s; flex-shrink: 0; }
-.tw-connector.done { background: #22c55e; }
-.tw-source-tab { padding: 0.6rem 1.2rem; border-radius: 0.65rem; font-weight: 700; font-size: 0.82rem; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; color: #6b7280; background: #f3f4f6; }
-.tw-source-tab.active { background: #fff1ee; color: #FF4500; border-color: #FF4500; }
-.tw-mapping-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-.tw-mapping-table thead th { background: #1a1a2e; color: #fff; padding: 0.75rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
-.tw-mapping-table thead th:first-child { border-radius: 0.5rem 0 0 0.5rem; }
-.tw-mapping-table thead th:last-child { border-radius: 0 0.5rem 0.5rem 0; }
-.tw-mapping-table tbody tr { border-bottom: 1px solid #f3f4f6; transition: background 0.15s; }
-.tw-mapping-table tbody tr:hover { background: #fafafa; }
-.tw-mapping-table tbody td { padding: 0.75rem 1rem; vertical-align: middle; }
-.badge-HIGH { background: #dcfce7; color: #16a34a; } .badge-MEDIUM { background: #fef9c3; color: #b45309; } .badge-LOW { background: #fee2e2; color: #dc2626; }
-.tw-placeholder-chip { display: inline-flex; align-items: center; gap: 0.4rem; background: #fff1ee; color: #FF4500; border: 1.5px solid #FF4500; border-radius: 0.4rem; padding: 0.2rem 0.6rem; font-size: 0.78rem; font-weight: 800; font-family: 'Courier New', monospace; cursor: pointer; }
-.tw-placeholder-chip.editing { background: #fff; border-style: dashed; }
-.tw-placeholder-input { border: none; outline: none; background: transparent; font-family: 'Courier New', monospace; font-weight: 800; font-size: 0.78rem; color: #FF4500; width: 160px; text-transform: uppercase; }
-.tw-confirm-toggle { width: 40px; height: 22px; border-radius: 11px; background: #e5e7eb; position: relative; cursor: pointer; transition: background 0.2s; border: none; flex-shrink: 0; }
-.tw-confirm-toggle.confirmed { background: #22c55e; }
-.tw-confirm-toggle::after { content: ''; width: 16px; height: 16px; border-radius: 50%; background: #fff; position: absolute; top: 3px; left: 3px; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-.tw-confirm-toggle.confirmed::after { transform: translateX(18px); }
-.tw-preview-box { background: #f9fafb; border: 1.5px solid #e5e7eb; border-radius: 0.75rem; padding: 1.5rem; font-size: 0.82rem; line-height: 1.7; max-height: 400px; overflow-y: auto; font-family: Georgia, serif; white-space: pre-wrap; }
-.tw-placeholder-highlight { background: #fff1ee; color: #FF4500; font-weight: 800; border-radius: 3px; padding: 0 3px; font-family: 'Courier New', monospace; font-size: 0.78em; }
-.tw-wizard-card { background: #fff; border: 1.5px solid #f0f0f0; border-radius: 1.25rem; padding: 2rem; box-shadow: 0 2px 16px rgba(0,0,0,0.05); }
-.tw-fade-in { animation: twFadeIn 0.35s ease forwards; }
-@keyframes twFadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-.tw-analyzing { display: flex; align-items: center; gap: 1rem; padding: 1.5rem; background: linear-gradient(135deg, #fff1ee, #fff); border: 1.5px solid #FF4500; border-radius: 0.75rem; }
-.tw-analyzing-dot { width: 10px; height: 10px; border-radius: 50%; background: #FF4500; animation: twPulse 1.4s infinite; }
-.tw-analyzing-dot:nth-child(2) { animation-delay: 0.2s; }
-.tw-analyzing-dot:nth-child(3) { animation-delay: 0.4s; }
-@keyframes twPulse { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
-/* ================================== */
-</style>
 
 <!-- ============================================ -->
 <!-- JAVASCRIPT DEL ADMIN PANEL                   -->
@@ -5221,12 +5305,6 @@ function checkAdminAccess() {
   if (btn) btn.style.display = 'flex';
 }
 
-// ============================================
-// INIT
-// ============================================
-document.addEventListener('DOMContentLoaded', function() {
-  checkAdminAccess();
-});
 </script>  
 </body>
 </html>
