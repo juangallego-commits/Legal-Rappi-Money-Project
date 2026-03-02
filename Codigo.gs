@@ -22,17 +22,24 @@ function doGet(e) {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
-// -----------------------------------------------------------------
-// FUNCIÓN PARA RECIBIR DATOS DE LA WEB APP
-// -----------------------------------------------------------------
 function processWebPayload(payloadString) {
   try {
     const payload = JSON.parse(payloadString);
     
-    Logger.log('========== MOTOR LEGAL V2.1 ==========');
+    // SEGURIDAD: Tomamos el correo real de la sesión de Google Workspace.
+    // Solo usamos el payload.userEmail como fallback.
+    let activeEmail;
+    try {
+      activeEmail = Session.getActiveUser().getEmail() || payload.userEmail;
+    } catch(e) {
+      activeEmail = payload.userEmail;
+    }
+      
+    Logger.log('========== MOTOR LEGAL RAPPIMIND ==========');
+    Logger.log('📥 Generando para: ' + activeEmail);
     Logger.log('📥 Tipo de campaña: ' + payload.dynamicType);
-    
-    const result = coreEngineV2(payload, payload.userEmail);
+      
+    const result = coreEngineV2(payload, activeEmail);
     return JSON.stringify({
         status: 'success',
         docUrl: result.docUrl,
