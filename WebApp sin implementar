@@ -504,7 +504,9 @@
       <div class="nav-title">RappiMind <span>by Legal</span></div>
     </div>
     <div class="nav-right">  
-      <button class="nav-btn hidden" id="btnNavAdmin" onclick="showPage('adminPage')"><i class="fa-solid fa-lock"></i> Admin</button>
+      <button class="nav-btn" onclick="showHistoryModal()" title="Historial"><i class="fa-solid fa-clock-rotate-left"></i></button>
+      <button class="nav-btn" onclick="showHelpCenter()" title="Ayuda"><i class="fa-solid fa-circle-question"></i></button>
+      <button class="nav-btn hidden" id="btnNavAdmin" onclick="showAdminPanel()"><i class="fa-solid fa-lock"></i> Admin</button>
       <button class="nav-btn" onclick="startTour()"><i class="fa-solid fa-graduation-cap"></i> Tour</button>
       <div class="nav-chip"><div class="dot"></div> v2.4</div>
     </div>
@@ -564,24 +566,823 @@
   </div>  
 </div>
 
-<div id="adminPage" class="hidden">
-  <nav class="nav">
-    <div class="nav-brand">
-      <button onclick="showPage('landingPage')" style="background:none;border:none;color:var(--text-2);cursor:pointer;font-size:16px;padding:4px 8px;margin-right:4px;"><i class="fa-solid fa-arrow-left"></i></button>
-      <div class="nav-logo"><i class="fa-solid fa-lock" style="color:var(--accent);"></i></div>
-      <div class="nav-title" style="font-size:14px;">Panel de Administración</div>
+<!-- ============================================================ -->
+<!-- ADMIN MODULE - RappiMind Dark Theme v2.4                     -->
+<!-- Insertar ANTES del cierre </body> del WebApp nuevo           -->
+<!-- ============================================================ -->
+
+<!-- ============================================ -->
+<!-- AUTH GATE                                    -->
+<!-- ============================================ -->
+<div id="adminAuthGate" class="modal-overlay hidden" style="z-index:70;">
+  <div class="modal-box" style="max-width:420px;text-align:center;">
+    <div style="width:64px;height:64px;background:var(--error-muted);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px;color:var(--error);">
+      <i class="fa-solid fa-shield-halved"></i>
     </div>
-  </nav>
-  <div style="padding:40px 24px; max-width:1000px; margin:0 auto; text-align:center;">
-    <h2 style="font-size:28px; font-weight:800; margin-bottom:16px;">Configuración de Motor Legal</h2>
-    <p style="color:var(--text-2); margin-bottom:32px;">Aquí se integrarán las tablas de Templates, País y Equipo.</p>
-    <div style="padding:40px; background:var(--bg-2); border:1px dashed var(--border); border-radius:var(--radius-lg);">
-      <i class="fa-solid fa-hammer" style="font-size:40px; color:var(--text-3); margin-bottom:16px; display:block;"></i>
-      <h3 style="font-size:18px; font-weight:700; color:var(--text-1);">Módulo en Construcción</h3>
-      <p style="font-size:14px; color:var(--text-2); margin-top:8px;">Esta será la zona donde subiremos el Master Template para toda Latam.</p>
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;">Acceso Restringido</h2>
+    <p id="authGateMessage" style="color:var(--text-2);font-size:14px;margin-bottom:20px;">Verificando permisos...</p>
+    <div id="authGateEmail" style="background:var(--bg-3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 16px;font-size:12px;color:var(--text-1);font-family:'JetBrains Mono',monospace;margin-bottom:20px;"></div>
+    <p style="font-size:11px;color:var(--text-3);margin-bottom:20px;">
+      Si necesitas acceso, contacta a un <strong style="color:var(--text-1);">Owner</strong> del equipo para que te agregue desde el Panel de Administración.
+    </p>
+    <button onclick="closeAuthGate()" class="btn-primary" style="width:100%;justify-content:center;">
+      <i class="fa-solid fa-arrow-left"></i> Volver
+    </button>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- ADMIN PANEL (reemplaza el adminPage básico)  -->
+<!-- ============================================ -->
+
+<!-- ============================================ -->
+<!-- MODAL: AGREGAR/EDITAR TEMPLATE               -->
+<!-- ============================================ -->
+<div id="addTemplateModal" class="modal-overlay hidden" style="z-index:65;">
+  <div class="modal-box" style="max-width:560px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <h2 style="font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;">
+        <i class="fa-solid fa-file-circle-plus" style="color:var(--accent);"></i>
+        <span id="templateModalTitle">Nueva Plantilla</span>
+      </h2>
+      <button class="modal-close" onclick="hideModal('addTemplateModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="templateForm" onsubmit="saveTemplate(event)">
+      <input type="hidden" id="tpl_editIndex" value="-1">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <label class="adm-label">País *</label>
+          <select id="tpl_country" required class="adm-input">
+            <option value="">Seleccionar...</option>
+            <option value="CO">🇨🇴 Colombia</option><option value="MX">🇲🇽 México</option>
+            <option value="CR">🇨🇷 Costa Rica</option><option value="BR">🇧🇷 Brasil</option>
+            <option value="AR">🇦🇷 Argentina</option><option value="UY">🇺🇾 Uruguay</option>
+            <option value="CL">🇨🇱 Chile</option><option value="EC">🇪🇨 Ecuador</option>
+          </select>
+        </div>
+        <div>
+          <label class="adm-label">Tipo de Campaña *</label>
+          <select id="tpl_type" required class="adm-input">
+            <option value="">Seleccionar...</option>
+            <option value="Cashback">💰 Cashback</option>
+            <option value="Concurso Mayor Comprador">🏆 Concurso</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label class="adm-label">Google Doc ID *</label>
+        <input type="text" id="tpl_docId" required class="adm-input mono" placeholder="1A2b3C4d5E6f7G8h..." style="font-size:11px;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <label class="adm-label">Moneda *</label>
+          <select id="tpl_currency" class="adm-input">
+            <option value="COP">🇨🇴 COP ($)</option><option value="MXN">🇲🇽 MXN ($)</option>
+            <option value="CRC">🇨🇷 CRC (₡)</option><option value="BRL">🇧🇷 BRL (R$)</option>
+            <option value="ARS">🇦🇷 ARS ($)</option><option value="UYU">🇺🇾 UYU ($)</option>
+            <option value="CLP">🇨🇱 CLP ($)</option><option value="USD">🇺🇸 USD ($)</option>
+          </select>
+        </div>
+        <div>
+          <label class="adm-label">Versión</label>
+          <input type="text" id="tpl_version" class="adm-input" value="1.0">
+        </div>
+      </div>
+      <!-- Status control (solo admin+) -->
+      <div id="tpl_statusControl" class="hidden" style="margin-bottom:12px;">
+        <label class="adm-label">Estado</label>
+        <select id="tpl_status" class="adm-input">
+          <option value="draft">📝 Borrador</option>
+          <option value="active">✅ Activo</option>
+          <option value="inactive">⏸ Inactivo</option>
+        </select>
+      </div>
+      <div id="tpl_editorNotice" style="background:var(--accent-muted);border:1px solid rgba(255,92,0,0.2);border-radius:var(--radius);padding:10px 14px;font-size:11px;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+        <i class="fa-solid fa-info-circle"></i> Se guardará como Borrador y requerirá aprobación de un Admin.
+      </div>
+      <div style="margin-bottom:16px;">
+        <label class="adm-label">Notas</label>
+        <input type="text" id="tpl_notes" class="adm-input" placeholder="Notas opcionales...">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn-primary" style="flex:1;justify-content:center;"><i class="fa-solid fa-save"></i> Guardar</button>
+        <button type="button" onclick="hideModal('addTemplateModal')" class="btn-secondary">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL: AGREGAR/EDITAR CAMPO                  -->
+<!-- ============================================ -->
+<div id="addFieldModal" class="modal-overlay hidden" style="z-index:65;">
+  <div class="modal-box" style="max-width:560px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <h2 style="font-size:18px;font-weight:800;"><i class="fa-solid fa-table-cells" style="color:var(--accent);margin-right:8px;"></i><span id="fieldModalTitle">Nuevo Campo</span></h2>
+      <button class="modal-close" onclick="hideModal('addFieldModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="fieldForm" onsubmit="saveField(event)">
+      <input type="hidden" id="fld_editIndex" value="-1">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div><label class="adm-label">ID del Campo *</label><input type="text" id="fld_id" required class="adm-input mono" style="font-size:11px;" placeholder="cashbackPct"></div>
+        <div><label class="adm-label">Placeholder *</label><input type="text" id="fld_placeholder" required class="adm-input mono" style="font-size:11px;" placeholder="{{PORCENTAJE}}"></div>
+      </div>
+      <div style="margin-bottom:12px;"><label class="adm-label">Etiqueta visible *</label><input type="text" id="fld_label" required class="adm-input" placeholder="Porcentaje del Cashback"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div><label class="adm-label">País</label><select id="fld_country" class="adm-input"><option value="ALL">🌎 Todos</option><option value="CO">🇨🇴 CO</option><option value="MX">🇲🇽 MX</option><option value="CR">🇨🇷 CR</option><option value="BR">🇧🇷 BR</option></select></div>
+        <div><label class="adm-label">Tipo</label><select id="fld_type" class="adm-input"><option value="ALL">Todos</option><option value="Cashback">Cashback</option><option value="Concurso Mayor Comprador">Concurso</option></select></div>
+        <div><label class="adm-label">Tipo Input</label><select id="fld_inputType" class="adm-input"><option value="text">Texto</option><option value="number">Número</option><option value="email">Email</option><option value="date">Fecha</option><option value="select">Select</option><option value="textarea">Textarea</option></select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div><label class="adm-label">Sección</label><input type="number" id="fld_section" class="adm-input" value="3" min="1" max="4"></div>
+        <div><label class="adm-label">Orden</label><input type="number" id="fld_order" class="adm-input" value="1" min="1"></div>
+        <div><label class="adm-label">Icono FA</label><input type="text" id="fld_icon" class="adm-input" style="font-size:11px;" placeholder="fa-percent"></div>
+      </div>
+      <div style="margin-bottom:12px;"><label class="adm-label">Opciones (separadas por |)</label><input type="text" id="fld_options" class="adm-input" style="font-size:11px;" placeholder="Opción 1|Opción 2|Opción 3"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div><label class="adm-label">Valor default</label><input type="text" id="fld_default" class="adm-input"></div>
+        <div><label class="adm-label">Grupo</label><input type="text" id="fld_group" class="adm-input" placeholder="Variables Cashback"></div>
+      </div>
+      <div style="margin-bottom:12px;"><label class="adm-label">Tooltip</label><input type="text" id="fld_tooltip" class="adm-input" style="font-size:11px;" placeholder="Texto de ayuda..."></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;"><input type="checkbox" id="fld_required" style="accent-color:var(--accent);"><label for="fld_required" style="font-size:13px;font-weight:600;color:var(--text-1);cursor:pointer;">Obligatorio</label></div>
+      <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn-primary" style="flex:1;justify-content:center;"><i class="fa-solid fa-save"></i> Guardar</button>
+        <button type="button" onclick="hideModal('addFieldModal')" class="btn-secondary">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL: AGREGAR MIEMBRO                       -->
+<!-- ============================================ -->
+<div id="addMemberModal" class="modal-overlay hidden" style="z-index:65;">
+  <div class="modal-box" style="max-width:440px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <h2 style="font-size:18px;font-weight:800;"><i class="fa-solid fa-user-plus" style="color:var(--success);margin-right:8px;"></i>Agregar Miembro</h2>
+      <button class="modal-close" onclick="hideModal('addMemberModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <form id="memberForm" onsubmit="saveMember(event)">
+      <div style="margin-bottom:12px;"><label class="adm-label">Nombre *</label><input type="text" id="mbr_name" required class="adm-input" placeholder="María García"></div>
+      <div style="margin-bottom:12px;"><label class="adm-label">Email Rappi *</label><input type="email" id="mbr_email" required class="adm-input mono" style="font-size:11px;" placeholder="maria.garcia@rappi.com"></div>
+      <div style="margin-bottom:12px;">
+        <label class="adm-label">Rol *</label>
+        <select id="mbr_role" required class="adm-input">
+          <option value="">Seleccionar...</option>
+          <option value="admin">🛡️ Admin — Aprueba y activa templates</option>
+          <option value="editor">✏️ Editor — Crea templates (requiere aprobación)</option>
+          <option value="viewer">👁️ Viewer — Solo lectura</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px;"><label class="adm-label">Notas (opcional)</label><input type="text" id="mbr_notes" class="adm-input" style="font-size:11px;" placeholder="Legal Colombia, temporal..."></div>
+      <div style="background:rgba(0,214,143,0.08);border:1px solid rgba(0,214,143,0.2);border-radius:var(--radius);padding:10px 14px;font-size:11px;color:var(--success);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+        <i class="fa-solid fa-info-circle"></i> Se compartirá la carpeta de templates en Drive automáticamente.
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn-primary" style="flex:1;justify-content:center;"><i class="fa-solid fa-user-plus"></i> Agregar</button>
+        <button type="button" onclick="hideModal('addMemberModal')" class="btn-secondary">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL: RECHAZAR TEMPLATE                     -->
+<!-- ============================================ -->
+<div id="rejectModal" class="modal-overlay hidden" style="z-index:65;">
+  <div class="modal-box" style="max-width:440px;">
+    <h2 style="font-size:18px;font-weight:800;margin-bottom:16px;"><i class="fa-solid fa-circle-xmark" style="color:var(--error);margin-right:8px;"></i>Rechazar Template</h2>
+    <input type="hidden" id="reject_index">
+    <div style="margin-bottom:16px;"><label class="adm-label">Motivo del rechazo *</label><textarea id="reject_reason" required class="adm-input" rows="3" placeholder="Describe qué debe corregirse..." style="resize:vertical;"></textarea></div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="confirmReject()" style="flex:1;padding:12px;background:var(--error);color:white;border:none;border-radius:var(--radius);font-weight:700;font-family:'Outfit',sans-serif;cursor:pointer;"><i class="fa-solid fa-xmark"></i> Rechazar</button>
+      <button onclick="hideModal('rejectModal')" class="btn-secondary">Cancelar</button>
     </div>
   </div>
 </div>
+
+<!-- ============================================ -->
+<!-- ADMIN CSS (Dark Theme)                       -->
+<!-- ============================================ -->
+<style>
+/* === ADMIN TABS === */
+.admin-tab {
+  display:flex; align-items:center; gap:6px;
+  padding:9px 14px; border-radius:var(--radius-sm);
+  font-size:12px; font-weight:700; white-space:nowrap;
+  transition:all var(--transition);
+  background:transparent; color:var(--text-3);
+  border:1.5px solid transparent; cursor:pointer;
+  font-family:'Outfit',sans-serif;
+}
+.admin-tab:hover { background:var(--bg-3); color:var(--text-1); }
+.admin-tab.active { background:var(--accent); color:white; border-color:var(--accent); }
+
+/* === ADMIN FORM ELEMENTS === */
+.adm-label { display:block; font-size:10px; font-weight:700; color:var(--text-3); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px; }
+.adm-input { width:100%; padding:10px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:13px; transition:border-color var(--transition); background:var(--bg-3); outline:none; color:var(--text-0); font-family:'Outfit',sans-serif; }
+.adm-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
+.adm-input::placeholder { color:var(--text-3); }
+.adm-select { padding:8px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--border); font-size:12px; background:var(--bg-3); outline:none; cursor:pointer; color:var(--text-1); font-family:'Outfit',sans-serif; }
+.adm-select:focus { border-color:var(--accent); }
+
+/* === ADMIN CARDS === */
+.adm-card { background:var(--bg-2); border-radius:var(--radius); border:1px solid var(--border); transition:all var(--transition); }
+.adm-card:hover { border-color:var(--border-hover); box-shadow:var(--shadow-sm); }
+
+/* === ADMIN UTILITY === */
+.adm-loading { text-align:center; padding:48px 0; color:var(--text-3); font-size:14px; font-weight:600; }
+.adm-spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.6s linear infinite; margin:0 auto 12px; }
+.adm-empty { text-align:center; padding:60px 0; }
+
+/* === STATUS BADGES === */
+.sts { padding:4px 10px; border-radius:20px; font-size:10px; font-weight:700; display:inline-flex; align-items:center; gap:4px; }
+.sts-active { background:var(--success-muted); color:var(--success); }
+.sts-pending { background:var(--warning-muted); color:var(--warning); }
+.sts-draft { background:rgba(255,255,255,0.06); color:var(--text-2); }
+.sts-approved { background:rgba(139,92,246,0.12); color:#A78BFA; }
+.sts-rejected { background:var(--error-muted); color:var(--error); }
+.sts-inactive { background:rgba(255,255,255,0.04); color:var(--text-3); }
+
+/* === ROLE BADGES === */
+.role-owner { background:rgba(139,92,246,0.12); color:#A78BFA; }
+.role-admin { background:rgba(59,130,246,0.12); color:#60A5FA; }
+.role-editor { background:var(--success-muted); color:var(--success); }
+.role-viewer { background:rgba(255,255,255,0.06); color:var(--text-2); }
+
+/* === TEMPLATE CARD === */
+.tpl-card { background:var(--bg-2); border-radius:var(--radius); border:1px solid var(--border); padding:16px 20px; transition:all var(--transition); }
+.tpl-card:hover { border-color:var(--border-hover); box-shadow:var(--shadow-sm); }
+.tpl-card.pending-highlight { border-color:rgba(255,184,0,0.4); background:rgba(255,184,0,0.04); }
+
+/* === FOLDER TREE === */
+.folder-item { padding:14px 18px; border-radius:var(--radius); background:var(--bg-2); border:1px solid var(--border); }
+.folder-item:hover { border-color:var(--border-hover); }
+.folder-file { padding:8px 12px; border-radius:var(--radius-sm); background:var(--bg-3); margin-left:32px; margin-top:6px; }
+
+/* === ADMIN ACTION BUTTONS === */
+.adm-action { padding:6px; border-radius:var(--radius-sm); background:transparent; border:none; cursor:pointer; transition:all var(--transition); font-size:12px; }
+.adm-action:hover { background:var(--bg-4); }
+
+/* ===== TEMPLATE WIZARD STYLES (dark) ===== */
+.tw-stepper { display:flex; align-items:center; justify-content:center; gap:0; margin-bottom:2rem; }
+.tw-step { display:flex; align-items:center; gap:0.5rem; }
+.tw-step-circle { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.85rem; border:2.5px solid var(--border); background:var(--bg-3); color:var(--text-3); transition:all 0.3s; position:relative; z-index:1; }
+.tw-step.active .tw-step-circle { background:var(--accent); border-color:var(--accent); color:white; box-shadow:0 0 0 4px var(--accent-glow); }
+.tw-step.done .tw-step-circle { background:var(--success); border-color:var(--success); color:white; }
+.tw-step-label { font-size:0.75rem; font-weight:700; color:var(--text-3); transition:color 0.3s; display:none; }
+.tw-step.active .tw-step-label,.tw-step.done .tw-step-label { color:var(--text-1); display:block; }
+.tw-connector { height:2px; width:48px; background:var(--border); transition:background 0.3s; flex-shrink:0; }
+.tw-connector.done { background:var(--success); }
+.tw-source-tab { padding:0.6rem 1.2rem; border-radius:var(--radius-sm); font-weight:700; font-size:0.82rem; cursor:pointer; border:2px solid transparent; transition:all 0.2s; color:var(--text-3); background:var(--bg-3); font-family:'Outfit',sans-serif; }
+.tw-source-tab:hover { color:var(--text-1); }
+.tw-source-tab.active { background:var(--accent-muted); color:var(--accent); border-color:var(--accent); }
+.tw-mapping-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+.tw-mapping-table thead th { background:var(--bg-4); color:var(--text-1); padding:0.75rem 1rem; text-align:left; font-size:0.7rem; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; }
+.tw-mapping-table thead th:first-child { border-radius:var(--radius-sm) 0 0 var(--radius-sm); }
+.tw-mapping-table thead th:last-child { border-radius:0 var(--radius-sm) var(--radius-sm) 0; }
+.tw-mapping-table tbody tr { border-bottom:1px solid var(--border-subtle); transition:background 0.15s; }
+.tw-mapping-table tbody tr:hover { background:var(--bg-3); }
+.tw-mapping-table tbody td { padding:0.75rem 1rem; vertical-align:middle; color:var(--text-1); }
+.badge-HIGH { background:var(--success-muted); color:var(--success); }
+.badge-MEDIUM { background:var(--warning-muted); color:var(--warning); }
+.badge-LOW { background:var(--error-muted); color:var(--error); }
+.tw-placeholder-chip { display:inline-flex; align-items:center; gap:0.4rem; background:var(--accent-muted); color:var(--accent); border:1.5px solid var(--accent); border-radius:0.4rem; padding:0.2rem 0.6rem; font-size:0.78rem; font-weight:800; font-family:'JetBrains Mono',monospace; cursor:pointer; }
+.tw-placeholder-chip.editing { background:var(--bg-3); border-style:dashed; }
+.tw-placeholder-input { border:none; outline:none; background:transparent; font-family:'JetBrains Mono',monospace; font-weight:800; font-size:0.78rem; color:var(--accent); width:160px; text-transform:uppercase; }
+.tw-confirm-toggle { width:40px; height:22px; border-radius:11px; background:var(--border); position:relative; cursor:pointer; transition:background 0.2s; border:none; flex-shrink:0; }
+.tw-confirm-toggle.confirmed { background:var(--success); }
+.tw-confirm-toggle::after { content:''; width:16px; height:16px; border-radius:50%; background:white; position:absolute; top:3px; left:3px; transition:transform 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+.tw-confirm-toggle.confirmed::after { transform:translateX(18px); }
+.tw-preview-box { background:var(--bg-1); border:1.5px solid var(--border); border-radius:var(--radius); padding:1.5rem; font-size:0.82rem; line-height:1.7; max-height:400px; overflow-y:auto; font-family:Georgia,serif; white-space:pre-wrap; color:var(--text-1); }
+.tw-placeholder-highlight { background:var(--accent-muted); color:var(--accent); font-weight:800; border-radius:3px; padding:0 3px; font-family:'JetBrains Mono',monospace; font-size:0.78em; }
+.tw-wizard-card { background:var(--bg-2); border:1px solid var(--border); border-radius:var(--radius-lg); padding:2rem; box-shadow:var(--shadow-sm); }
+.tw-fade-in { animation:fadeUp 0.35s cubic-bezier(0.16,1,0.3,1) forwards; }
+.tw-analyzing { display:flex; align-items:center; gap:1rem; padding:1.5rem; background:var(--accent-muted); border:1.5px solid var(--accent); border-radius:var(--radius); }
+.tw-analyzing-dot { width:10px; height:10px; border-radius:50%; background:var(--accent); animation:twPulse 1.4s infinite; }
+.tw-analyzing-dot:nth-child(2) { animation-delay:0.2s; }
+.tw-analyzing-dot:nth-child(3) { animation-delay:0.4s; }
+@keyframes twPulse { 0%,80%,100% { transform:scale(0.6); opacity:0.4; } 40% { transform:scale(1); opacity:1; } }
+
+/* ===== PHASE 2: HISTORY MODAL ===== */
+.history-list { display:flex; flex-direction:column; gap:8px; max-height:400px; overflow-y:auto; }
+.history-item { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--bg-3); border:1px solid var(--border); border-radius:var(--radius); text-decoration:none; transition:all .2s; cursor:pointer; }
+.history-item:hover { border-color:var(--accent); background:var(--bg-4); transform:translateY(-1px); }
+.history-item .hi-icon { font-size:22px; margin-right:12px; }
+.history-item .hi-info { flex:1; }
+.history-item .hi-shop { font-size:13px; font-weight:700; color:var(--text-0); }
+.history-item .hi-type { font-size:11px; color:var(--text-2); margin-top:2px; }
+.history-item .hi-date { text-align:right; }
+.history-item .hi-date-str { font-size:11px; color:var(--text-2); }
+.history-item .hi-time-str { font-size:10px; color:var(--text-3); }
+.history-empty { text-align:center; padding:48px 24px; }
+.history-empty i { font-size:48px; color:var(--text-3); margin-bottom:12px; display:block; }
+.history-empty p { color:var(--text-2); font-size:13px; font-weight:600; }
+.history-empty span { color:var(--text-3); font-size:12px; display:block; margin-top:4px; }
+
+/* ===== PHASE 2: PREVIEW PANEL ===== */
+.preview-toggle { position:fixed; right:20px; bottom:90px; z-index:40; width:48px; height:48px; border-radius:50%; background:var(--bg-2); border:1px solid var(--border); color:var(--text-1); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:18px; transition:all .2s; box-shadow:0 4px 12px rgba(0,0,0,.3); }
+.preview-toggle:hover { background:var(--accent); color:white; border-color:var(--accent); }
+.preview-toggle.active { background:var(--accent); color:white; border-color:var(--accent); }
+.preview-drawer { position:fixed; right:0; top:0; bottom:0; width:420px; max-width:90vw; background:var(--bg-1); border-left:1px solid var(--border); z-index:45; transform:translateX(100%); transition:transform .3s ease; overflow-y:auto; padding:0; box-shadow:-8px 0 30px rgba(0,0,0,.3); }
+.preview-drawer.open { transform:translateX(0); }
+.preview-drawer-header { position:sticky; top:0; z-index:2; padding:16px 20px; background:var(--bg-2); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.preview-drawer-header h3 { font-size:14px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.preview-drawer-header .live-dot { width:8px; height:8px; border-radius:50%; background:var(--success); display:inline-block; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+.preview-body { padding:20px; }
+.preview-body h1 { font-size:15px; font-weight:800; color:var(--text-0); margin-bottom:12px; line-height:1.4; text-transform:uppercase; }
+.preview-body h2 { font-size:13px; font-weight:700; color:var(--accent); margin:16px 0 6px; }
+.preview-body p { font-size:12px; color:var(--text-1); line-height:1.7; margin-bottom:8px; }
+.preview-placeholder { background:var(--warning-muted); color:var(--warning); padding:1px 6px; border-radius:4px; font-weight:700; font-size:11px; }
+
+/* ===== PHASE 2: DRAFT INDICATOR ===== */
+.draft-toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:var(--bg-2); border:1px solid var(--success); border-radius:var(--radius); padding:8px 16px; display:flex; align-items:center; gap:8px; z-index:50; font-size:12px; font-weight:600; color:var(--success); box-shadow:0 4px 12px rgba(0,0,0,.3); transition:all .3s; opacity:0; pointer-events:none; }
+.draft-toast.show { opacity:1; pointer-events:auto; }
+.draft-toast .dt-close { background:none; border:none; color:var(--text-3); cursor:pointer; padding:0 4px; font-size:11px; }
+
+/* ===== PHASE 2: HELP CENTER ===== */
+.help-section { padding:24px; background:var(--bg-2); border:1px solid var(--border); border-radius:var(--radius-lg); margin-bottom:20px; }
+.help-section h3 { font-size:18px; font-weight:800; margin-bottom:16px; display:flex; align-items:center; gap:12px; }
+.help-section .h3-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; color:white; flex-shrink:0; }
+.help-step { display:flex; gap:14px; padding:14px; background:var(--bg-3); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:10px; }
+.help-step .hs-num { width:32px; height:32px; background:var(--accent); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0; }
+.help-step h4 { font-size:13px; font-weight:700; color:var(--text-0); margin-bottom:4px; }
+.help-step p { font-size:12px; color:var(--text-2); line-height:1.5; }
+.help-step code { background:var(--bg-4); padding:2px 6px; border-radius:4px; font-size:11px; }
+.help-step.final { background:var(--success-muted); border-color:var(--success); }
+.help-step.final h4 { color:var(--success); }
+.help-link-box { margin-top:14px; padding:12px 16px; background:var(--bg-3); border:1px solid var(--border); border-radius:var(--radius); }
+.help-link-box code { background:var(--bg-4); padding:2px 6px; border-radius:4px; font-size:11px; }
+
+details.help-faq { background:var(--bg-3); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:8px; overflow:hidden; }
+details.help-faq summary { padding:14px 16px; cursor:pointer; font-weight:700; font-size:13px; color:var(--text-0); display:flex; justify-content:space-between; align-items:center; transition:background .2s; }
+details.help-faq summary:hover { background:var(--bg-4); }
+details.help-faq summary .chevron { transition:transform .2s; color:var(--text-3); }
+details.help-faq[open] summary .chevron { transform:rotate(180deg); }
+details.help-faq .faq-body { padding:14px 16px; border-top:1px solid var(--border); font-size:12px; color:var(--text-1); line-height:1.7; }
+.faq-body strong { color:var(--text-0); }
+.faq-body .faq-warn { color:var(--error); font-weight:700; margin-top:8px; display:block; }
+
+/* ===== PHASE 2: DATA TRANSFER MODAL ===== */
+.dt-steps { padding:16px; background:var(--bg-3); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:20px; }
+.dt-steps h4 { font-size:13px; font-weight:700; color:var(--text-0); margin-bottom:12px; }
+.dt-step-item { display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; font-size:12px; color:var(--text-1); }
+.dt-step-item .dt-num { width:22px; height:22px; background:var(--accent); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:10px; flex-shrink:0; }
+
+/* ===== PHASE 2: AUTOCOMPLETE ===== */
+.autocomplete-wrapper { position:relative; }
+.autocomplete-dropdown { position:absolute; top:100%; left:0; right:0; background:var(--bg-2); border:1px solid var(--border); border-radius:var(--radius); max-height:200px; overflow-y:auto; z-index:30; box-shadow:0 8px 24px rgba(0,0,0,.3); display:none; }
+.autocomplete-dropdown.show { display:block; }
+.autocomplete-item { padding:10px 14px; cursor:pointer; transition:background .15s; border-bottom:1px solid var(--border); }
+.autocomplete-item:last-child { border-bottom:none; }
+.autocomplete-item:hover { background:var(--bg-3); }
+.autocomplete-item strong { font-size:13px; color:var(--text-0); display:block; }
+.autocomplete-item span { font-size:11px; color:var(--text-2); }
+
+/* ===== PHASE 2: FEEDBACK IN SUCCESS ===== */
+.feedback-section { border-top:1px solid var(--border); padding-top:16px; margin-top:16px; }
+.feedback-section h4 { font-size:12px; font-weight:700; color:var(--text-1); text-align:center; margin-bottom:8px; display:flex; align-items:center; justify-content:center; gap:6px; }
+.feedback-textarea { width:100%; padding:10px 12px; background:var(--bg-3); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-0); font-size:12px; resize:none; font-family:inherit; }
+.feedback-textarea:focus { border-color:var(--accent); outline:none; }
+
+</style>
+<!-- ============================================ -->
+<!-- ADMIN PAGE - REEMPLAZA el div adminPage       -->
+<!-- ============================================ -->
+<div id="adminPage" class="hidden">
+  <!-- Nav -->
+  <nav class="nav">
+    <div class="nav-brand">
+      <button onclick="hideAdminPanel()" style="background:none;border:none;color:var(--text-2);cursor:pointer;font-size:16px;padding:4px 8px;margin-right:4px;"><i class="fa-solid fa-arrow-left"></i></button>
+      <div class="nav-logo" style="background:var(--bg-3);border:1px solid var(--border);"><i class="fa-solid fa-shield-halved" style="color:var(--accent);font-size:15px;"></i></div>
+      <div>
+        <div class="nav-title" style="font-size:14px;">Admin Panel</div>
+        <div style="font-size:10px;color:var(--text-3);font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Template Engine v2.4</div>
+      </div>
+    </div>
+    <div class="nav-right">
+      <span id="adminRoleBadge" class="hidden sts" style="font-size:10px;"></span>
+      <span id="adminUserEmail" class="hidden" style="font-size:11px;color:var(--text-3);font-family:'JetBrains Mono',monospace;"></span>
+    </div>
+  </nav>
+
+  <main style="max-width:1100px;margin:0 auto;padding:24px 20px 80px;">
+    <!-- Admin Tabs -->
+    <div style="display:flex;gap:6px;margin-bottom:28px;overflow-x:auto;padding-bottom:8px;" class="scrollbar-hide">
+      <button onclick="switchAdminTab('templates')" id="tab-templates" class="admin-tab active">
+        <i class="fa-solid fa-file-lines"></i><span>Templates</span>
+        <span id="pendingBadge" class="hidden" style="margin-left:4px;width:18px;height:18px;background:var(--warning);color:var(--bg-0);border-radius:50%;font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;">0</span>
+      </button>
+      <button onclick="switchAdminTab('wizard')" id="tab-wizard" class="admin-tab">
+        <i class="fa-solid fa-wand-magic-sparkles"></i><span>Importar</span>
+      </button>
+      <button onclick="switchAdminTab('fields')" id="tab-fields" class="admin-tab">
+        <i class="fa-solid fa-table-cells"></i><span>Campos</span>
+      </button>
+      <button onclick="switchAdminTab('folders')" id="tab-folders" class="admin-tab">
+        <i class="fa-solid fa-folder-tree"></i><span>Carpetas</span>
+      </button>
+      <button onclick="switchAdminTab('countries')" id="tab-countries" class="admin-tab">
+        <i class="fa-solid fa-globe"></i><span>Países</span>
+      </button>
+      <button onclick="switchAdminTab('team')" id="tab-team" class="admin-tab">
+        <i class="fa-solid fa-user-shield"></i><span>Equipo</span>
+      </button>
+      <button onclick="switchAdminTab('logs')" id="tab-logs" class="admin-tab">
+        <i class="fa-solid fa-clock-rotate-left"></i><span>Actividad</span>
+      </button>
+      <button onclick="switchAdminTab('guide')" id="tab-guide" class="admin-tab">
+        <i class="fa-solid fa-book-open" style="color:var(--accent);"></i><span>Guía</span>
+      </button>
+    </div>
+
+    <!-- ======================================== -->
+    <!-- TAB: TEMPLATES                           -->
+    <!-- ======================================== -->
+    <div id="panel-templates" class="admin-panel-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+        <div>
+          <h2 style="font-size:20px;font-weight:800;">Plantillas de T&C</h2>
+          <p style="font-size:13px;color:var(--text-2);">Templates vinculados con workflow de aprobación</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="filterTemplateStatus" onchange="loadAdminTemplates()" class="adm-select">
+            <option value="ALL">Todos</option>
+            <option value="active">✅ Activos</option>
+            <option value="pending_review">⏳ En revisión</option>
+            <option value="draft">📝 Borradores</option>
+            <option value="approved">✓ Aprobados</option>
+            <option value="rejected">❌ Rechazados</option>
+            <option value="inactive">⏸ Inactivos</option>
+          </select>
+          <button onclick="showAddTemplateModal()" class="btn-primary" id="btnNewTemplate" style="padding:9px 16px;font-size:12px;">
+            <i class="fa-solid fa-plus"></i> Nueva
+          </button>
+        </div>
+      </div>
+      <div id="templatesLoading" class="adm-loading"><div class="adm-spinner"></div><p>Cargando plantillas...</p></div>
+      <div id="templatesList" class="hidden" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <div id="templatesEmpty" class="hidden adm-empty">
+        <i class="fa-solid fa-file-circle-plus" style="font-size:40px;color:var(--text-3);margin-bottom:12px;display:block;"></i>
+        <p style="font-weight:700;color:var(--text-2);">No hay plantillas</p>
+        <p style="font-size:13px;color:var(--text-3);margin-top:4px;">Agrega tu primera plantilla para comenzar</p>
+        <button onclick="showAddTemplateModal()" class="btn-primary" style="margin-top:16px;font-size:12px;">
+          <i class="fa-solid fa-plus"></i> Agregar Plantilla
+        </button>
+      </div>
+    </div>
+
+    <!-- ======================================== -->
+    <!-- TAB: CAMPOS DINÁMICOS                    -->
+    <!-- ======================================== -->
+    <div id="panel-fields" class="admin-panel-content hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+        <div>
+          <h2 style="font-size:20px;font-weight:800;">Campos del Formulario</h2>
+          <p style="font-size:13px;color:var(--text-2);">Configuración dinámica por país y tipo</p>
+        </div>
+        <button onclick="showAddFieldModal()" class="btn-primary" id="btnNewField" style="padding:9px 16px;font-size:12px;">
+          <i class="fa-solid fa-plus"></i> Nuevo Campo
+        </button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+        <select id="filterFieldCountry" onchange="loadAdminFields()" class="adm-select">
+          <option value="ALL">🌎 Todos</option><option value="CO">🇨🇴 Colombia</option><option value="MX">🇲🇽 México</option><option value="CR">🇨🇷 Costa Rica</option><option value="BR">🇧🇷 Brasil</option>
+        </select>
+        <select id="filterFieldType" onchange="loadAdminFields()" class="adm-select">
+          <option value="ALL">Todos los tipos</option><option value="Cashback">💰 Cashback</option><option value="Concurso Mayor Comprador">🏆 Concurso</option>
+        </select>
+      </div>
+      <div id="fieldsLoading" class="adm-loading"><div class="adm-spinner"></div><p>Cargando campos...</p></div>
+      <div id="fieldsGrid" class="hidden" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;"></div>
+      <div id="fieldsEmpty" class="hidden adm-empty">
+        <i class="fa-solid fa-table-cells" style="font-size:40px;color:var(--text-3);margin-bottom:12px;display:block;"></i>
+        <p style="font-weight:700;color:var(--text-2);">Sin campos configurados</p>
+      </div>
+    </div>
+
+    <!-- ======================================== -->
+    <!-- TAB: CARPETAS                            -->
+    <!-- ======================================== -->
+    <div id="panel-folders" class="admin-panel-content hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+        <div>
+          <h2 style="font-size:20px;font-weight:800;">Carpetas de Templates</h2>
+          <p style="font-size:13px;color:var(--text-2);">Estructura organizada en Google Drive</p>
+        </div>
+        <a id="folderRootLink" href="#" target="_blank" class="btn-secondary hidden" style="font-size:12px;text-decoration:none;">
+          <i class="fa-solid fa-external-link" style="margin-right:6px;"></i>Abrir en Drive
+        </a>
+      </div>
+      <div id="foldersLoading" class="adm-loading"><div class="adm-spinner"></div><p>Cargando carpetas...</p></div>
+      <div id="foldersTree" class="hidden" style="display:flex;flex-direction:column;gap:10px;"></div>
+      <div id="foldersEmpty" class="hidden adm-empty">
+        <i class="fa-solid fa-folder-open" style="font-size:40px;color:var(--text-3);margin-bottom:12px;display:block;"></i>
+        <p style="font-weight:700;color:var(--text-2);">Carpetas no configuradas</p>
+        <p style="font-size:12px;color:var(--text-3);margin-top:4px;">Ejecuta <code class="mono" style="background:var(--bg-3);padding:2px 6px;border-radius:4px;">setupAdminSystem()</code> para crearlas</p>
+      </div>
+    </div>
+
+    <!-- ======================================== -->
+    <!-- TAB: PAÍSES                              -->
+    <!-- ======================================== -->
+    <div id="panel-countries" class="admin-panel-content hidden">
+      <div style="margin-bottom:20px;">
+        <h2 style="font-size:20px;font-weight:800;">Estado por País</h2>
+        <p style="font-size:13px;color:var(--text-2);">Cobertura de templates activos</p>
+      </div>
+      <div id="countriesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;"></div>
+    </div>
+
+    <!-- ======================================== -->
+    <!-- TAB: EQUIPO                              -->
+    <!-- ======================================== -->
+    <div id="panel-team" class="admin-panel-content hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+        <div>
+          <h2 style="font-size:20px;font-weight:800;">Equipo Administrador</h2>
+          <p style="font-size:13px;color:var(--text-2);">Gestión de acceso y roles</p>
+        </div>
+        <button onclick="showAddMemberModal()" class="btn-primary" id="btnAddMember" style="padding:9px 16px;font-size:12px;">
+          <i class="fa-solid fa-user-plus"></i> Agregar
+        </button>
+      </div>
+      <!-- Roles -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:20px;">
+        <div class="adm-card" style="padding:14px;border-left:3px solid #A78BFA;"><p style="font-size:10px;font-weight:800;color:#A78BFA;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Owner</p><p style="font-size:11px;color:var(--text-2);line-height:1.5;">Control total. Gestiona equipo, aprueba, activa y elimina.</p></div>
+        <div class="adm-card" style="padding:14px;border-left:3px solid #60A5FA;"><p style="font-size:10px;font-weight:800;color:#60A5FA;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Admin</p><p style="font-size:11px;color:var(--text-2);line-height:1.5;">Aprueba y activa templates. CRUD completo.</p></div>
+        <div class="adm-card" style="padding:14px;border-left:3px solid var(--success);"><p style="font-size:10px;font-weight:800;color:var(--success);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Editor</p><p style="font-size:11px;color:var(--text-2);line-height:1.5;">Crea y edita templates (borrador). Envía a revisión.</p></div>
+        <div class="adm-card" style="padding:14px;border-left:3px solid var(--text-3);"><p style="font-size:10px;font-weight:800;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Viewer</p><p style="font-size:11px;color:var(--text-2);line-height:1.5;">Solo lectura. Ve todo, no edita.</p></div>
+      </div>
+      <div id="teamLoading" class="adm-loading"><div class="adm-spinner"></div><p>Cargando equipo...</p></div>
+      <div id="teamList" class="hidden" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <div id="teamEmpty" class="hidden adm-empty">
+        <i class="fa-solid fa-users" style="font-size:40px;color:var(--text-3);margin-bottom:12px;display:block;"></i>
+        <p style="font-weight:700;color:var(--text-2);">Sin miembros</p>
+      </div>
+    </div>
+
+    <!-- ======================================== -->
+    <!-- TAB: ACTIVIDAD / LOGS                    -->
+    <!-- ======================================== -->
+    <div id="panel-logs" class="admin-panel-content hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+        <div>
+          <h2 style="font-size:20px;font-weight:800;">Actividad</h2>
+          <p style="font-size:13px;color:var(--text-2);">Historial de generaciones y acciones</p>
+        </div>
+        <div style="display:flex;gap:4px;">
+          <button id="logViewGen" class="tw-source-tab active" onclick="switchLogView('generation')">Generaciones</button>
+          <button id="logViewAppr" class="tw-source-tab" onclick="switchLogView('approval')">Aprobaciones</button>
+        </div>
+      </div>
+      <!-- Generation logs -->
+      <div id="logsGeneration">
+        <div id="logsLoading" class="adm-loading"><div class="adm-spinner"></div><p>Cargando...</p></div>
+        <div id="logsTable" class="hidden"></div>
+      </div>
+      <!-- Approval logs -->
+      <div id="logsApproval" class="hidden">
+        <div id="approvalLogsLoading" class="adm-loading"><div class="adm-spinner"></div><p>Cargando...</p></div>
+        <div id="approvalLogsTable" class="hidden"></div>
+      </div>
+    </div>
+
+    <!-- ======================================== -->
+    <!-- TAB: GUÍA ADMIN                          -->
+    <!-- ======================================== -->
+    <div id="panel-guide" class="admin-panel-content hidden">
+      <div style="margin-bottom:28px;">
+        <h2 style="font-size:22px;font-weight:800;">Guía para Administradores 🧠</h2>
+        <p style="font-size:13px;color:var(--text-2);margin-top:4px;">Gestión de plantillas, campos, equipo y troubleshooting.</p>
+      </div>
+
+      <!-- Flujo de aprobación -->
+      <div style="margin-bottom:28px;">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-code-branch" style="color:#60A5FA;"></i> 1. Flujo de Aprobación</h3>
+        <div class="adm-card" style="padding:24px;">
+          <p style="font-size:13px;color:var(--text-2);margin-bottom:20px;">Todo template nuevo pasa por un proceso de revisión de calidad legal antes de ser visible para los usuarios.</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:center;">
+            <div class="adm-card" style="flex:1;min-width:140px;padding:16px;text-align:center;border-color:var(--border);">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--bg-4);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;"><i class="fa-solid fa-pencil" style="color:var(--text-2);font-size:12px;"></i></div>
+              <p style="font-size:12px;font-weight:800;">1. Borrador</p>
+              <p style="font-size:10px;color:var(--text-3);margin-top:4px;">Editor crea o actualiza</p>
+            </div>
+            <i class="fa-solid fa-arrow-right" style="color:var(--text-3);"></i>
+            <div class="adm-card" style="flex:1;min-width:140px;padding:16px;text-align:center;border-color:rgba(255,184,0,0.3);">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--warning-muted);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;"><i class="fa-solid fa-paper-plane" style="color:var(--warning);font-size:12px;"></i></div>
+              <p style="font-size:12px;font-weight:800;">2. En Revisión</p>
+              <p style="font-size:10px;color:var(--text-3);margin-top:4px;">Editor solicita revisión</p>
+            </div>
+            <i class="fa-solid fa-arrow-right" style="color:var(--text-3);"></i>
+            <div class="adm-card" style="flex:1;min-width:140px;padding:16px;text-align:center;border-color:rgba(139,92,246,0.3);">
+              <div style="width:36px;height:36px;border-radius:50%;background:rgba(139,92,246,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;"><i class="fa-solid fa-thumbs-up" style="color:#A78BFA;font-size:12px;"></i></div>
+              <p style="font-size:12px;font-weight:800;">3. Aprobado</p>
+              <p style="font-size:10px;color:var(--text-3);margin-top:4px;">Admin audita y aprueba</p>
+            </div>
+            <i class="fa-solid fa-arrow-right" style="color:var(--text-3);"></i>
+            <div class="adm-card" style="flex:1;min-width:140px;padding:16px;text-align:center;border-color:rgba(0,214,143,0.3);">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--success-muted);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;"><i class="fa-solid fa-circle-check" style="color:var(--success);font-size:12px;"></i></div>
+              <p style="font-size:12px;font-weight:800;">4. Activo</p>
+              <p style="font-size:10px;color:var(--text-3);margin-top:4px;">En producción</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Placeholders -->
+      <div style="margin-bottom:28px;">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-file-word" style="color:var(--accent);"></i> 2. Google Docs & Variables</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;">
+          <div class="adm-card" style="padding:20px;">
+            <h4 style="font-size:13px;font-weight:800;margin-bottom:10px;">¿Cómo obtener el ID del Doc?</h4>
+            <p style="font-size:12px;color:var(--text-2);margin-bottom:12px;">Copia la cadena entre <code class="mono" style="background:var(--bg-4);padding:1px 4px;border-radius:3px;font-size:11px;">/d/</code> y <code class="mono" style="background:var(--bg-4);padding:1px 4px;border-radius:3px;font-size:11px;">/edit</code> en la URL.</p>
+            <div style="background:var(--bg-0);padding:10px 14px;border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-2);word-break:break-all;">
+              https://docs.google.com/document/d/<span style="color:var(--accent);font-weight:700;background:var(--accent-muted);padding:1px 3px;border-radius:3px;">1A2b3C4d5E6f7G8h</span>/edit
+            </div>
+          </div>
+          <div class="adm-card" style="padding:20px;">
+            <h4 style="font-size:13px;font-weight:800;margin-bottom:10px;">Reglas de las Variables</h4>
+            <div style="font-size:12px;color:var(--text-2);line-height:1.8;">
+              <p>✅ Encerradas en llaves dobles: <code class="mono" style="background:var(--bg-4);padding:1px 6px;border-radius:3px;font-size:11px;color:var(--accent);">{{VARIABLE}}</code></p>
+              <p>✅ Deben coincidir exactamente con el Placeholder de "Campos"</p>
+              <p>❌ No mezclar formatos (negrita + normal) en la variable</p>
+              <p style="font-size:11px;color:var(--text-3);margin-top:4px;"><i>Tip: Pegar con Ctrl+Shift+V (sin formato)</i></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ -->
+      <div>
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-circle-question" style="color:var(--warning);"></i> 3. Troubleshooting</h3>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <details class="adm-card" style="cursor:pointer;">
+            <summary style="padding:14px 18px;font-size:13px;font-weight:700;color:var(--text-1);display:flex;align-items:center;gap:8px;list-style:none;">
+              <i class="fa-solid fa-bug" style="color:var(--error);"></i> Variable no se reemplaza en el documento
+            </summary>
+            <div style="padding:0 18px 14px;font-size:12px;color:var(--text-2);line-height:1.7;">
+              <p style="margin-bottom:8px;"><strong style="color:var(--text-1);">Causa:</strong> Formato cruzado en el Google Doc.</p>
+              <p>1. Selecciona la variable completa en el Doc.<br>2. Cópiala. Bórrala del Doc.<br>3. Pégala con <kbd style="background:var(--bg-4);padding:1px 6px;border-radius:4px;font-size:11px;">Ctrl</kbd>+<kbd style="background:var(--bg-4);padding:1px 6px;border-radius:4px;font-size:11px;">Shift</kbd>+<kbd style="background:var(--bg-4);padding:1px 6px;border-radius:4px;font-size:11px;">V</kbd></p>
+            </div>
+          </details>
+          <details class="adm-card" style="cursor:pointer;">
+            <summary style="padding:14px 18px;font-size:13px;font-weight:700;color:var(--text-1);display:flex;align-items:center;gap:8px;list-style:none;">
+              <i class="fa-solid fa-lock" style="color:var(--error);"></i> Error "No se pudo acceder al Google Doc"
+            </summary>
+            <div style="padding:0 18px 14px;font-size:12px;color:var(--text-2);line-height:1.7;">
+              <p><strong style="color:var(--text-1);">Solución:</strong></p>
+              <p>1. Verifica que el ID no incluya barras o "edit".<br>2. Comparte la carpeta RappiMind_Templates con permisos de lectura.</p>
+            </div>
+          </details>
+          <details class="adm-card" style="cursor:pointer;">
+            <summary style="padding:14px 18px;font-size:13px;font-weight:700;color:var(--text-1);display:flex;align-items:center;gap:8px;list-style:none;">
+              <i class="fa-solid fa-list-check" style="color:#60A5FA;"></i> Crear un campo de tipo "Lista desplegable"
+            </summary>
+            <div style="padding:0 18px 14px;font-size:12px;color:var(--text-2);line-height:1.7;">
+              <p>En "Campos" → Nuevo Campo → Tipo Input: <strong style="color:var(--text-1);">Select</strong></p>
+              <p>Opciones separadas con pipe: <code class="mono" style="background:var(--bg-4);padding:2px 8px;border-radius:4px;font-size:11px;color:var(--accent);">Opción A|Opción B|Opción C</code></p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================== -->
+    <!-- TAB: TEMPLATE WIZARD                     -->
+    <!-- ======================================== -->
+    <div id="panel-wizard" class="admin-panel-content hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+        <div>
+          <h2 style="font-size:22px;font-weight:800;">Importar Template</h2>
+          <p style="font-size:13px;color:var(--text-2);margin-top:4px;">Carga un T&C existente y la IA detecta los campos variables</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;background:var(--accent-muted);border:1px solid rgba(255,92,0,0.2);border-radius:var(--radius);padding:8px 16px;">
+          <i class="fa-solid fa-brain" style="color:var(--accent);font-size:16px;"></i>
+          <span style="font-size:11px;font-weight:700;">Gemini AI</span>
+        </div>
+      </div>
+
+      <!-- Stepper -->
+      <div class="tw-stepper" id="tw-stepper">
+        <div class="tw-step active" id="twstep-1"><div class="tw-step-circle">1</div><div class="tw-step-label">Cargar</div></div>
+        <div class="tw-connector" id="twconn-1"></div>
+        <div class="tw-step" id="twstep-2"><div class="tw-step-circle">2</div><div class="tw-step-label">Analizar</div></div>
+        <div class="tw-connector" id="twconn-2"></div>
+        <div class="tw-step" id="twstep-3"><div class="tw-step-circle">3</div><div class="tw-step-label">Confirmar</div></div>
+        <div class="tw-connector" id="twconn-3"></div>
+        <div class="tw-step" id="twstep-4"><div class="tw-step-circle">4</div><div class="tw-step-label">Guardar</div></div>
+      </div>
+
+      <!-- Step 1: Cargar -->
+      <div id="tw-step-1" class="tw-wizard-card tw-fade-in">
+        <h3 style="font-size:16px;font-weight:800;margin-bottom:4px;">Paso 1 — Carga tu modelo de T&C</h3>
+        <p style="font-size:13px;color:var(--text-2);margin-bottom:16px;">Pega el texto directamente o proporciona el link de un Google Doc.</p>
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <button class="tw-source-tab active" id="tw-tab-text" onclick="twSelectSource('text')"><i class="fa-solid fa-align-left" style="margin-right:6px;"></i>Pegar texto</button>
+          <button class="tw-source-tab" id="tw-tab-doc" onclick="twSelectSource('doc')"><i class="fa-brands fa-google-drive" style="margin-right:6px;"></i>Google Doc</button>
+        </div>
+        <div id="tw-input-text">
+          <textarea id="tw-text-input" class="adm-input" rows="10" placeholder="Pega aquí el texto completo..." style="font-family:'JetBrains Mono',monospace;font-size:12px;resize:vertical;"></textarea>
+          <p id="tw-text-count" style="font-size:11px;color:var(--text-3);margin-top:4px;text-align:right;">0 caracteres</p>
+        </div>
+        <div id="tw-input-doc" class="hidden">
+          <div style="display:flex;gap:10px;">
+            <input id="tw-doc-url" type="url" class="adm-input" placeholder="https://docs.google.com/document/d/.../edit" style="flex:1;font-size:12px;">
+            <button onclick="twLoadFromDoc()" class="btn-primary" style="white-space:nowrap;font-size:12px;"><i class="fa-solid fa-cloud-arrow-down"></i> Cargar</button>
+          </div>
+          <div id="tw-doc-preview" class="hidden" style="margin-top:12px;padding:12px 16px;background:var(--success-muted);border:1px solid rgba(0,214,143,0.3);border-radius:var(--radius);display:flex;align-items:center;gap:12px;">
+            <i class="fa-brands fa-google-drive" style="color:var(--success);font-size:18px;"></i>
+            <div><p id="tw-doc-title" style="font-weight:700;font-size:13px;"></p><p id="tw-doc-meta" style="font-size:11px;color:var(--text-2);"></p></div>
+            <span class="sts sts-active" style="margin-left:auto;">Cargado</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:16px;">
+          <div><label class="adm-label">País *</label><select id="tw-country" class="adm-input" style="font-size:12px;"><option value="">Seleccionar...</option><option value="CO">🇨🇴 Colombia</option><option value="MX">🇲🇽 México</option><option value="CR">🇨🇷 Costa Rica</option><option value="BR">🇧🇷 Brasil</option></select></div>
+          <div><label class="adm-label">Tipo campaña *</label><select id="tw-campaign-type" class="adm-input" style="font-size:12px;"><option value="">Seleccionar...</option><option value="Cashback">Cashback</option><option value="Concurso">Concurso</option></select></div>
+          <div><label class="adm-label">Versión</label><input id="tw-version" type="text" value="1.0" class="adm-input" style="font-size:12px;"></div>
+          <div><label class="adm-label">Notas</label><input id="tw-notes" type="text" class="adm-input" style="font-size:12px;"></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:20px;">
+          <button onclick="twRunAnalysis()" class="btn-primary" style="font-size:13px;"><i class="fa-solid fa-brain"></i> Analizar con IA <i class="fa-solid fa-arrow-right" style="margin-left:4px;opacity:0.7;font-size:11px;"></i></button>
+        </div>
+      </div>
+
+      <!-- Step 2: Analyzing -->
+      <div id="tw-step-2" class="hidden"><div class="tw-wizard-card tw-fade-in"><div class="tw-analyzing"><div style="display:flex;gap:5px;"><div class="tw-analyzing-dot"></div><div class="tw-analyzing-dot"></div><div class="tw-analyzing-dot"></div></div><div><p style="font-weight:800;font-size:14px;">Gemini está analizando tu documento...</p><p style="font-size:13px;color:var(--text-2);" id="tw-analyzing-status">Identificando campos variables</p></div></div></div></div>
+
+      <!-- Step 3: Confirmar -->
+      <div id="tw-step-3" class="hidden">
+        <div class="tw-wizard-card tw-fade-in">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+            <div><h3 style="font-size:16px;font-weight:800;">Paso 2 — Confirma los campos</h3><p style="font-size:13px;color:var(--text-2);margin-top:4px;">Activa los que quieres convertir en placeholder.</p></div>
+            <div id="tw-summary-badge" style="text-align:right;"></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+            <button onclick="twFilterMappings('all')" id="tw-filter-all" class="tw-source-tab active" style="font-size:11px;">Todos</button>
+            <button onclick="twFilterMappings('HIGH')" id="tw-filter-HIGH" class="tw-source-tab" style="font-size:11px;"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success);margin-right:4px;"></span>Alta</button>
+            <button onclick="twFilterMappings('MEDIUM')" id="tw-filter-MEDIUM" class="tw-source-tab" style="font-size:11px;"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--warning);margin-right:4px;"></span>Media</button>
+            <button onclick="twConfirmAll()" class="tw-source-tab active" style="font-size:11px;margin-left:auto;"><i class="fa-solid fa-check-double" style="margin-right:4px;"></i>Confirmar HIGH</button>
+          </div>
+          <div style="overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);margin-bottom:14px;">
+            <table class="tw-mapping-table">
+              <thead><tr><th style="width:5%;">✓</th><th style="width:28%;">Valor original</th><th style="width:28%;">Placeholder</th><th style="width:15%;">Confianza</th><th style="width:24%;">Acciones</th></tr></thead>
+              <tbody id="tw-mappings-tbody"></tbody>
+            </table>
+          </div>
+          <div style="padding:14px;background:var(--bg-3);border-radius:var(--radius);border:1px dashed var(--border);">
+            <p style="font-size:11px;font-weight:700;color:var(--text-3);margin-bottom:10px;">¿Falta algún campo? Agrégalo manualmente:</p>
+            <div style="display:flex;gap:8px;"><input id="tw-manual-text" type="text" placeholder="Texto a reemplazar" class="adm-input" style="flex:1;font-size:12px;"><input id="tw-manual-placeholder" type="text" placeholder="PLACEHOLDER" class="adm-input mono" style="width:160px;font-size:11px;text-transform:uppercase;"><button onclick="twAddManualMapping()" class="btn-primary" style="white-space:nowrap;font-size:12px;">+ Agregar</button></div>
+          </div>
+          <details style="margin-top:16px;"><summary style="font-size:13px;font-weight:700;color:var(--text-1);cursor:pointer;"><i class="fa-solid fa-eye" style="color:var(--accent);margin-right:6px;"></i>Vista previa de placeholders</summary><div id="tw-preview-content" class="tw-preview-box" style="margin-top:10px;"></div></details>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;">
+            <button onclick="twGoToStep(1)" class="btn-secondary"><i class="fa-solid fa-arrow-left" style="margin-right:6px;"></i> Volver</button>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span id="tw-confirmed-count" style="font-size:13px;font-weight:700;color:var(--text-3);">0 confirmados</span>
+              <button onclick="twGoToStep(4)" id="tw-btn-continue" class="btn-primary" disabled style="font-size:13px;">Continuar <i class="fa-solid fa-arrow-right" style="margin-left:4px;font-size:11px;"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Guardar -->
+      <div id="tw-step-4" class="hidden">
+        <div class="tw-wizard-card tw-fade-in">
+          <h3 style="font-size:16px;font-weight:800;margin-bottom:16px;">Paso 3 — Guardar template</h3>
+          <div id="tw-final-summary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-bottom:20px;"></div>
+          <div style="background:var(--error-muted);border:1.5px solid rgba(255,71,87,0.3);border-radius:var(--radius);padding:14px;margin-bottom:16px;">
+            <div style="display:flex;gap:10px;"><i class="fa-solid fa-triangle-exclamation" style="color:var(--error);margin-top:2px;"></i><div><p style="font-weight:800;color:var(--error);font-size:13px;">Responsabilidad Legal</p><p style="font-size:12px;color:rgba(255,71,87,0.8);margin-top:4px;">Al crear este template confirmas que el contenido es jurídicamente válido y revisado por Legal.</p></div></div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;"><input type="checkbox" id="tw-responsibility-check" style="accent-color:var(--error);" onchange="twCheckResponsibility()"><span style="font-size:12px;font-weight:700;color:var(--error);">Confirmo que el contenido es válido</span></label>
+          </div>
+          <div id="tw-workflow-note" class="hidden" style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px;display:flex;gap:10px;align-items:center;">
+            <i class="fa-solid fa-circle-info" style="color:#60A5FA;"></i><div><p style="font-weight:700;font-size:13px;color:#60A5FA;">Flujo de aprobación</p><p style="font-size:12px;color:var(--text-2);margin-top:2px;">Quedará "Pendiente de Revisión" para que un Admin lo apruebe.</p></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <button onclick="twGoToStep(3)" class="btn-secondary"><i class="fa-solid fa-arrow-left" style="margin-right:6px;"></i> Volver</button>
+            <button onclick="twCreateTemplate()" id="tw-btn-create" class="btn-primary" disabled style="font-size:13px;"><i class="fa-solid fa-wand-magic-sparkles" style="margin-right:6px;"></i>Crear Template</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step Success -->
+      <div id="tw-step-success" class="hidden">
+        <div class="tw-wizard-card tw-fade-in" style="text-align:center;padding:40px 32px;">
+          <div style="width:64px;height:64px;background:var(--success-muted);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><i class="fa-solid fa-check" style="color:var(--success);font-size:28px;"></i></div>
+          <h3 style="font-size:22px;font-weight:800;margin-bottom:8px;">¡Template creado!</h3>
+          <p id="tw-success-msg" style="color:var(--text-2);font-size:13px;margin-bottom:20px;"></p>
+          <div id="tw-success-details" style="background:var(--bg-3);border-radius:var(--radius);padding:14px;max-width:360px;margin:0 auto 20px;text-align:left;font-size:13px;"></div>
+          <div style="display:flex;gap:10px;justify-content:center;">
+            <button onclick="twReset()" class="btn-secondary">Importar otro</button>
+            <button onclick="switchAdminTab('templates')" class="btn-primary" style="font-size:13px;">Ver templates</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
 
 <!-- ======================================================= -->  
 <!-- RESPONSIBILITY MODAL                                    -->  
@@ -876,6 +1677,8 @@
     <div class="nav-right">
       <div class="nav-chip" style="gap:8px;"><span>🇨🇴</span><span style="color:var(--text-0);font-weight:600;">Colombia</span><span style="color:var(--accent);font-weight:700;">COP</span></div>
       <button class="nav-btn" onclick="fillDemo()"><i class="fa-solid fa-bolt"></i> Demo</button>
+      <button class="nav-btn" onclick="showHistoryModal()" title="Historial"><i class="fa-solid fa-clock-rotate-left"></i></button>
+      <button class="nav-btn" onclick="showHelpCenter()" title="Ayuda"><i class="fa-solid fa-circle-question"></i></button>
     </div>
   </nav>
 
@@ -916,7 +1719,10 @@
           <div class="form-card-title"><i class="fa-solid fa-store"></i> Aliado Comercial</div>
           <div class="field">
             <label class="field-label"><span class="icon-sm"><i class="fa-solid fa-store"></i></span> Nombre de la Tienda <span class="req">*</span></label>
-            <input type="text" class="input" id="fShop" placeholder="Ej: Hamburguesas El Corral" oninput="onFieldChange()">
+            <div class="autocomplete-wrapper">
+            <input type="text" class="input" id="fShop" placeholder="Ej: Hamburguesas El Corral" oninput="showShopAutocomplete(this); onFieldChange();" onfocusout="hideAutocomplete()">
+            <div class="autocomplete-dropdown" id="shopAutocomplete"></div>
+            </div>
             <div class="field-hint"><i class="fa-solid fa-info-circle"></i> Debe coincidir <strong>exactamente</strong> con el nombre en Rappi</div>
           </div>
           <div class="field">
@@ -1024,7 +1830,7 @@
         <div id="concursoFields" class="hidden">
           <div class="form-card anim-up d1">
             <div class="form-card-title"><i class="fa-solid fa-building"></i> Organizador</div>
-            <div class="field"><label class="field-label">Razón Social <span class="req">*</span></label><input type="text" class="input" id="fOrgName" placeholder="INDUSTRIA NACIONAL DE GASEOSAS S.A.S." oninput="onFieldChange()"></div>
+            <div class="field"><label class="field-label">Razón Social <span class="req">*</span></label><div class="autocomplete-wrapper"><input type="text" class="input" id="fOrgName" placeholder="INDUSTRIA NACIONAL DE GASEOSAS S.A.S." oninput="showOrganizerAutocomplete(this); onFieldChange();" onfocusout="hideAutocomplete()"><div class="autocomplete-dropdown" id="organizerAutocomplete"></div></div></div>
             <div class="row-2">
               <div class="field"><label class="field-label">Teléfono <span class="req">*</span></label><input type="text" class="input" id="fOrgPhone" placeholder="018000912580" oninput="onFieldChange()"></div>
               <div class="field"><label class="field-label">Email PQR <span class="req">*</span></label><input type="email" class="input" id="fOrgEmail" placeholder="pqr@aliado.com" oninput="onFieldChange()"></div>
@@ -1205,6 +2011,237 @@
 </div>
 
 <!-- ======================================================= -->
+<!-- HISTORY MODAL                                           -->
+<!-- ======================================================= -->
+<div id="historyModal" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:560px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h2 style="font-size:18px;font-weight:800;display:flex;align-items:center;gap:10px;">
+        <i class="fa-solid fa-clock-rotate-left" style="color:var(--accent);"></i>
+        Historial de Documentos
+      </h2>
+      <button class="modal-close" onclick="hideModal('historyModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="historyList" class="history-list"></div>
+    <div id="historyEmpty" class="history-empty hidden">
+      <i class="fa-solid fa-folder-open"></i>
+      <p>No hay documentos generados aún</p>
+      <span>Cuando generes T&C aparecerán aquí</span>
+    </div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+      <button onclick="clearHistory()" style="background:none;border:none;color:var(--error);font-size:12px;font-weight:700;cursor:pointer;">
+        <i class="fa-solid fa-trash" style="margin-right:4px;"></i> Limpiar historial
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================= -->
+<!-- DATA TRANSFER MODAL                                     -->
+<!-- ======================================================= -->
+<div id="dataTransferModal" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:560px;">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="width:56px;height:56px;background:var(--warning-muted);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;color:var(--warning);">
+        <i class="fa-solid fa-file-signature"></i>
+      </div>
+      <h2 style="font-size:20px;font-weight:800;margin-bottom:6px;">Acuerdo de Transferencia de Datos</h2>
+      <p style="font-size:12px;color:var(--text-2);">Requerido cuando el premio lo entrega el Maker/Organizador</p>
+    </div>
+    <div style="padding:14px 16px;background:var(--warning-muted);border:1px solid var(--warning);border-radius:var(--radius);margin-bottom:16px;">
+      <p style="font-size:12px;font-weight:700;color:var(--warning);margin-bottom:6px;">
+        <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i>Antes de continuar, el KAM debe gestionar:
+      </p>
+      <p style="font-size:11px;color:var(--text-1);line-height:1.6;">
+        Para compartir datos del ganador con el Organizador (nombre, teléfono, dirección), se requiere firmar un <strong>Acuerdo de Transferencia de Datos</strong> conforme a la Ley 1581 de 2012.
+      </p>
+    </div>
+    <div class="dt-steps">
+      <h4>📋 Pasos a seguir:</h4>
+      <div class="dt-step-item"><div class="dt-num">1</div><span>Descarga el modelo de Acuerdo de Transferencia de Datos</span></div>
+      <div class="dt-step-item"><div class="dt-num">2</div><span>Completa los datos del Organizador (razón social, NIT, representante legal)</span></div>
+      <div class="dt-step-item"><div class="dt-num">3</div><span>Envía al Organizador para firma digital o física</span></div>
+      <div class="dt-step-item"><div class="dt-num">4</div><span>Una vez firmado, archívalo y continúa con la generación de T&C</span></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a href="https://docs.google.com/document/d/1ZsaF6p11OmF_12gRtp200sUJNRW_dEcd/edit" target="_blank"
+         style="flex:1;min-width:200px;padding:12px;background:#3B82F6;color:white;border-radius:var(--radius);font-weight:700;font-size:13px;text-align:center;text-decoration:none;">
+        <i class="fa-solid fa-download" style="margin-right:6px;"></i> Descargar Modelo
+      </a>
+      <button onclick="confirmDataTransferAgreement()" style="flex:1;min-width:200px;padding:12px;background:var(--success);color:white;border:none;border-radius:var(--radius);font-weight:700;font-size:13px;cursor:pointer;">
+        <i class="fa-solid fa-check" style="margin-right:6px;"></i> Ya tengo el acuerdo firmado
+      </button>
+    </div>
+    <button class="btn-secondary" style="width:100%;margin-top:10px;display:flex;justify-content:center;" onclick="hideModal('dataTransferModal')">Cancelar y volver</button>
+  </div>
+</div>
+
+<!-- ======================================================= -->
+<!-- HELP CENTER PAGE                                        -->
+<!-- ======================================================= -->
+<div id="helpCenterPage" class="hidden">
+  <nav class="nav">
+    <div class="nav-brand">
+      <button onclick="hideHelpCenter()" style="background:none;border:none;color:var(--text-2);cursor:pointer;font-size:16px;padding:4px 8px;margin-right:4px;"><i class="fa-solid fa-arrow-left"></i></button>
+      <div class="nav-logo"><svg class="brain-logo" width="28" height="28"><use href="#brain-icon"/></svg></div>
+      <div class="nav-title" style="font-size:14px;">Centro de Ayuda</div>
+    </div>
+  </nav>
+
+  <div style="max-width:720px;margin:0 auto;padding:32px 20px 80px;">
+    <!-- Header -->
+    <div style="text-align:center;margin-bottom:32px;" class="anim-up">
+      <div style="width:64px;height:64px;background:var(--bg-3);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <i class="fa-solid fa-book-open" style="font-size:24px;color:var(--accent);"></i>
+      </div>
+      <h2 style="font-size:28px;font-weight:800;">Centro de Ayuda</h2>
+      <p style="color:var(--text-2);font-size:14px;margin-top:6px;">Todo lo que necesitas saber para usar RappiMind</p>
+    </div>
+
+    <!-- Squarespace Guide -->
+    <div class="help-section anim-up d1">
+      <h3><div class="h3-icon" style="background:var(--accent);"><i class="fa-solid fa-upload"></i></div> Guía: Publicar en Squarespace</h3>
+      <div class="help-step">
+        <div class="hs-num">1</div>
+        <div>
+          <h4>Accede al Panel de Squarespace</h4>
+          <p>Ingresa a <code>https://daniel-correa-9j7n.squarespace.com/config/pages</code></p>
+          <p style="color:var(--warning);font-weight:700;margin-top:4px;">⚠️ Solicita acceso a tu líder si no lo tienes</p>
+        </div>
+      </div>
+      <div class="help-step">
+        <div class="hs-num">2</div>
+        <div><h4>Navega a la carpeta Colombia</h4><p>En el menú lateral: <code>Páginas → Colombia</code></p></div>
+      </div>
+      <div class="help-step">
+        <div class="hs-num">3</div>
+        <div><h4>Crea un nuevo evento</h4><p>Haz clic en el icono <strong>"+"</strong> para crear una página de evento vacía.</p></div>
+      </div>
+      <div class="help-step">
+        <div class="hs-num">4</div>
+        <div>
+          <h4>Configura el contenido</h4>
+          <p><strong>Título:</strong> Nombre público (Ej: "McDonald's 50% Cashback - Nov 2025")</p>
+          <p><strong>Fechas:</strong> Vigencia de la campaña</p>
+          <p><strong>Cuerpo:</strong> Pega el texto del Google Doc y <strong>justifícalo</strong></p>
+        </div>
+      </div>
+      <div class="help-step">
+        <div class="hs-num">5</div>
+        <div>
+          <h4>Obtén el identificador (Slug)</h4>
+          <p>Ve a la pestaña <strong>"Opciones"</strong> y copia la URL del evento</p>
+          <p style="color:var(--text-3);font-size:11px;">Ejemplo: <code>/colombia/mcdonalds-50-nov</code></p>
+        </div>
+      </div>
+      <div class="help-step final">
+        <div class="hs-num" style="background:var(--success);">6</div>
+        <div>
+          <h4>¡IMPORTANTE! Guarda y Publica</h4>
+          <p>Haz clic en <strong>"GUARDAR Y PUBLICAR"</strong> (botón negro abajo a la derecha).</p>
+          <p style="color:var(--error);font-weight:700;margin-top:4px;">⚠️ Si solo das clic en "Guardar", el enlace NO funcionará públicamente.</p>
+        </div>
+      </div>
+      <div class="help-link-box">
+        <p style="font-size:12px;color:var(--text-1);display:flex;align-items:center;gap:6px;">
+          <i class="fa-solid fa-link" style="color:var(--accent);"></i>
+          <strong>Link Final:</strong> <code>https://promos.rappi.com</code> + slug copiado
+        </p>
+        <p style="font-size:11px;color:var(--text-3);margin-top:4px;">
+          Ejemplo: <code>https://promos.rappi.com/colombia/mcdonalds-50-nov</code>
+        </p>
+      </div>
+    </div>
+
+    <!-- FAQs -->
+    <div class="help-section anim-up d2">
+      <h3><div class="h3-icon" style="background:#3B82F6;"><i class="fa-solid fa-circle-question"></i></div> Preguntas Frecuentes</h3>
+
+      <details class="help-faq">
+        <summary>💰 ¿Qué tipos de campañas puedo crear? <i class="fa-solid fa-chevron-down chevron"></i></summary>
+        <div class="faq-body">
+          <p><strong>Cashback:</strong> Devolución de créditos (porcentaje del valor de compra). Ejemplo: "20% de cashback con tope de $20.000".</p>
+          <p style="margin-top:8px;"><strong>Concurso / Top Spender:</strong> Competencia donde ganan los usuarios que más compren (cantidad o valor). Ejemplo: "Los 3 que más gasten ganan un iPhone".</p>
+          <span class="faq-warn">⚠️ Los concursos NO pueden usar sorteos ni azar. Deben ser por mérito (mayor compra).</span>
+        </div>
+      </details>
+
+      <details class="help-faq">
+        <summary>❌ ¿Me equivoqué en un dato, qué hago? <i class="fa-solid fa-chevron-down chevron"></i></summary>
+        <div class="faq-body">
+          <p>No hay problema. Simplemente vuelve a diligenciar el formulario con los datos corregidos. El sistema generará un nuevo documento.</p>
+          <span class="faq-warn">⚠️ NO edites manualmente el documento generado. Siempre genera uno nuevo.</span>
+        </div>
+      </details>
+
+      <details class="help-faq">
+        <summary>📧 ¿El correo no llega? <i class="fa-solid fa-chevron-down chevron"></i></summary>
+        <div class="faq-body">
+          <p>El sistema tarda entre 1 y 2 minutos. Revisa tu carpeta de Spam o "No deseados" y que hayas escrito bien tu correo @rappi.com.</p>
+          <p style="margin-top:6px;">Si después de 5 minutos no llega, intenta llenar el formulario nuevamente.</p>
+        </div>
+      </details>
+
+      <details class="help-faq">
+        <summary>🆘 ¿Dónde pido ayuda? <i class="fa-solid fa-chevron-down chevron"></i></summary>
+        <div class="faq-body">
+          <p>Para soporte o dudas, contacta al equipo Legal:</p>
+          <p style="margin-top:6px;"><i class="fa-solid fa-envelope" style="color:var(--accent);margin-right:6px;"></i> <strong>Email:</strong> juan.gallego@rappi.com o david.gaviria@rappi.com</p>
+          <p style="margin-top:4px;"><i class="fa-brands fa-slack" style="color:var(--accent);margin-right:6px;"></i> <strong>Slack:</strong> #legalops-marketing-co-cr</p>
+        </div>
+      </details>
+    </div>
+
+    <!-- Feedback -->
+    <div class="help-section anim-up d3">
+      <h3><div class="h3-icon" style="background:#8B5CF6;"><i class="fa-solid fa-comment-dots"></i></div> Feedback</h3>
+      <p style="font-size:12px;color:var(--text-2);margin-bottom:12px;">¿Cómo podemos mejorar RappiMind? Tu opinión es importante.</p>
+      <textarea id="helpFeedbackText" class="feedback-textarea" rows="3" placeholder="Escribe tu feedback aquí..."></textarea>
+      <button onclick="sendHelpFeedback()" style="width:100%;margin-top:10px;padding:12px;background:var(--bg-3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-0);font-weight:700;font-size:13px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <i class="fa-solid fa-paper-plane" style="margin-right:6px;"></i> Enviar Feedback
+      </button>
+      <p id="helpFeedbackSuccess" class="hidden" style="color:var(--success);font-size:12px;font-weight:700;margin-top:8px;text-align:center;">✅ ¡Gracias por tu feedback!</p>
+    </div>
+
+    <!-- CTA Back -->
+    <div style="text-align:center;margin-top:24px;" class="anim-up d4">
+      <button class="btn-primary" onclick="hideHelpCenter()" style="padding:14px 32px;">
+        <i class="fa-solid fa-arrow-left"></i> Volver al Inicio
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================= -->
+<!-- PREVIEW DRAWER (slide-in from right)                    -->
+<!-- ======================================================= -->
+<button class="preview-toggle" id="previewToggle" onclick="togglePreview()" title="Vista previa">
+  <i class="fa-solid fa-eye"></i>
+</button>
+<div class="preview-drawer" id="previewDrawer">
+  <div class="preview-drawer-header">
+    <h3><i class="fa-solid fa-eye" style="color:var(--accent);"></i> Vista Previa <span class="live-dot"></span></h3>
+    <button class="modal-close" onclick="togglePreview()" style="position:static;"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="preview-body" id="previewContent">
+    <p style="text-align:center;padding:40px 20px;color:var(--text-3);">
+      <i class="fa-solid fa-file-lines" style="font-size:32px;display:block;margin-bottom:8px;"></i>
+      Selecciona un tipo de campaña para ver la vista previa
+    </p>
+  </div>
+</div>
+
+<!-- ======================================================= -->
+<!-- DRAFT INDICATOR TOAST                                   -->
+<!-- ======================================================= -->
+<div class="draft-toast" id="draftToast">
+  <i class="fa-solid fa-floppy-disk"></i>
+  <span>Borrador guardado</span>
+  <button class="dt-close" onclick="clearDraft(); document.getElementById('draftToast').classList.remove('show');"><i class="fa-solid fa-xmark"></i></button>
+</div>
+
+
+<!-- ======================================================= -->
 <!-- LOADING & SUCCESS                                       -->
 <!-- ======================================================= -->
 <div id="loadingOverlay" class="loading-overlay hidden">
@@ -1232,6 +2269,18 @@
     <div style="display:flex;gap:10px;">
       <button class="btn-secondary" style="flex:1;" onclick="navigator.clipboard.writeText(document.getElementById('docLink').href).then(()=>alert('✅ Link copiado'))"><i class="fa-solid fa-copy"></i> Copiar Link</button>
       <button class="btn-secondary" style="flex:1;" onclick="location.reload()"><i class="fa-solid fa-plus"></i> Crear otro</button>
+    </div>
+    <div style="margin-top:8px;">
+      <a href="#" onclick="hideModal('successModal'); showHelpCenter(); return false;" style="color:var(--accent);font-size:12px;font-weight:700;text-decoration:none;">Ver guía completa →</a>
+    </div>
+    <!-- Feedback -->
+    <div class="feedback-section">
+      <h4><i class="fa-solid fa-comment-dots" style="color:var(--accent);"></i> ¿Cómo podemos mejorar?</h4>
+      <textarea id="successFeedbackText" class="feedback-textarea" rows="2" placeholder="Tu feedback nos ayuda a mejorar..."></textarea>
+      <button onclick="sendSuccessFeedback()" style="margin-top:8px;width:100%;padding:10px;background:var(--bg-3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text-0);font-weight:700;font-size:12px;cursor:pointer;">
+        <i class="fa-solid fa-paper-plane" style="margin-right:6px;"></i> Enviar Feedback
+      </button>
+      <p id="successFeedbackOk" class="hidden" style="color:var(--success);font-size:11px;font-weight:700;margin-top:6px;">✅ ¡Gracias!</p>
     </div>
   </div>
 </div>
@@ -1261,7 +2310,7 @@
   let chatVisible = false;  
   let selectedCountry = 'CO';
 
-  const allPages = ['landingPage','actionPage','generalTCPage','modifyPage','promoPage','formPage', 'adminPage'];
+  const allPages = ['landingPage','actionPage','generalTCPage','modifyPage','promoPage','formPage', 'adminPage', 'helpCenterPage'];
 
   document.addEventListener('DOMContentLoaded', function() {
     google.script.run.withSuccessHandler(function(resStr) {
@@ -1274,9 +2323,6 @@
       } catch(e) {}
     }).adminGetCurrentUser();
   });
-
-  // ===== PAGE NAV =====  
-  function showPage(id) {
 
   // ===== PAGE NAV =====
   function showPage(id) {
@@ -1838,6 +2884,1245 @@
       });
     }
   });
+
+<!-- ============================================ -->
+<!-- JAVASCRIPT DEL ADMIN PANEL                   -->
+<!-- Insertar ANTES del cierre </script> final    -->
+<!-- ============================================ -->
+<script>
+// ============================================
+// ADMIN STATE
+// ============================================
+var currentUser = { email:'', role:'viewer', permissions:{} };
+var adminTemplates = [];
+var adminFields = [];
+
+var FLAG_MAP = { CO:'🇨🇴', MX:'🇲🇽', CR:'🇨🇷', BR:'🇧🇷', AR:'🇦🇷', UY:'🇺🇾', CL:'🇨🇱', EC:'🇪🇨' };
+var COUNTRY_NAMES = { CO:'Colombia', MX:'México', CR:'Costa Rica', BR:'Brasil', AR:'Argentina', UY:'Uruguay', CL:'Chile', EC:'Ecuador' };
+var CURRENCY_SYMBOLS = { COP:'$', MXN:'$', CRC:'₡', BRL:'R$', ARS:'$', UYU:'$', CLP:'$', USD:'$' };
+var STATUS_MAP = {
+  active:         { label:'Activo',      icon:'fa-circle-check',  cls:'sts-active' },
+  pending_review: { label:'En revisión', icon:'fa-clock',         cls:'sts-pending' },
+  draft:          { label:'Borrador',    icon:'fa-pen',           cls:'sts-draft' },
+  approved:       { label:'Aprobado',    icon:'fa-thumbs-up',     cls:'sts-approved' },
+  rejected:       { label:'Rechazado',   icon:'fa-xmark',         cls:'sts-rejected' },
+  inactive:       { label:'Inactivo',    icon:'fa-pause',         cls:'sts-inactive' }
+};
+
+// ============================================
+// ADMIN ACCESS & NAVIGATION
+// ============================================
+function showAdminPanel() {
+  document.getElementById('adminAuthGate').classList.remove('hidden');
+  google.script.run
+    .withSuccessHandler(function(response) {
+      var data = JSON.parse(response);
+      if (data.status === 'ok') {
+        currentUser = data;
+        document.getElementById('adminAuthGate').classList.add('hidden');
+        _openAdminPanel();
+      } else if (data.status === 'unauthorized') {
+        document.getElementById('authGateMessage').textContent = data.message;
+        document.getElementById('authGateEmail').textContent = data.email;
+      } else {
+        document.getElementById('authGateMessage').textContent = data.message || 'Error de autenticación';
+      }
+    })
+    .withFailureHandler(function(error) {
+      document.getElementById('authGateMessage').textContent = 'Error: ' + error;
+    })
+    .adminGetCurrentUser();
+}
+
+function _openAdminPanel() {
+  showPage('adminPage');
+  document.getElementById('adminUserEmail').textContent = currentUser.email;
+  document.getElementById('adminUserEmail').classList.remove('hidden');
+  var roleBadge = document.getElementById('adminRoleBadge');
+  roleBadge.textContent = currentUser.role;
+  roleBadge.className = 'sts role-' + currentUser.role;
+  roleBadge.classList.remove('hidden');
+  _applyPermissions();
+  switchAdminTab('templates');
+}
+
+function _applyPermissions() {
+  var p = currentUser.permissions;
+  _toggleEl('btnNewTemplate', p.canCreateTemplates);
+  _toggleEl('btnNewField', p.canEditFields);
+  _toggleEl('btnAddMember', p.canManageTeam);
+}
+
+function _toggleEl(id, show) {
+  var el = document.getElementById(id);
+  if (el) el.style.display = show ? '' : 'none';
+}
+
+function hideAdminPanel() {
+  showPage('landingPage');
+}
+
+function closeAuthGate() {
+  document.getElementById('adminAuthGate').classList.add('hidden');
+}
+
+function switchAdminTab(tab) {
+  document.querySelectorAll('.admin-panel-content').forEach(function(el) { el.classList.add('hidden'); });
+  document.querySelectorAll('.admin-tab').forEach(function(el) { el.classList.remove('active'); });
+  var panel = document.getElementById('panel-' + tab);
+  var tabBtn = document.getElementById('tab-' + tab);
+  if (panel) panel.classList.remove('hidden');
+  if (tabBtn) tabBtn.classList.add('active');
+
+  switch(tab) {
+    case 'templates': loadAdminTemplates(); break;
+    case 'fields': loadAdminFields(); break;
+    case 'folders': loadFolders(); break;
+    case 'countries': loadAdminCountries(); break;
+    case 'team': loadTeam(); break;
+    case 'logs': loadAdminLogs(); break;
+    case 'guide': break;
+    case 'wizard': break;
+  }
+}
+
+function checkAdminAccess() {
+  var btn = document.getElementById('btnNavAdmin');
+  if (btn) btn.style.display = 'flex';
+}
+
+// ============================================
+// TEMPLATES
+// ============================================
+function loadAdminTemplates() {
+  var loading = document.getElementById('templatesLoading');
+  var list = document.getElementById('templatesList');
+  var empty = document.getElementById('templatesEmpty');
+  loading.classList.remove('hidden'); list.classList.add('hidden'); empty.classList.add('hidden');
+
+  google.script.run
+    .withSuccessHandler(function(response) {
+      var data = JSON.parse(response);
+      loading.classList.add('hidden');
+      if (data.status !== 'ok' || !data.templates || data.templates.length === 0) { empty.classList.remove('hidden'); adminTemplates = []; return; }
+
+      adminTemplates = data.templates;
+      var filter = document.getElementById('filterTemplateStatus').value;
+      var filtered = filter === 'ALL' ? data.templates : data.templates.filter(function(t) { return t.status === filter; });
+
+      var pendingCount = data.templates.filter(function(t) { return t.status === 'pending_review'; }).length;
+      var badge = document.getElementById('pendingBadge');
+      if (pendingCount > 0) { badge.textContent = pendingCount; badge.classList.remove('hidden'); }
+      else { badge.classList.add('hidden'); }
+
+      if (filtered.length === 0) { empty.classList.remove('hidden'); return; }
+      list.classList.remove('hidden');
+      list.style.display = 'flex';
+      _renderTemplates(filtered, list);
+    })
+    .withFailureHandler(function(e) { loading.classList.add('hidden'); empty.classList.remove('hidden'); })
+    .adminGetTemplates();
+}
+
+function _renderTemplates(templates, container) {
+  var p = currentUser.permissions;
+  container.innerHTML = templates.map(function(tpl, idx) {
+    var realIdx = adminTemplates.indexOf(tpl);
+    var flag = FLAG_MAP[tpl.country_code] || '🌎';
+    var s = STATUS_MAP[tpl.status] || STATUS_MAP['draft'];
+    var typeIcon = tpl.campaign_type === 'Cashback' ? '💰' : '🏆';
+    var isPending = tpl.status === 'pending_review';
+
+    var actions = '';
+    actions += '<a href="https://docs.google.com/document/d/' + tpl.template_doc_id + '/edit" target="_blank" class="adm-action" style="color:#60A5FA;" title="Abrir Doc"><i class="fa-solid fa-external-link"></i></a>';
+    if (p.canCreateTemplates) actions += '<button onclick="editTemplate(' + realIdx + ')" class="adm-action" style="color:var(--text-2);" title="Editar"><i class="fa-solid fa-pen"></i></button>';
+    if (p.canCreateTemplates && (tpl.status === 'draft' || tpl.status === 'rejected')) actions += '<button onclick="submitForReview(' + realIdx + ')" class="adm-action" style="color:var(--warning);" title="Enviar a revisión"><i class="fa-solid fa-paper-plane"></i></button>';
+    if (p.canApproveTemplates && isPending) {
+      actions += '<button onclick="approveTemplate(' + realIdx + ',false)" class="adm-action" style="color:var(--success);" title="Aprobar"><i class="fa-solid fa-check"></i></button>';
+      actions += '<button onclick="approveTemplate(' + realIdx + ',true)" class="adm-action" style="color:var(--success);" title="Aprobar y Activar"><i class="fa-solid fa-check-double"></i></button>';
+      actions += '<button onclick="showRejectModal(' + realIdx + ')" class="adm-action" style="color:var(--error);" title="Rechazar"><i class="fa-solid fa-xmark"></i></button>';
+    }
+    if (p.canActivateTemplates && (tpl.status === 'approved' || tpl.status === 'active' || tpl.status === 'inactive')) {
+      var targetStatus = tpl.status === 'active' ? 'inactive' : 'active';
+      var toggleIcon = tpl.status === 'active' ? 'fa-pause' : 'fa-play';
+      var toggleColor = tpl.status === 'active' ? 'var(--text-3)' : 'var(--success)';
+      actions += '<button onclick="toggleStatus(' + realIdx + ',\'' + targetStatus + '\')" class="adm-action" style="color:' + toggleColor + ';" title="' + (tpl.status === 'active' ? 'Desactivar' : 'Activar') + '"><i class="fa-solid ' + toggleIcon + '"></i></button>';
+    }
+    if (p.canDeleteTemplates) actions += '<button onclick="deleteTemplate(' + realIdx + ')" class="adm-action" style="color:var(--error);opacity:0.6;" title="Eliminar"><i class="fa-solid fa-trash"></i></button>';
+
+    var rejectionNote = '';
+    if (tpl.status === 'rejected' && tpl.notes && tpl.notes.indexOf('RECHAZADO:') === 0) {
+      rejectionNote = '<div style="margin-top:8px;background:var(--error-muted);border:1px solid rgba(255,71,87,0.2);border-radius:var(--radius-sm);padding:8px 12px;font-size:11px;color:var(--error);"><i class="fa-solid fa-comment-dots" style="margin-right:4px;"></i>' + tpl.notes + '</div>';
+    }
+
+    return '<div class="tpl-card' + (isPending ? ' pending-highlight' : '') + '" style="animation:fadeUp .3s cubic-bezier(0.16,1,0.3,1) ' + (idx*0.05) + 's both;">' +
+      '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">' +
+            '<span style="font-size:16px;">' + flag + '</span>' +
+            '<span style="font-weight:800;font-size:13px;">' + (COUNTRY_NAMES[tpl.country_code] || tpl.country_code) + '</span>' +
+            '<span style="color:var(--text-3);">·</span>' +
+            '<span style="font-size:13px;">' + typeIcon + ' ' + tpl.campaign_type + '</span>' +
+            '<span class="sts ' + s.cls + '"><i class="fa-solid ' + s.icon + '" style="font-size:8px;"></i> ' + s.label + '</span>' +
+            '<span style="background:var(--bg-4);color:var(--text-3);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;">v' + (tpl.version||'1.0') + '</span>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:12px;font-size:10px;color:var(--text-3);">' +
+            (tpl.legal_owner ? '<span><i class="fa-solid fa-user" style="margin-right:3px;"></i>' + tpl.legal_owner + '</span>' : '') +
+            (tpl.last_updated ? '<span><i class="fa-solid fa-calendar" style="margin-right:3px;"></i>' + tpl.last_updated + '</span>' : '') +
+            (tpl.submitted_by ? '<span><i class="fa-solid fa-paper-plane" style="margin-right:3px;"></i>' + tpl.submitted_by + '</span>' : '') +
+            (tpl.approved_by ? '<span><i class="fa-solid fa-check" style="margin-right:3px;"></i>' + tpl.approved_by + '</span>' : '') +
+          '</div>' +
+          rejectionNote +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:2px;">' + actions + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function showAddTemplateModal() {
+  document.getElementById('templateModalTitle').textContent = 'Nueva Plantilla';
+  document.getElementById('tpl_editIndex').value = '-1';
+  document.getElementById('templateForm').reset();
+  document.getElementById('tpl_version').value = '1.0';
+  var isAdmin = currentUser.permissions.canApproveTemplates;
+  document.getElementById('tpl_statusControl').classList.toggle('hidden', !isAdmin);
+  document.getElementById('tpl_editorNotice').classList.toggle('hidden', isAdmin);
+  showModal('addTemplateModal');
+}
+
+function editTemplate(index) {
+  var tpl = adminTemplates[index]; if (!tpl) return;
+  document.getElementById('templateModalTitle').textContent = 'Editar Plantilla';
+  document.getElementById('tpl_editIndex').value = index;
+  document.getElementById('tpl_country').value = tpl.country_code;
+  document.getElementById('tpl_type').value = tpl.campaign_type;
+  document.getElementById('tpl_docId').value = tpl.template_doc_id;
+  document.getElementById('tpl_currency').value = tpl.currency_code || 'COP';
+  document.getElementById('tpl_version').value = tpl.version || '1.0';
+  document.getElementById('tpl_notes').value = tpl.notes || '';
+  var isAdmin = currentUser.permissions.canApproveTemplates;
+  document.getElementById('tpl_statusControl').classList.toggle('hidden', !isAdmin);
+  document.getElementById('tpl_editorNotice').classList.toggle('hidden', isAdmin);
+  if (isAdmin) document.getElementById('tpl_status').value = tpl.status || 'draft';
+  showModal('addTemplateModal');
+}
+
+function saveTemplate(event) {
+  event.preventDefault();
+  var editIndex = parseInt(document.getElementById('tpl_editIndex').value);
+  var cc = document.getElementById('tpl_country').value;
+  var currCode = document.getElementById('tpl_currency').value;
+  var d = {
+    country_code: cc, country_name: COUNTRY_NAMES[cc] || cc,
+    campaign_type: document.getElementById('tpl_type').value,
+    template_doc_id: document.getElementById('tpl_docId').value.trim(),
+    version: document.getElementById('tpl_version').value || '1.0',
+    currency_code: currCode, currency_symbol: CURRENCY_SYMBOLS[currCode] || '$',
+    notes: document.getElementById('tpl_notes').value
+  };
+  if (currentUser.permissions.canApproveTemplates) d.status = document.getElementById('tpl_status').value;
+  if (d.template_doc_id.length < 10) { alert('⚠️ El Doc ID parece muy corto.'); return; }
+  var btn = event.target.querySelector('[type="submit"]');
+  btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      var res = JSON.parse(r); btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-save"></i> Guardar';
+      if (res.status === 'ok') { hideModal('addTemplateModal'); loadAdminTemplates(); alert('✅ ' + (res.message || 'Guardado')); }
+      else { alert('❌ ' + res.message); }
+    })
+    .withFailureHandler(function(e) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-save"></i> Guardar'; alert('❌ ' + e); })
+    .adminSaveTemplate(JSON.stringify(d), editIndex);
+}
+
+function submitForReview(index) {
+  var tpl = adminTemplates[index];
+  if (!confirm('¿Enviar a revisión?\n\n' + FLAG_MAP[tpl.country_code] + ' ' + tpl.country_code + ' — ' + tpl.campaign_type + '\n\nUn Admin recibirá notificación.')) return;
+  google.script.run.withSuccessHandler(function(r) { var res = JSON.parse(r); if (res.status === 'ok') { loadAdminTemplates(); alert('✅ ' + res.message); } else { alert('❌ ' + res.message); } }).adminSubmitForReview(index);
+}
+
+function approveTemplate(index, activateNow) {
+  var msg = activateNow ? '¿Aprobar Y ACTIVAR?\n\nEntrará en producción.' : '¿Aprobar?\n\nQuedará aprobado pero NO activo aún.';
+  if (!confirm(msg)) return;
+  google.script.run.withSuccessHandler(function(r) { var res = JSON.parse(r); if (res.status === 'ok') { loadAdminTemplates(); alert('✅ ' + res.message); } else { alert('❌ ' + res.message); } }).adminApproveTemplate(index, activateNow);
+}
+
+function showRejectModal(index) {
+  document.getElementById('reject_index').value = index;
+  document.getElementById('reject_reason').value = '';
+  showModal('rejectModal');
+}
+
+function confirmReject() {
+  var index = parseInt(document.getElementById('reject_index').value);
+  var reason = document.getElementById('reject_reason').value.trim();
+  if (!reason) { alert('Escribe un motivo de rechazo'); return; }
+  google.script.run.withSuccessHandler(function(r) {
+    var res = JSON.parse(r); hideModal('rejectModal');
+    if (res.status === 'ok') { loadAdminTemplates(); alert('Template rechazado.'); } else { alert('❌ ' + res.message); }
+  }).adminRejectTemplate(index, reason);
+}
+
+function toggleStatus(index, newStatus) {
+  var tpl = adminTemplates[index];
+  var action = newStatus === 'active' ? 'ACTIVAR (producción)' : 'DESACTIVAR';
+  if (!confirm('¿' + action + '?\n\n' + FLAG_MAP[tpl.country_code] + ' ' + tpl.country_code + ' — ' + tpl.campaign_type)) return;
+  google.script.run.withSuccessHandler(function(r) { var res = JSON.parse(r); if (res.status === 'ok') loadAdminTemplates(); else alert('❌ ' + res.message); }).adminToggleTemplate(index, newStatus);
+}
+
+function deleteTemplate(index) {
+  var tpl = adminTemplates[index];
+  if (!confirm('⚠️ ELIMINAR?\n\n' + FLAG_MAP[tpl.country_code] + ' ' + tpl.country_code + ' — ' + tpl.campaign_type + '\n\nNo se puede deshacer.')) return;
+  google.script.run.withSuccessHandler(function(r) { var res = JSON.parse(r); if (res.status === 'ok') loadAdminTemplates(); else alert('❌ ' + res.message); }).adminDeleteTemplate(index);
+}
+
+// ============================================
+// FIELDS
+// ============================================
+function loadAdminFields() {
+  var loading = document.getElementById('fieldsLoading');
+  var grid = document.getElementById('fieldsGrid');
+  var empty = document.getElementById('fieldsEmpty');
+  loading.classList.remove('hidden'); grid.classList.add('hidden'); empty.classList.add('hidden');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      var data = JSON.parse(r); loading.classList.add('hidden');
+      if (data.status !== 'ok' || !data.fields || data.fields.length === 0) { empty.classList.remove('hidden'); adminFields = []; return; }
+      var fc = document.getElementById('filterFieldCountry').value;
+      var ft = document.getElementById('filterFieldType').value;
+      var filtered = data.fields;
+      if (fc !== 'ALL') filtered = filtered.filter(function(f) { return f.country_code === 'ALL' || f.country_code === fc; });
+      if (ft !== 'ALL') filtered = filtered.filter(function(f) { return f.campaign_type === 'ALL' || f.campaign_type === ft; });
+      adminFields = data.fields;
+      if (filtered.length === 0) { empty.classList.remove('hidden'); return; }
+      grid.classList.remove('hidden'); grid.style.display = 'grid';
+      _renderFields(filtered, grid);
+    })
+    .withFailureHandler(function() { loading.classList.add('hidden'); empty.classList.remove('hidden'); })
+    .adminGetFields();
+}
+
+function _renderFields(fields, container) {
+  var canEdit = currentUser.permissions.canEditFields;
+  container.innerHTML = fields.map(function(f, i) {
+    var flag = f.country_code === 'ALL' ? '🌎' : (FLAG_MAP[f.country_code] || '');
+    var typeLabel = f.campaign_type === 'ALL' ? 'Todos' : (f.campaign_type === 'Cashback' ? '💰' : '🏆');
+    var req = (f.required === 'TRUE' || f.required === true);
+    return '<div class="adm-card" style="padding:14px;animation:fadeUp .3s cubic-bezier(0.16,1,0.3,1) ' + (i*0.03) + 's both;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
+        '<div><code class="mono" style="background:var(--accent-muted);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;">' + f.field_id + '</code> <span style="font-size:9px;font-weight:700;margin-left:4px;color:' + (req ? 'var(--error)' : 'var(--text-3)') + ';">' + (req ? 'REQ' : 'OPT') + '</span></div>' +
+        (canEdit ? '<div style="display:flex;gap:2px;"><button onclick="editField(' + i + ')" class="adm-action" style="color:var(--text-3);font-size:10px;" title="Editar"><i class="fa-solid fa-pen"></i></button><button onclick="deleteField(' + i + ')" class="adm-action" style="color:var(--error);opacity:0.5;font-size:10px;" title="Eliminar"><i class="fa-solid fa-trash"></i></button></div>' : '') +
+      '</div>' +
+      '<p style="font-weight:700;font-size:13px;margin-bottom:8px;">' + (f.label_es || f.field_id) + '</p>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:4px;font-size:10px;">' +
+        '<span style="background:var(--bg-4);padding:2px 8px;border-radius:4px;font-weight:600;">' + flag + ' ' + f.country_code + '</span>' +
+        '<span style="background:var(--bg-4);padding:2px 8px;border-radius:4px;">' + typeLabel + '</span>' +
+        '<span style="background:rgba(59,130,246,0.1);color:#60A5FA;padding:2px 8px;border-radius:4px;">' + f.field_type + '</span>' +
+        (f.placeholder ? '<code style="background:var(--warning-muted);color:var(--warning);padding:2px 8px;border-radius:4px;font-size:10px;">' + f.placeholder + '</code>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function showAddFieldModal() {
+  document.getElementById('fieldModalTitle').textContent = 'Nuevo Campo';
+  document.getElementById('fld_editIndex').value = '-1';
+  document.getElementById('fieldForm').reset();
+  document.getElementById('fld_section').value = '3';
+  document.getElementById('fld_order').value = '1';
+  showModal('addFieldModal');
+}
+
+function editField(index) {
+  var f = adminFields[index]; if (!f) return;
+  document.getElementById('fieldModalTitle').textContent = 'Editar Campo';
+  document.getElementById('fld_editIndex').value = index;
+  document.getElementById('fld_id').value = f.field_id||'';
+  document.getElementById('fld_placeholder').value = f.placeholder||'';
+  document.getElementById('fld_label').value = f.label_es||'';
+  document.getElementById('fld_country').value = f.country_code||'ALL';
+  document.getElementById('fld_type').value = f.campaign_type||'ALL';
+  document.getElementById('fld_inputType').value = f.field_type||'text';
+  document.getElementById('fld_section').value = f.section||'3';
+  document.getElementById('fld_order').value = f.order||'1';
+  document.getElementById('fld_icon').value = f.icon||'';
+  document.getElementById('fld_options').value = f.options||'';
+  document.getElementById('fld_default').value = f.default_value||'';
+  document.getElementById('fld_tooltip').value = f.tooltip||'';
+  document.getElementById('fld_group').value = f.group||'';
+  document.getElementById('fld_required').checked = (f.required === 'TRUE' || f.required === true);
+  showModal('addFieldModal');
+}
+
+function saveField(event) {
+  event.preventDefault();
+  var editIndex = parseInt(document.getElementById('fld_editIndex').value);
+  var d = {
+    field_id: document.getElementById('fld_id').value.trim(),
+    country_code: document.getElementById('fld_country').value,
+    campaign_type: document.getElementById('fld_type').value,
+    placeholder: document.getElementById('fld_placeholder').value.trim(),
+    label_es: document.getElementById('fld_label').value.trim(),
+    field_type: document.getElementById('fld_inputType').value,
+    icon: document.getElementById('fld_icon').value.trim(),
+    required: document.getElementById('fld_required').checked ? 'TRUE' : 'FALSE',
+    section: document.getElementById('fld_section').value,
+    options: document.getElementById('fld_options').value.trim(),
+    default_value: document.getElementById('fld_default').value.trim(),
+    tooltip: document.getElementById('fld_tooltip').value.trim(),
+    order: document.getElementById('fld_order').value,
+    group: document.getElementById('fld_group').value.trim()
+  };
+  google.script.run
+    .withSuccessHandler(function(r) { var res = JSON.parse(r); if (res.status==='ok') { hideModal('addFieldModal'); loadAdminFields(); } else { alert('❌ '+res.message); } })
+    .withFailureHandler(function(e) { alert('❌ '+e); })
+    .adminSaveField(JSON.stringify(d), editIndex);
+}
+
+function deleteField(index) {
+  if (!confirm('¿Eliminar este campo?')) return;
+  google.script.run.withSuccessHandler(function(r) { var res = JSON.parse(r); if (res.status==='ok') loadAdminFields(); }).adminDeleteField(index);
+}
+
+// ============================================
+// FOLDERS
+// ============================================
+function loadFolders() {
+  var loading = document.getElementById('foldersLoading');
+  var tree = document.getElementById('foldersTree');
+  var empty = document.getElementById('foldersEmpty');
+  var rootLink = document.getElementById('folderRootLink');
+  loading.classList.remove('hidden'); tree.classList.add('hidden'); empty.classList.add('hidden'); rootLink.classList.add('hidden');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      var data = JSON.parse(r); loading.classList.add('hidden');
+      if (data.status !== 'ok' || !data.folders || data.folders.length === 0) { empty.classList.remove('hidden'); return; }
+      if (data.rootUrl) { rootLink.href = data.rootUrl; rootLink.classList.remove('hidden'); }
+      tree.classList.remove('hidden'); tree.style.display = 'flex';
+      tree.innerHTML = data.folders.sort(function(a,b) { return a.name.localeCompare(b.name); }).map(function(cf) {
+        var code = cf.name.split('_')[0];
+        var flag = FLAG_MAP[code] || '📁';
+        var countryName = cf.name.split('_').slice(1).join('_') || cf.name;
+        var isSpecial = cf.name.charAt(0) === '_';
+        var subsHtml = cf.subFolders.map(function(sf) {
+          var typeIcon = sf.name === 'Cashback' ? '💰' : (sf.name === 'Concurso' ? '🏆' : '📁');
+          var filesHtml = sf.files.map(function(f) {
+            return '<div class="folder-file" style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-file-lines" style="color:#60A5FA;font-size:11px;"></i><a href="' + f.url + '" target="_blank" style="font-size:12px;color:#60A5FA;text-decoration:none;font-weight:600;">' + f.name + '</a></div>';
+          }).join('');
+          return '<div style="margin-left:24px;margin-top:8px;"><div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-1);"><span>' + typeIcon + '</span><span style="font-weight:600;">' + sf.name + '</span><span style="font-size:10px;color:var(--text-3);">(' + sf.files.length + ')</span></div>' + filesHtml + '</div>';
+        }).join('');
+        return '<div class="folder-item"><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">' + (isSpecial ? '📦' : flag) + '</span><span style="font-weight:700;font-size:14px;">' + (isSpecial ? cf.name : countryName) + '</span><span style="font-size:10px;color:var(--text-3);">' + cf.subFolders.length + ' subcarpetas</span></div>' + subsHtml + '</div>';
+      }).join('');
+    })
+    .withFailureHandler(function() { loading.classList.add('hidden'); empty.classList.remove('hidden'); })
+    .adminGetFolderStructure();
+}
+
+// ============================================
+// COUNTRIES
+// ============================================
+function loadAdminCountries() {
+  var grid = document.getElementById('countriesGrid');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      var data = JSON.parse(r);
+      var countries = ['CO','MX','CR','BR','AR','UY','CL','EC'];
+      var map = {};
+      if (data.templates) {
+        data.templates.forEach(function(t) {
+          if (!map[t.country_code]) map[t.country_code] = { types:[], hasActive:false };
+          map[t.country_code].types.push({ type:t.campaign_type, status:t.status, version:t.version });
+          if (t.status === 'active') map[t.country_code].hasActive = true;
+        });
+      }
+      grid.innerHTML = countries.map(function(code) {
+        var info = map[code]; var isActive = info && info.hasActive;
+        var typesHtml = info ? info.types.map(function(t) {
+          var icon = t.type === 'Cashback' ? '💰' : '🏆';
+          var s = STATUS_MAP[t.status] || STATUS_MAP['draft'];
+          return '<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2);"><span class="sts ' + s.cls + '" style="padding:2px 6px;font-size:8px;">' + s.label + '</span> ' + icon + ' ' + t.type + '</div>';
+        }).join('') : '<p style="font-size:11px;color:var(--text-3);">Sin templates</p>';
+        return '<div class="adm-card" style="padding:16px;text-align:center;' + (isActive ? 'border-color:rgba(0,214,143,0.3);' : '') + '"><span style="font-size:32px;display:block;margin-bottom:6px;">' + FLAG_MAP[code] + '</span><h3 style="font-weight:800;font-size:14px;">' + COUNTRY_NAMES[code] + '</h3><span class="sts ' + (isActive ? 'sts-active' : 'sts-inactive') + '" style="margin:8px 0;display:inline-block;">' + (isActive ? 'Operativo' : 'Pendiente') + '</span><div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">' + typesHtml + '</div></div>';
+      }).join('');
+    })
+    .withFailureHandler(function() { grid.innerHTML = '<p style="color:var(--text-3);text-align:center;grid-column:1/-1;padding:32px;">Error cargando</p>'; })
+    .adminGetTemplates();
+}
+
+// ============================================
+// TEAM
+// ============================================
+function loadTeam() {
+  var loading = document.getElementById('teamLoading');
+  var list = document.getElementById('teamList');
+  var empty = document.getElementById('teamEmpty');
+  loading.classList.remove('hidden'); list.classList.add('hidden'); empty.classList.add('hidden');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      var data = JSON.parse(r); loading.classList.add('hidden');
+      if (data.status !== 'ok' || !data.team || data.team.length === 0) { empty.classList.remove('hidden'); return; }
+      list.classList.remove('hidden'); list.style.display = 'flex';
+      _renderTeam(data.team, list);
+    })
+    .withFailureHandler(function() { loading.classList.add('hidden'); empty.classList.remove('hidden'); })
+    .adminGetTeam();
+}
+
+function _renderTeam(team, container) {
+  var isOwner = currentUser.permissions.canManageTeam;
+  var roleIcons = { owner:'fa-crown', admin:'fa-shield-halved', editor:'fa-pen-nib', viewer:'fa-eye' };
+  var roleColors = { owner:'color:#A78BFA;background:rgba(139,92,246,0.12);', admin:'color:#60A5FA;background:rgba(59,130,246,0.12);', editor:'color:var(--success);background:var(--success-muted);', viewer:'color:var(--text-2);background:var(--bg-4);' };
+  container.innerHTML = team.map(function(m, i) {
+    var icon = roleIcons[m.role] || 'fa-user';
+    var color = roleColors[m.role] || 'color:var(--text-2);background:var(--bg-4);';
+    var isMe = m.email.toLowerCase() === currentUser.email.toLowerCase();
+    return '<div class="adm-card" style="padding:14px;display:flex;align-items:center;gap:14px;animation:fadeUp .3s cubic-bezier(0.16,1,0.3,1) ' + (i*0.05) + 's both;">' +
+      '<div style="width:40px;height:40px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;flex-shrink:0;' + color + '"><i class="fa-solid ' + icon + '"></i></div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="display:flex;align-items:center;gap:6px;"><p style="font-weight:700;font-size:13px;">' + m.name + '</p>' + (isMe ? '<span style="font-size:9px;background:var(--accent-muted);color:var(--accent);padding:2px 8px;border-radius:4px;font-weight:700;">Tú</span>' : '') + '</div>' +
+        '<p style="font-size:11px;color:var(--text-3);font-family:\'JetBrains Mono\',monospace;">' + m.email + '</p>' +
+      '</div>' +
+      '<span class="sts role-' + m.role + '" style="text-transform:capitalize;">' + m.role + '</span>' +
+      (isOwner && !isMe ? '<div style="display:flex;gap:4px;">' +
+        '<select onchange="changeMemberRole(\'' + m.email + '\',this.value)" class="adm-select" style="font-size:10px;padding:4px 8px;"><option value="" disabled selected>Rol</option><option value="admin">Admin</option><option value="editor">Editor</option><option value="viewer">Viewer</option></select>' +
+        '<button onclick="removeMember(\'' + m.email + '\',\'' + m.name + '\')" class="adm-action" style="color:var(--error);opacity:0.6;" title="Eliminar"><i class="fa-solid fa-trash" style="font-size:11px;"></i></button>' +
+      '</div>' : '') +
+    '</div>';
+  }).join('');
+}
+
+function showAddMemberModal() { document.getElementById('memberForm').reset(); showModal('addMemberModal'); }
+
+function saveMember(event) {
+  event.preventDefault();
+  var d = { name: document.getElementById('mbr_name').value.trim(), email: document.getElementById('mbr_email').value.trim(), role: document.getElementById('mbr_role').value, notes: document.getElementById('mbr_notes').value.trim() };
+  if (!d.email.endsWith('@rappi.com')) { alert('Solo emails @rappi.com'); return; }
+  google.script.run
+    .withSuccessHandler(function(r) { var res = JSON.parse(r); if (res.status === 'ok') { hideModal('addMemberModal'); loadTeam(); alert('✅ ' + res.message); } else { alert('❌ ' + res.message); } })
+    .withFailureHandler(function(e) { alert('❌ ' + e); })
+    .adminAddTeamMember(JSON.stringify(d));
+}
+
+function changeMemberRole(email, newRole) {
+  if (!newRole) return;
+  if (!confirm('¿Cambiar rol de ' + email + ' a ' + newRole + '?')) return;
+  google.script.run.withSuccessHandler(function(r) { var res = JSON.parse(r); if (res.status === 'ok') loadTeam(); else alert('❌ ' + res.message); }).adminUpdateTeamMember(JSON.stringify({ email: email, role: newRole }));
+}
+
+function removeMember(email, name) {
+  if (!confirm('⚠️ ¿Eliminar a ' + name + '?\n\n' + email + '\n\nPerderá acceso.')) return;
+  google.script.run.withSuccessHandler(function(r) { var res = JSON.parse(r); if (res.status === 'ok') loadTeam(); else alert('❌ ' + res.message); }).adminRemoveTeamMember(email);
+}
+
+// ============================================
+// LOGS
+// ============================================
+function switchLogView(view) {
+  document.getElementById('logViewGen').classList.toggle('active', view === 'generation');
+  document.getElementById('logViewAppr').classList.toggle('active', view === 'approval');
+  document.getElementById('logsGeneration').classList.toggle('hidden', view !== 'generation');
+  document.getElementById('logsApproval').classList.toggle('hidden', view !== 'approval');
+  if (view === 'generation') loadGenerationLogs(); else loadApprovalLogs();
+}
+function loadAdminLogs() { switchLogView('generation'); }
+
+function loadGenerationLogs() {
+  var loading = document.getElementById('logsLoading');
+  var table = document.getElementById('logsTable');
+  loading.classList.remove('hidden'); table.classList.add('hidden');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      var data = JSON.parse(r); loading.classList.add('hidden');
+      if (data.status !== 'ok' || !data.logs || data.logs.length === 0) {
+        table.innerHTML = '<p style="text-align:center;color:var(--text-3);padding:40px;">Sin actividad</p>';
+        table.classList.remove('hidden'); return;
+      }
+      table.classList.remove('hidden');
+      table.innerHTML = '<div class="adm-card" style="overflow:hidden;"><div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">' +
+        '<thead><tr style="border-bottom:1px solid var(--border);">' +
+        '<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;">Fecha</th>' +
+        '<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;">Email</th>' +
+        '<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;">Tipo</th>' +
+        '<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;">Tienda</th>' +
+        '<th style="padding:10px 12px;text-align:center;font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;">Doc</th>' +
+        '</tr></thead><tbody>' +
+        data.logs.map(function(l) {
+          return '<tr style="border-bottom:1px solid var(--border-subtle);">' +
+            '<td style="padding:8px 12px;font-size:11px;color:var(--text-3);">' + l.timestamp + '</td>' +
+            '<td style="padding:8px 12px;font-size:12px;font-weight:600;color:var(--text-1);">' + l.email + '</td>' +
+            '<td style="padding:8px 12px;font-size:12px;color:var(--text-2);">' + (l.type==='Cashback'?'💰':'🏆') + ' ' + l.type + '</td>' +
+            '<td style="padding:8px 12px;font-size:12px;color:var(--text-2);">' + l.shop + '</td>' +
+            '<td style="padding:8px 12px;text-align:center;">' + (l.docUrl ? '<a href="' + l.docUrl + '" target="_blank" style="color:#60A5FA;"><i class="fa-solid fa-external-link" style="font-size:10px;"></i></a>' : '-') + '</td></tr>';
+        }).join('') + '</tbody></table></div></div>';
+    })
+    .withFailureHandler(function() { loading.classList.add('hidden'); })
+    .adminGetLogs();
+}
+
+function loadApprovalLogs() {
+  var loading = document.getElementById('approvalLogsLoading');
+  var table = document.getElementById('approvalLogsTable');
+  loading.classList.remove('hidden'); table.classList.add('hidden');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      var data = JSON.parse(r); loading.classList.add('hidden');
+      if (data.status !== 'ok' || !data.logs || data.logs.length === 0) {
+        table.innerHTML = '<p style="text-align:center;color:var(--text-3);padding:40px;">Sin actividad</p>';
+        table.classList.remove('hidden'); return;
+      }
+      table.classList.remove('hidden');
+      var actionIcons = { template_create:'📄', template_edit:'✏️', submit_review:'📨', approve:'✅', reject:'❌', team_add:'👤', team_update:'🔄', team_remove:'🗑️' };
+      table.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;">' + data.logs.map(function(l,i) {
+        return '<div class="adm-card" style="padding:12px;display:flex;align-items:center;gap:12px;animation:fadeUp .2s cubic-bezier(0.16,1,0.3,1) ' + (i*0.03) + 's both;">' +
+          '<span style="font-size:16px;">' + (actionIcons[l.action]||'📋') + '</span>' +
+          '<div style="flex:1;min-width:0;"><p style="font-size:12px;font-weight:700;">' + l.details + '</p><p style="font-size:10px;color:var(--text-3);">' + l.actor + ' · ' + l.timestamp + '</p></div></div>';
+      }).join('') + '</div>';
+    })
+    .withFailureHandler(function() { loading.classList.add('hidden'); })
+    .adminGetApprovalLog();
+}
+
+// ============================================
+// TEMPLATE WIZARD
+// ============================================
+var TW = { step:1, source:'text', originalText:'', docId:null, docTitle:null, detections:[], mappings:[], metadata:{}, currentFilter:'all' };
+
+function twSelectSource(source) {
+  TW.source = source;
+  document.getElementById('tw-tab-text').classList.toggle('active', source === 'text');
+  document.getElementById('tw-tab-doc').classList.toggle('active', source === 'doc');
+  document.getElementById('tw-input-text').classList.toggle('hidden', source !== 'text');
+  document.getElementById('tw-input-doc').classList.toggle('hidden', source !== 'doc');
+}
+
+(function() {
+  var el = document.getElementById('tw-text-input');
+  if (el) el.addEventListener('input', function() { document.getElementById('tw-text-count').textContent = this.value.length.toLocaleString() + ' caracteres'; });
+})();
+
+function twLoadFromDoc() {
+  var url = document.getElementById('tw-doc-url').value.trim();
+  if (!url) return alert('Ingresa la URL del Google Doc');
+  twSetDocLoading(true);
+  twCallBackend('tw_fetchDocContent', { docUrl:url, userEmail:currentUser.email })
+    .then(function(res) {
+      if (!res.success) throw new Error(res.message);
+      TW.originalText = res.data.text; TW.docId = res.data.docId; TW.docTitle = res.data.docTitle;
+      document.getElementById('tw-doc-title').textContent = res.data.docTitle;
+      document.getElementById('tw-doc-meta').textContent = res.data.wordCount.toLocaleString() + ' palabras · ' + res.data.charCount.toLocaleString() + ' caracteres';
+      document.getElementById('tw-doc-preview').classList.remove('hidden');
+      twSetDocLoading(false);
+    })
+    .catch(function(e) { alert(e.message); twSetDocLoading(false); });
+}
+
+function twSetDocLoading(loading) {
+  var btn = document.querySelector('#tw-input-doc button');
+  if (btn) { btn.disabled = loading; btn.innerHTML = loading ? 'Cargando...' : '<i class="fa-solid fa-cloud-arrow-down"></i> Cargar'; }
+}
+
+function twRunAnalysis() {
+  if (TW.source === 'text') TW.originalText = document.getElementById('tw-text-input').value.trim();
+  if (!TW.originalText || TW.originalText.length < 50) return alert('El texto es muy corto.');
+  var country = document.getElementById('tw-country').value;
+  var type = document.getElementById('tw-campaign-type').value;
+  if (!country || !type) return alert('Selecciona país y tipo de campaña.');
+  TW.metadata = { countryCode:country, campaignType:type, version:document.getElementById('tw-version').value||'1.0', notes:document.getElementById('tw-notes').value };
+  twGoToStep(2);
+  twCallBackend('tw_analyzeText', { text:TW.originalText, countryCode:country, campaignType:type, userEmail:currentUser.email })
+    .then(function(res) {
+      if (!res.success) throw new Error(res.message);
+      TW.detections = res.data;
+      TW.mappings = (res.data.detections || []).map(function(d, i) { return { id:'map_'+i, original_text:d.original_text, placeholder:d.suggested_placeholder, label:d.label||d.suggested_placeholder, confidence:d.confidence||'MEDIUM', context:d.context||'', occurrences:d.occurrences||1, confirmed:d.confidence==='HIGH' }; });
+      twGoToStep(3); twRenderMappings(); twUpdatePreview();
+    })
+    .catch(function(e) { alert('Error: ' + e.message); twGoToStep(1); });
+}
+
+function twRenderMappings() {
+  var tbody = document.getElementById('tw-mappings-tbody');
+  var filtered = TW.mappings.filter(function(m) { return TW.currentFilter === 'all' || m.confidence === TW.currentFilter; });
+  tbody.innerHTML = filtered.map(function(m) {
+    return '<tr id="row-' + m.id + '" style="' + (m.confirmed ? 'background:rgba(0,214,143,0.04);' : '') + '">' +
+      '<td><button class="tw-confirm-toggle ' + (m.confirmed ? 'confirmed' : '') + '" id="toggle-' + m.id + '" onclick="twToggleConfirm(\'' + m.id + '\')"></button></td>' +
+      '<td><span class="mono" style="font-size:11px;background:var(--bg-4);padding:2px 8px;border-radius:4px;">' + escapeHtml(m.original_text) + '</span>' + (m.context ? '<p style="font-size:11px;color:var(--text-3);margin-top:4px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">...' + escapeHtml(m.context) + '...</p>' : '') + '</td>' +
+      '<td><div class="tw-placeholder-chip" id="chip-' + m.id + '" onclick="twEditPlaceholder(\'' + m.id + '\')">{{<span id="ph-text-' + m.id + '">' + m.placeholder + '</span>}}<i class="fa-solid fa-pen-to-square" style="font-size:10px;opacity:0.5;margin-left:4px;"></i></div><p style="font-size:10px;color:var(--text-3);margin-top:4px;">' + m.label + '</p></td>' +
+      '<td><span class="sts badge-' + m.confidence + '" style="font-size:10px;">' + m.confidence + '</span></td>' +
+      '<td><button onclick="twRemoveMapping(\'' + m.id + '\')" style="background:none;border:none;color:var(--text-3);cursor:pointer;padding:4px;"><i class="fa-solid fa-xmark"></i></button></td></tr>';
+  }).join('');
+  twUpdateSummary();
+}
+
+function twToggleConfirm(id) {
+  var m = TW.mappings.find(function(x) { return x.id === id; }); if (!m) return;
+  m.confirmed = !m.confirmed;
+  document.getElementById('toggle-' + id).classList.toggle('confirmed', m.confirmed);
+  document.getElementById('row-' + id).style.background = m.confirmed ? 'rgba(0,214,143,0.04)' : '';
+  twUpdateSummary(); twUpdatePreview();
+}
+
+function twEditPlaceholder(id) {
+  var m = TW.mappings.find(function(x) { return x.id === id; }); if (!m) return;
+  var chip = document.getElementById('chip-' + id); var span = document.getElementById('ph-text-' + id);
+  chip.classList.add('editing');
+  var input = document.createElement('input'); input.type = 'text'; input.value = m.placeholder; input.className = 'tw-placeholder-input';
+  span.replaceWith(input); input.focus(); input.select();
+  var save = function() { m.placeholder = input.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'); chip.classList.remove('editing'); var newSpan = document.createElement('span'); newSpan.id = 'ph-text-' + id; newSpan.textContent = m.placeholder; input.replaceWith(newSpan); twUpdatePreview(); };
+  input.addEventListener('blur', save); input.addEventListener('keydown', function(e) { if (e.key === 'Enter') save(); });
+}
+
+function twRemoveMapping(id) { TW.mappings = TW.mappings.filter(function(m) { return m.id !== id; }); var row = document.getElementById('row-' + id); if (row) row.remove(); twUpdateSummary(); twUpdatePreview(); }
+function twFilterMappings(level) { TW.currentFilter = level; document.querySelectorAll('#panel-wizard .tw-source-tab').forEach(function(b) { b.classList.remove('active'); }); var fBtn = document.getElementById('tw-filter-' + level); if (fBtn) fBtn.classList.add('active'); twRenderMappings(); }
+function twConfirmAll() { TW.mappings.forEach(function(m) { if (m.confidence === 'HIGH') m.confirmed = true; }); twRenderMappings(); twUpdatePreview(); }
+
+function twAddManualMapping() {
+  var text = document.getElementById('tw-manual-text').value.trim();
+  var ph = document.getElementById('tw-manual-placeholder').value.trim().toUpperCase();
+  if (!text || !ph) return alert('Completa los dos campos');
+  TW.mappings.push({ id:'map_manual_' + Date.now(), original_text:text, placeholder:ph, label:ph, confidence:'HIGH', occurrences:1, confirmed:true });
+  document.getElementById('tw-manual-text').value = ''; document.getElementById('tw-manual-placeholder').value = '';
+  twRenderMappings(); twUpdatePreview();
+}
+
+function twUpdateSummary() {
+  var confirmed = TW.mappings.filter(function(m) { return m.confirmed; }).length;
+  document.getElementById('tw-confirmed-count').textContent = confirmed + ' confirmados';
+  document.getElementById('tw-btn-continue').disabled = confirmed === 0;
+}
+
+function twUpdatePreview() {
+  var previewEl = document.getElementById('tw-preview-content'); if (!previewEl) return;
+  var text = TW.originalText;
+  TW.mappings.filter(function(m) { return m.confirmed; }).forEach(function(m) {
+    text = text.replace(new RegExp(m.original_text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), '⟪{{' + m.placeholder + '}}⟫');
+  });
+  previewEl.innerHTML = text.split('\n').map(function(line) { return '<p style="margin-bottom:4px;">' + escapeHtml(line).replace(/⟪\{\{(\w+)\}\}⟫/g, '<span class="tw-placeholder-highlight">{{$1}}</span>') + '</p>'; }).join('');
+}
+
+function twGoToStep(n) {
+  [1,2,3,4,'success'].forEach(function(s) { var el = document.getElementById('tw-step-' + s); if (el) el.classList.add('hidden'); });
+  var target = document.getElementById('tw-step-' + n); if (target) target.classList.remove('hidden');
+  TW.step = n;
+  [1,2,3,4].forEach(function(i) {
+    var stepEl = document.getElementById('twstep-' + i); var connEl = document.getElementById('twconn-' + i);
+    if (!stepEl) return;
+    stepEl.classList.remove('active', 'done');
+    if (i < n) stepEl.classList.add('done'); else if (i === n) stepEl.classList.add('active');
+    if (connEl) connEl.classList.toggle('done', i < n);
+  });
+  if (n === 4) twRenderFinalSummary();
+}
+
+function twRenderFinalSummary() {
+  var confirmed = TW.mappings.filter(function(m) { return m.confirmed; });
+  var md = TW.metadata;
+  document.getElementById('tw-final-summary').innerHTML =
+    '<div style="background:var(--bg-3);border-radius:var(--radius);padding:14px;text-align:center;"><p style="font-size:28px;font-weight:800;color:var(--accent);">' + confirmed.length + '</p><p style="font-size:11px;color:var(--text-3);font-weight:600;margin-top:4px;">Placeholders</p></div>' +
+    '<div style="background:var(--bg-3);border-radius:var(--radius);padding:14px;text-align:center;"><p style="font-size:16px;font-weight:800;">' + md.countryCode + '</p><p style="font-size:11px;color:var(--text-3);font-weight:600;margin-top:4px;">País</p></div>' +
+    '<div style="background:var(--bg-3);border-radius:var(--radius);padding:14px;text-align:center;"><p style="font-size:13px;font-weight:800;">' + md.campaignType + '</p><p style="font-size:11px;color:var(--text-3);font-weight:600;margin-top:4px;">Tipo</p></div>';
+}
+
+function twCheckResponsibility() { document.getElementById('tw-btn-create').disabled = !document.getElementById('tw-responsibility-check').checked; }
+
+function twCreateTemplate() {
+  var btn = document.getElementById('tw-btn-create'); btn.disabled = true; btn.innerHTML = 'Creando template...';
+  var confirmedMappings = TW.mappings.filter(function(m) { return m.confirmed; }).map(function(m) { return { original_text:m.original_text, placeholder:m.placeholder, label:m.label, confirmed:true }; });
+  twCallBackend('tw_createTemplate', { originalText:TW.originalText, mappings:confirmedMappings, metadata:TW.metadata, userEmail:currentUser.email })
+    .then(function(res) {
+      if (!res.success) throw new Error(res.message);
+      document.getElementById('tw-step-4').classList.add('hidden'); document.getElementById('tw-step-success').classList.remove('hidden');
+      document.getElementById('tw-success-msg').textContent = res.message;
+      document.getElementById('tw-success-details').innerHTML = '<p style="color:var(--text-2);">Doc: <a href="' + res.data.docUrl + '" target="_blank" style="color:var(--accent);font-weight:700;">Abrir</a></p><p style="color:var(--text-2);">Estado: ' + res.data.status + '</p>';
+      [1,2,3,4].forEach(function(i) { var s = document.getElementById('twstep-'+i); if(s){s.classList.add('done');s.classList.remove('active');} var c = document.getElementById('twconn-'+i); if(c) c.classList.add('done'); });
+    })
+    .catch(function(e) { alert('Error: ' + e.message); btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Crear Template'; });
+}
+
+function twReset() {
+  TW.step = 1; TW.source = 'text'; TW.originalText = ''; TW.docId = null; TW.mappings = []; TW.metadata = {};
+  var ti = document.getElementById('tw-text-input'); if (ti) ti.value = '';
+  var du = document.getElementById('tw-doc-url'); if (du) du.value = '';
+  var rc = document.getElementById('tw-responsibility-check'); if (rc) rc.checked = false;
+  ['success',2,3,4].forEach(function(s) { var el = document.getElementById('tw-step-' + s); if (el) el.classList.add('hidden'); });
+  var s1 = document.getElementById('tw-step-1'); if (s1) s1.classList.remove('hidden');
+  twGoToStep(1);
+}
+
+function twCallBackend(action, data) {
+  return new Promise(function(resolve, reject) {
+    var onSuccess = function(res) {
+      if (typeof res === 'string') { try { resolve(JSON.parse(res)); } catch(e) { resolve({ success:true, data:res }); } }
+      else { resolve(res || { success:true }); }
+    };
+    var onFailure = function(err) { reject(new Error(err.message || 'Error en el servidor')); };
+    var api = google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure);
+    if (action === 'tw_analyzeText') {
+      if (typeof api.analyzeTextForPlaceholders !== 'function') return reject(new Error("analyzeTextForPlaceholders no disponible. Usa /dev URL."));
+      api.analyzeTextForPlaceholders(data);
+    } else if (action === 'tw_fetchDocContent') {
+      if (typeof api.fetchGoogleDocContent !== 'function') return reject(new Error("fetchGoogleDocContent no disponible."));
+      api.fetchGoogleDocContent(data);
+    } else if (action === 'tw_createTemplate') {
+      if (typeof api.createTemplateFromWizard !== 'function') return reject(new Error("createTemplateFromWizard no disponible."));
+      api.createTemplateFromWizard(data);
+    } else {
+      reject(new Error("Acción no reconocida: " + action));
+    }
+  });
+}
+
+function escapeHtml(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+// ============================================
+// FEEDBACK (Help Center)
+// ============================================
+function sendFeedback() {
+  var feedbackEl = document.getElementById('feedbackText');
+  if (!feedbackEl) return;
+  var text = feedbackEl.value.trim();
+  if (!text) return alert('Escribe tu feedback');
+  google.script.run
+    .withSuccessHandler(function(r) { var res = JSON.parse(r); if (res.status === 'ok') { feedbackEl.value = ''; alert('✅ Gracias por tu feedback!'); } else { alert('❌ ' + res.message); } })
+    .withFailureHandler(function(e) { alert('❌ ' + e); })
+    .saveFeedback(text);
+}
+
+// ============================================
+// OVERRIDE: showPage for Admin
+// ============================================
+// Interceptamos la navegación al admin para verificar acceso
+(function() {
+  var _origShowPage = (typeof showPage === 'function') ? showPage : null;
+
+  // Override del botón admin en el nav
+  var adminBtn = document.getElementById('btnNavAdmin');
+  if (adminBtn) {
+    adminBtn.onclick = function() {
+      showAdminPanel();
+    };
+  }
+})();
+
+
+  // ==========================================================
+  // PHASE 2: GLOBAL DATA
+  // ==========================================================
+  let previewVisible = false;
+
+  const frequentShops = [
+    { name:'Hamburguesas El Corral', legal:'HAMBURGUESAS EL CORRAL S.A.S.' },
+    { name:'McDonalds', legal:'ARCOS DORADOS COLOMBIA S.A.' },
+    { name:'Coca-Cola', legal:'INDUSTRIA NACIONAL DE GASEOSAS S.A.S.' },
+    { name:'Postobón', legal:'GASEOSAS POSADA TOBÓN S.A.' },
+    { name:'Frisby', legal:'FRISBY S.A.' },
+    { name:'Crepes & Waffles', legal:'CREPES & WAFFLES S.A.' },
+    { name:'Dominos Pizza', legal:'DOMINOS PIZZA COLOMBIA S.A.S.' },
+    { name:'Papa Johns', legal:'SIGLA S.A.S.' },
+    { name:'Juan Valdez', legal:'PROCAFECOL S.A.' },
+    { name:'Starbucks', legal:'STARBUCKS COFFEE COLOMBIA S.A.S.' },
+    { name:'KFC', legal:'INTERNATIONAL RESTAURANT GROUP SAS' },
+    { name:'Subway', legal:'QSR COLOMBIA S.A.S.' },
+    { name:'Wok', legal:'WOK S.A.S.' },
+    { name:'Presto', legal:'PRESTO S.A.' },
+    { name:"Jeno's Pizza", legal:"JENO'S PIZZA S.A." }
+  ];
+
+  // ==========================================================
+  // PHASE 2: HISTORY MANAGEMENT
+  // ==========================================================
+  function getHistory() {
+    try {
+      var h = localStorage.getItem('rmHistory');
+      return h ? JSON.parse(h) : [];
+    } catch(e) { return []; }
+  }
+
+  function renderHistory() {
+    var history = getHistory();
+    var listEl = document.getElementById('historyList');
+    var emptyEl = document.getElementById('historyEmpty');
+    if (!listEl) return;
+
+    if (history.length === 0) {
+      listEl.innerHTML = '';
+      listEl.classList.add('hidden');
+      emptyEl.classList.remove('hidden');
+      return;
+    }
+
+    listEl.classList.remove('hidden');
+    emptyEl.classList.add('hidden');
+
+    listEl.innerHTML = history.map(function(item) {
+      var d = new Date(item.date);
+      var dateStr = d.toLocaleDateString('es-CO', { day:'2-digit', month:'short', year:'numeric' });
+      var timeStr = d.toLocaleTimeString('es-CO', { hour:'2-digit', minute:'2-digit' });
+      var icon = item.type === 'Cashback' ? '💰' : '🏆';
+
+      return '<a href="' + (item.url||'#') + '" target="_blank" class="history-item">' +
+        '<div class="hi-icon">' + icon + '</div>' +
+        '<div class="hi-info"><div class="hi-shop">' + (item.shop||'Sin tienda') + '</div><div class="hi-type">' + (item.type||'') + '</div></div>' +
+        '<div class="hi-date"><div class="hi-date-str">' + dateStr + '</div><div class="hi-time-str">' + timeStr + '</div></div>' +
+      '</a>';
+    }).join('');
+  }
+
+  function showHistoryModal() {
+    renderHistory();
+    showModal('historyModal');
+  }
+
+  function clearHistory() {
+    if (confirm('¿Seguro que quieres eliminar el historial?')) {
+      localStorage.removeItem('rmHistory');
+      renderHistory();
+    }
+  }
+
+  // ==========================================================
+  // PHASE 2: PREVIEW SYSTEM
+  // ==========================================================
+  function togglePreview() {
+    previewVisible = !previewVisible;
+    var drawer = document.getElementById('previewDrawer');
+    var toggle = document.getElementById('previewToggle');
+    if (previewVisible) {
+      drawer.classList.add('open');
+      toggle.classList.add('active');
+      updatePreview();
+    } else {
+      drawer.classList.remove('open');
+      toggle.classList.remove('active');
+    }
+  }
+
+  function updatePreview() {
+    var el = document.getElementById('previewContent');
+    if (!el) return;
+
+    var type = selectedType;
+    if (!type) {
+      el.innerHTML = '<p style="text-align:center;padding:40px 20px;color:var(--text-3);">' +
+        '<i class="fa-solid fa-file-lines" style="font-size:32px;display:block;margin-bottom:8px;"></i>' +
+        'Selecciona un tipo de campaña para ver la vista previa</p>';
+      return;
+    }
+
+    function gv(id) { var e = document.getElementById(id); return e ? e.value : ''; }
+    function ph(t) { return '<span class="preview-placeholder">' + t + '</span>'; }
+
+    var campaignName = gv('fCampaignName') || gv('fShop') || ph('NOMBRE CAMPAÑA');
+    var territory = gv('fTerritory') || ph('TERRITORIO');
+    var startDate = gv('fStartDate') ? formatDatePreview(gv('fStartDate')) : ph('FECHA INICIO');
+    var endDate = gv('fEndDate') ? formatDatePreview(gv('fEndDate')) : ph('FECHA FIN');
+    var startTime = gv('fStartTime') || '00:00';
+    var endTime = gv('fEndTime') || '23:59';
+    var shop = gv('fShop') || ph('TIENDA');
+
+    if (type === 'Cashback') {
+      var pct = gv('fPct') || ph('%');
+      var cap = gv('fCap') ? Number(gv('fCap')).toLocaleString('es-CO') : ph('TOPE');
+      var budget = gv('fBudget') ? Number(gv('fBudget')).toLocaleString('es-CO') : ph('PRESUPUESTO');
+
+      el.innerHTML =
+        '<h1>TÉRMINOS Y CONDICIONES – CAMPAÑA "' + String(campaignName).toUpperCase() + '"</h1>' +
+        '<p>Por medio del presente documento se dan a conocer los términos y condiciones de la campaña denominada "<strong>' + campaignName + '</strong>"...</p>' +
+        '<h2>I. Territorio:</h2>' +
+        '<p>La Campaña será válida únicamente para las órdenes realizadas en <strong>' + territory + '</strong>.</p>' +
+        '<h2>II. Vigencia:</h2>' +
+        '<p>Campaña válida desde las <strong>' + startTime + '</strong> del <strong>' + startDate + '</strong> hasta las <strong>' + endTime + '</strong> del <strong>' + endDate + '</strong> y/o hasta agotar existencias (' + budget + ' créditos).</p>' +
+        '<h2>IV. Tienda Participante:</h2>' +
+        '<p>Participará la tienda virtual <strong>"' + shop + '"</strong> al interior de la Plataforma Rappi.</p>' +
+        '<h2>VI. Beneficio:</h2>' +
+        '<p>Los usuarios recibirán el <strong>' + pct + '%</strong> del valor de su compra en Créditos, con un tope máximo de <strong>' + cap + '</strong> Créditos por usuario.</p>' +
+        '<p style="color:var(--text-3);font-style:italic;margin-top:16px;font-size:11px;">[Vista previa simplificada - El documento final incluirá todas las cláusulas legales]</p>';
+    } else {
+      var organizer = gv('fOrgName') || ph('ORGANIZADOR');
+      var winners = gv('fWinners') || ph('#');
+      var criteria = gv('fCriteria') || 'Mayor Venta ($)';
+      var announcement = gv('fAnnouncement') ? formatDatePreview(gv('fAnnouncement')) : ph('FECHA ANUNCIO');
+
+      var prizeEl = document.querySelector('input[name="prizeType"]:checked');
+      var prizeType = prizeEl ? prizeEl.value : 'credits';
+      var prizeText = '';
+      if (prizeType === 'credits') {
+        var amount = gv('fCreditsAmount') ? Number(gv('fCreditsAmount')).toLocaleString('es-CO') : ph('MONTO');
+        prizeText = '<strong>' + amount + '</strong> Créditos de la App';
+      } else {
+        prizeText = gv('fPhysicalPrize') || ph('DESCRIPCIÓN DEL PREMIO');
+      }
+
+      el.innerHTML =
+        '<h1>TÉRMINOS Y CONDICIONES – ACTIVIDAD PROMOCIONAL "' + String(campaignName).toUpperCase() + '"</h1>' +
+        '<p>Por medio del presente documento se dan a conocer las reglas de la actividad promocional denominada "<strong>' + campaignName + '</strong>"...</p>' +
+        '<h2>I. Organizador y Territorio:</h2>' +
+        '<p>La presente Actividad es organizada por <strong>' + organizer + '</strong>. Válida en <strong>' + territory + '</strong>.</p>' +
+        '<h2>II. Vigencia:</h2>' +
+        '<p>Desde las <strong>' + startTime + '</strong> del <strong>' + startDate + '</strong> hasta las <strong>' + endTime + '</strong> del <strong>' + endDate + '</strong>.</p>' +
+        '<h2>IV. Mecánica:</h2>' +
+        '<p>Ganarán los <strong>' + winners + '</strong> usuarios con el <strong>' + (criteria === 'Mayor Venta ($)' ? 'mayor valor acumulado en compras' : 'mayor cantidad de órdenes') + '</strong> en la tienda <strong>"' + shop + '"</strong>.</p>' +
+        '<h2>V. Premio:</h2>' +
+        '<p>' + prizeText + '</p>' +
+        '<h2>VIII. Anuncio:</h2>' +
+        '<p>Los ganadores serán anunciados el <strong>' + announcement + '</strong>.</p>' +
+        '<p style="color:var(--text-3);font-style:italic;margin-top:16px;font-size:11px;">[Vista previa simplificada - El documento final incluirá todas las cláusulas legales]</p>';
+    }
+  }
+
+  function formatDatePreview(dateStr) {
+    if (!dateStr) return '';
+    var d = new Date(dateStr + 'T12:00:00');
+    var months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    return d.getDate() + ' de ' + months[d.getMonth()] + ' de ' + d.getFullYear();
+  }
+
+  // ==========================================================
+  // PHASE 2: DRAFT INDICATOR
+  // ==========================================================
+  function showDraftIndicator() {
+    var toast = document.getElementById('draftToast');
+    if (!toast) return;
+    toast.classList.add('show');
+    setTimeout(function() { toast.classList.remove('show'); }, 2000);
+  }
+
+  // Override saveDraft to show indicator
+  var _origSaveDraft = saveDraft;
+  saveDraft = function() {
+    _origSaveDraft();
+    showDraftIndicator();
+  };
+
+  // ==========================================================
+  // PHASE 2: HELP CENTER
+  // ==========================================================
+  function showHelpCenter() {
+    allPages.forEach(function(p) {
+      var el = document.getElementById(p);
+      if (el) el.classList.add('hidden');
+    });
+    document.getElementById('helpCenterPage').classList.remove('hidden');
+    window.scrollTo(0, 0);
+  }
+
+  function hideHelpCenter() {
+    document.getElementById('helpCenterPage').classList.add('hidden');
+    document.getElementById('landingPage').classList.remove('hidden');
+    window.scrollTo(0, 0);
+  }
+
+  function sendHelpFeedback() {
+    var text = document.getElementById('helpFeedbackText').value.trim();
+    if (!text) { alert('Por favor escribe tu feedback antes de enviar.'); return; }
+
+    google.script.run
+      .withSuccessHandler(function() {
+        document.getElementById('helpFeedbackText').value = '';
+        var msg = document.getElementById('helpFeedbackSuccess');
+        msg.classList.remove('hidden');
+        setTimeout(function() { msg.classList.add('hidden'); }, 3000);
+      })
+      .withFailureHandler(function(err) {
+        console.error('Feedback error:', err);
+        alert('Error al enviar feedback. Intenta de nuevo.');
+      })
+      .saveFeedback(text);
+  }
+
+  // ==========================================================
+  // PHASE 2: DATA TRANSFER
+  // ==========================================================
+  function showDataTransferModal() {
+    showModal('dataTransferModal');
+  }
+
+  function hideDataTransferModal() {
+    hideModal('dataTransferModal');
+  }
+
+  function confirmDataTransferAgreement() {
+    document.getElementById('hDataTransferConfirmed').value = 'true';
+    hideModal('dataTransferModal');
+    submitForm();
+  }
+
+  // ==========================================================
+  // PHASE 2: TOGGLE FORM FIELDS (Cashback vs Concurso)
+  // ==========================================================
+  function toggleFormFields() {
+    var cashback = document.getElementById('section-cashback');
+    var concurso = document.getElementById('section-concurso');
+    if (!cashback || !concurso) return;
+
+    if (selectedType === 'Cashback') {
+      cashback.classList.remove('hidden');
+      concurso.classList.add('hidden');
+    } else if (selectedType === 'Concurso') {
+      cashback.classList.add('hidden');
+      concurso.classList.remove('hidden');
+    } else {
+      cashback.classList.add('hidden');
+      concurso.classList.add('hidden');
+    }
+  }
+
+  // ==========================================================
+  // PHASE 2: AUTOCOMPLETE
+  // ==========================================================
+  function showShopAutocomplete(input) {
+    var value = input.value.toLowerCase();
+    var dropdown = document.getElementById('shopAutocomplete');
+    if (!dropdown) return;
+
+    if (value.length < 2) { dropdown.classList.remove('show'); return; }
+
+    var matches = frequentShops.filter(function(s) {
+      return s.name.toLowerCase().includes(value);
+    });
+
+    if (matches.length === 0) { dropdown.classList.remove('show'); return; }
+
+    dropdown.innerHTML = matches.map(function(s) {
+      return '<div class="autocomplete-item" onmousedown="selectShop(\'' + s.name.replace(/'/g, "\\'") + '\',\'' + s.legal.replace(/'/g, "\\'") + '\')">' +
+        '<strong>' + s.name + '</strong><span>' + s.legal + '</span></div>';
+    }).join('');
+
+    dropdown.classList.add('show');
+  }
+
+  function selectShop(name, legal) {
+    document.getElementById('fShop').value = name;
+    var orgEl = document.getElementById('fOrgName');
+    if (orgEl && !orgEl.value) orgEl.value = legal;
+    hideAutocomplete();
+    onFieldChange();
+    updatePreview();
+  }
+
+  function showOrganizerAutocomplete(input) {
+    var value = input.value.toLowerCase();
+    var dropdown = document.getElementById('organizerAutocomplete');
+    if (!dropdown) return;
+
+    if (value.length < 2) { dropdown.classList.remove('show'); return; }
+
+    var matches = frequentShops.filter(function(s) {
+      return s.legal.toLowerCase().includes(value) || s.name.toLowerCase().includes(value);
+    });
+
+    if (matches.length === 0) { dropdown.classList.remove('show'); return; }
+
+    dropdown.innerHTML = matches.map(function(s) {
+      return '<div class="autocomplete-item" onmousedown="selectOrganizer(\'' + s.legal.replace(/'/g, "\\'") + '\')">' +
+        '<strong>' + s.legal + '</strong><span>' + s.name + '</span></div>';
+    }).join('');
+
+    dropdown.classList.add('show');
+  }
+
+  function selectOrganizer(legal) {
+    document.getElementById('fOrgName').value = legal;
+    hideAutocomplete();
+    onFieldChange();
+    updatePreview();
+  }
+
+  function hideAutocomplete() {
+    setTimeout(function() {
+      document.querySelectorAll('.autocomplete-dropdown').forEach(function(el) {
+        el.classList.remove('show');
+      });
+    }, 200);
+  }
+
+  // ==========================================================
+  // PHASE 2: FORM SUBMIT WITH DATA TRANSFER CHECK
+  // ==========================================================
+  // Override submitForm to add data transfer check
+  var _origSubmitForm = submitForm;
+  submitForm = function() {
+    // Check if concurso with physical prize needs data transfer
+    if (selectedType === 'Concurso') {
+      var prizeEl = document.querySelector('input[name="prizeType"]:checked');
+      var prizeType = prizeEl ? prizeEl.value : 'credits';
+      var deliveryEl = document.querySelector('input[name="deliveryBy"]:checked');
+      var deliveryBy = deliveryEl ? deliveryEl.value : 'rappi';
+
+      if (prizeType === 'physical' && deliveryBy === 'organizer') {
+        var confirmed = document.getElementById('hDataTransferConfirmed').value;
+        if (confirmed !== 'true') {
+          showDataTransferModal();
+          return;
+        }
+      }
+    }
+    _origSubmitForm();
+  };
+
+  // ==========================================================
+  // PHASE 2: ENHANCED FIELD CHANGE HANDLER
+  // ==========================================================
+  // Hook into onFieldChange to also update preview and save draft
+  var _origOnFieldChange = onFieldChange;
+  onFieldChange = function() {
+    _origOnFieldChange();
+    if (previewVisible) updatePreview();
+  };
+
+  // ==========================================================
+  // PHASE 2: SHOW/HIDE PREVIEW BASED ON FORM PAGE
+  // ==========================================================
+  // Show preview toggle only on formPage
+  var _origShowPage = showPage;
+  showPage = function(id) {
+    _origShowPage(id);
+    var toggle = document.getElementById('previewToggle');
+    if (toggle) {
+      toggle.style.display = (id === 'formPage') ? 'flex' : 'none';
+    }
+    // Close preview if navigating away from form
+    if (id !== 'formPage' && previewVisible) {
+      previewVisible = false;
+      var drawer = document.getElementById('previewDrawer');
+      if (drawer) drawer.classList.remove('open');
+      if (toggle) toggle.classList.remove('active');
+    }
+  };
+
+  // Hide preview toggle initially
+  (function() {
+    var t = document.getElementById('previewToggle');
+    if (t) t.style.display = 'none';
+  })();
+
+  // ==========================================================
+  // PHASE 2: SUCCESS FEEDBACK
+  // ==========================================================
+  function sendSuccessFeedback() {
+    var text = document.getElementById('successFeedbackText').value.trim();
+    if (!text) { alert('Escribe tu feedback antes de enviar.'); return; }
+    google.script.run
+      .withSuccessHandler(function() {
+        document.getElementById('successFeedbackText').value = '';
+        var msg = document.getElementById('successFeedbackOk');
+        msg.classList.remove('hidden');
+        setTimeout(function() { msg.classList.add('hidden'); }, 3000);
+      })
+      .withFailureHandler(function() { alert('Error al enviar. Intenta de nuevo.'); })
+      .saveFeedback(text);
+  }
+
+  // ==========================================================
+  // PHASE 2: KEYBOARD SHORTCUT (Ctrl+G to generate)
+  // ==========================================================
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
+      e.preventDefault();
+      var btn = document.getElementById('btnGenerate');
+      if (btn && !btn.disabled) btn.click();
+    }
+  });
+
 </script>
 
 </body>
