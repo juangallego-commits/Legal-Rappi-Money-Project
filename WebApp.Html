@@ -4970,7 +4970,8 @@ async function twLoadFromDoc() {
   if (!url) return alert('Ingresa la URL del Google Doc');
   twSetDocLoading(true);
   try {
-    const res = await twCallBackend('tw_fetchDocContent', { docUrl: url });
+    // FIX: Agregamos userEmail
+    const res = await twCallBackend('tw_fetchDocContent', { docUrl: url, userEmail: currentUser.email });
     if (!res.success) throw new Error(res.message);
     TW.originalText = res.data.text; TW.docId = res.data.docId; TW.docTitle = res.data.docTitle;
     document.getElementById('tw-doc-title').textContent = res.data.docTitle;
@@ -4996,7 +4997,8 @@ async function twRunAnalysis() {
   twGoToStep(2);
   
   try {
-    const res = await twCallBackend('tw_analyzeText', { text: TW.originalText, countryCode: country, campaignType: type });
+    // FIX: Agregamos userEmail
+    const res = await twCallBackend('tw_analyzeText', { text: TW.originalText, countryCode: country, campaignType: type, userEmail: currentUser.email });
     if (!res.success) throw new Error(res.message);
     TW.detections = res.data;
     TW.mappings = (res.data.detections || []).map((d, i) => ({ id: 'map_' + i, original_text: d.original_text, placeholder: d.suggested_placeholder, label: d.label || d.suggested_placeholder, confidence: d.confidence || 'MEDIUM', context: d.context || '', occurrences: d.occurrences || 1, confirmed: d.confidence === 'HIGH' }));
@@ -5092,7 +5094,15 @@ async function twCreateTemplate() {
   const btn = document.getElementById('tw-btn-create'); btn.disabled = true; btn.innerHTML = 'Creando template...';
   try {
     const confirmedMappings = TW.mappings.filter(m => m.confirmed).map(m => ({ original_text: m.original_text, placeholder: m.placeholder, label: m.label, confirmed: true }));
-    const res = await twCallBackend('tw_createTemplate', { originalText: TW.originalText, mappings: confirmedMappings, metadata: TW.metadata });
+    
+    // FIX MAESTRO: Agregamos userEmail al payload
+    const res = await twCallBackend('tw_createTemplate', { 
+      originalText: TW.originalText, 
+      mappings: confirmedMappings, 
+      metadata: TW.metadata,
+      userEmail: currentUser.email 
+    });
+    
     if (!res.success) throw new Error(res.message);
     document.getElementById('tw-step-4').classList.add('hidden'); document.getElementById('tw-step-success').classList.remove('hidden');
     document.getElementById('tw-success-msg').textContent = res.message;
@@ -5110,14 +5120,49 @@ function twReset() {
 
 function twCallBackend(action, data) {
   return new Promise((resolve, reject) => {
-    const fnMap = { 'tw_analyzeText': 'analyzeTextForPlaceholders', 'tw_fetchDocContent': 'fetchGoogleDocContent', 'tw_createTemplate': 'createTemplateFromWizard' };
-    const fnName = fnMap[action];
-    google.script.run.withSuccessHandler(res => {
-      if (typeof res === 'string') { try { resolve(JSON.parse(res)); } catch (e) { resolve({ success: true, data: res }); } } else { resolve(res || { success: true }); }
-    }).withFailureHandler(err => reject(new Error(err.message || 'Error en el servidor')))[fnName](data);
+    // 1. Definimos qué hacer si hay éxito
+    const onSuccess = res => {
+      if (typeof res === 'string') { 
+        try { resolve(JSON.parse(res)); } catch (e) { resolve({ success: true, data: res }); } 
+      } else { 
+        resolve(res || { success: true }); 
+      }
+    };
+    
+    // 2. Definimos qué hacer si falla
+    const onFailure = err => reject(new Error(err.message || 'Error en el servidor de Google'));
+
+    // 3. Preparamos el motor de Google
+    const api = google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure);
+
+    // 4. Llamadas EXPLÍCITAS con escudo contra Caché de Google Apps Script 🛡️
+    if (action === 'tw_analyzeText') {
+      if (typeof api.analyzeTextForPlaceholders !== 'function') {
+        return reject(new Error("⚠️ Error de Sincronización: Estás en una versión desactualizada. Ve a 'Implementaciones > Probar implementaciones' y usa la URL que termina en /dev"));
+      }
+      api.analyzeTextForPlaceholders(data);
+    } else if (action === 'tw_fetchDocContent') {
+      if (typeof api.fetchGoogleDocContent !== 'function') return reject(new Error("Error: fetchGoogleDocContent no existe en esta versión."));
+      api.fetchGoogleDocContent(data);
+    } else if (action === 'tw_createTemplate') {
+      if (typeof api.createTemplateFromWizard !== 'function') return reject(new Error("Error: createTemplateFromWizard no existe en esta versión."));
+      api.createTemplateFromWizard(data);
+    } else {
+      reject(new Error("Acción no reconocida por el motor: " + action));
+    }
   });
 }
+
 function escapeHtml(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+// ============================================
+// ADMIN ACCESS BUTTON (check on page load)
+// ============================================
+function checkAdminAccess() {
+  const btn = document.getElementById('adminBtn');
+  if (btn) btn.style.display = 'flex';
+}
+
 // ============================================
 // INIT
 // ============================================
