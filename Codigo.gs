@@ -6,7 +6,7 @@
 // -----------------------------------------------------------------
 // CONSTANTES GLOBALES
 // -----------------------------------------------------------------
-const LEGAL_AUDIT_EMAIL = 'juan.gallego@rappi.com,david.gaviria@rappi.com'; 
+const LEGAL_AUDIT_EMAIL = ['juan.gallego@rappi.com'];
 const DRIVE_FOLDER_ID = ''; 
 const MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const LISTA_MUNICIPIOS = ['Soacha', 'Chía', 'Cajicá', 'Palmira', 'Bello', 'Buga', 'Envigado', 'Itagüí', 'Sabaneta', 'Jamundí', 'Yumbo', 'Floridablanca', 'Girón', 'Piedecuesta', 'Rionegro', 'Dosquebradas'];
@@ -1433,46 +1433,58 @@ function testChatbot() {
   Logger.log(respuesta);
 }// =================================================================
 // RAPPIMIND V2.2 — TEMPLATE ENGINE + ADMIN PANEL
-// Pegar TODO al final de Código.gs (NO borrar nada existente)
-// =================================================================
-
 // -----------------------------------------------------------------
 // CONSTANTES DEL TEMPLATE ENGINE
 // -----------------------------------------------------------------
 const REGISTRY_SHEET_NAME = 'Template_Registry';
 const FIELDS_SHEET_NAME = 'Template_Fields';
 const AUDIT_SHEET_ID = '1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI';
-const ADMIN_EMAILS_LIST = ['juan.gallego@rappi.com', 'david.gaviria@rappi.com'];
+const ADMIN_EMAILS_LIST = ['juan.gallego@rappi.com'];
 
 // =================================================================
-// 1. CORE ENGINE V2 — NUEVO PUNTO DE ENTRADA
-//    Reemplaza las 2 líneas en processWebPayload
+// CORE ENGINE V3 — ENRUTADOR DINÁMICO
+//    Reemplaza tu coreEngineV2 actual
 // =================================================================
 function coreEngineV2(payload, submitterEmail) {
   const vars = mapWebToEngine(payload);
+  const countryCode = payload.countryCode || 'CO';
+  const campaignType = vars['Tipo de Dinámica'] || 'Cashback';
+  const vertical = payload.vertical || 'ALL';
   
-  // Intentar Template Engine primero
+  Logger.log('========== RAPPIMIND V3.0 ==========');
+  Logger.log('📥 País: ' + countryCode + ' | Dinámica: ' + campaignType + ' | Vertical: ' + vertical);
+
   try {
-    const countryCode = payload.countryCode || 'CO';
-    const campaignType = vars['Tipo de Dinámica'] || 'Cashback';
+    // 1. Obtener configuración del tipo de campaña
+    const typeConfig = _getCampaignTypeConfig(campaignType);
     
+    // 2. Buscar template activo (País + Tipo + Vertical con fallback)
     const registry = _getTemplateRegistry();
-    const template = registry.find(r => 
+    let template = registry.find(r => 
       r.country_code === countryCode && 
       r.campaign_type === campaignType && 
-      r.status === 'active'
+      r.status === 'active' &&
+      (r.vertical === vertical || r.vertical === 'ALL' || !r.vertical)
     );
     
     if (template) {
-      Logger.log('🚀 Template Engine: Usando template ' + countryCode + '/' + campaignType);
-      return _generateWithTemplate(template, vars, submitterEmail);
+      Logger.log('✅ Template encontrado: ' + template.template_doc_id);
+      
+      // 3. Decidir ruta de procesamiento
+      if (typeConfig && typeConfig.processing_mode === 'template_only') {
+        Logger.log('🔄 Modo: TEMPLATE_ONLY (Smart Middleware)');
+        return _generateSmartTemplate(template, payload, vars, submitterEmail);
+      } else {
+        Logger.log('🔄 Modo: LEGACY (Cashback/Concurso hardcoded)');
+        return _generateWithTemplate(template, vars, submitterEmail);
+      }
     }
   } catch (e) {
-    Logger.log('⚠️ Template Engine falló, usando legacy: ' + e.message);
+    Logger.log('⚠️ Template Engine falló: ' + e.message + '. Usando legacy.');
   }
   
-  // Fallback al motor legacy
-  Logger.log('🔄 Usando motor legacy (hardcoded)');
+  // 4. Fallback: Motor legacy (sin template)
+  Logger.log('⚠️ Sin template activo. Usando motor Legacy.');
   return coreEngine(vars, submitterEmail);
 }
 
@@ -2046,48 +2058,6 @@ function _isAdmin() {
   } catch (e) { return true; } // permisivo en dev
 }
 
-function adminGetTemplates() {
-  try {
-    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
-    let sheet = ss.getSheetByName(REGISTRY_SHEET_NAME);
-    if (!sheet) return JSON.stringify({ status: 'ok', templates: [] });
-    return JSON.stringify({ status: 'ok', templates: _getSheetAsObjects(sheet) });
-  } catch (e) {
-    return JSON.stringify({ status: 'error', message: e.message });
-  }
-}
-
-function adminSaveTemplate(templateDataJson, editIndex) {
-  try {
-    const data = JSON.parse(templateDataJson);
-    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
-    let sheet = ss.getSheetByName(REGISTRY_SHEET_NAME);
-    
-    if (!sheet) {
-      sheet = ss.insertSheet(REGISTRY_SHEET_NAME);
-      const headers = ['country_code', 'country_name', 'campaign_type', 'template_doc_id', 'version', 'status', 'currency_code', 'currency_symbol', 'legal_owner', 'last_updated', 'notes'];
-      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      sheet.getRange(1, 1, 1, headers.length).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
-      sheet.setFrozenRows(1);
-    }
-    
-    // Validar Doc ID
-    try { DriveApp.getFileById(data.template_doc_id); } 
-    catch (docErr) { return JSON.stringify({ status: 'error', message: 'No se pudo acceder al Google Doc. Verifica el ID y permisos.' }); }
-    
-    const row = [data.country_code, data.country_name, data.campaign_type, data.template_doc_id, data.version || '1.0', data.status || 'active', data.currency_code || 'COP', data.currency_symbol || '$', data.legal_owner || '', data.last_updated || new Date().toISOString().split('T')[0], data.notes || ''];
-    
-    if (editIndex >= 0) {
-      sheet.getRange(editIndex + 2, 1, 1, row.length).setValues([row]);
-    } else {
-      sheet.appendRow(row);
-    }
-    return JSON.stringify({ status: 'ok' });
-  } catch (e) {
-    return JSON.stringify({ status: 'error', message: e.message });
-  }
-}
-
 function adminToggleTemplate(index, newStatus) {
   try {
     const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
@@ -2111,17 +2081,6 @@ function adminDeleteTemplate(index) {
     if (!sheet) return JSON.stringify({ status: 'error', message: 'Hoja no encontrada' });
     sheet.deleteRow(index + 2);
     return JSON.stringify({ status: 'ok' });
-  } catch (e) {
-    return JSON.stringify({ status: 'error', message: e.message });
-  }
-}
-
-function adminGetFields() {
-  try {
-    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
-    let sheet = ss.getSheetByName(FIELDS_SHEET_NAME);
-    if (!sheet) return JSON.stringify({ status: 'ok', fields: [] });
-    return JSON.stringify({ status: 'ok', fields: _getSheetAsObjects(sheet) });
   } catch (e) {
     return JSON.stringify({ status: 'error', message: e.message });
   }
@@ -2159,40 +2118,6 @@ function adminDeleteField(index) {
   }
 }
 
-function adminGetLogs() {
-  try {
-    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
-    const sheet = ss.getSheetByName('Respuestas_Audit_V2');
-    if (!sheet) return JSON.stringify({ status: 'ok', logs: [] });
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return JSON.stringify({ status: 'ok', logs: [] });
-    const logs = [];
-    const startRow = Math.max(1, data.length - 50);
-    for (let i = data.length - 1; i >= startRow; i--) {
-      const row = data[i];
-      logs.push({
-        timestamp: row[0] ? new Date(row[0]).toLocaleString('es-CO') : '-',
-        email: row[1] || '-', docUrl: row[2] || '', type: row[3] || '-',
-        country: row[4] || 'CO', shop: row[5] || '-'
-      });
-    }
-    return JSON.stringify({ status: 'ok', logs: logs });
-  } catch (e) {
-    return JSON.stringify({ status: 'error', message: e.message });
-  }
-}
-// =================================================================
-// 🔐 RAPPIMIND V2.3 — AUTH + CARPETAS + APROBACIÓN
-// =================================================================
-// INSTRUCCIONES:
-//   Pegar al FINAL de Código.gs (después del bloque V2.2)
-//   Ejecutar setupAdminSystem() UNA sola vez
-// =================================================================
-
-// -----------------------------------------------------------------
-// CONSTANTES AUTH
-// -----------------------------------------------------------------
-// Fix: asegurar que _sheetToObjects existe
 if (typeof _sheetToObjects === 'undefined') {
   // no-op, ya definida abajo
 }
@@ -2835,10 +2760,6 @@ function _moveExistingTemplatesToFolders() {
   }
 }
 
-// =================================================================
-// 7. OVERRIDE adminSaveTemplate — Versión con aprobación y carpetas
-// =================================================================
-// NOTA: Esta función REEMPLAZA la de V2.2
 function adminSaveTemplate(jsonStr, editIndex) {
   try {
     const callerRole = _requireRole('editor');
@@ -2907,18 +2828,6 @@ function adminSaveTemplate(jsonStr, editIndex) {
     return JSON.stringify({ status: 'error', message: e.message });
   }
 }
-// ============================================================
-// RAPPIMIND — TEMPLATE WIZARD BACKEND
-// Archivo: TemplateWizard_Backend.gs
-// 
-// INSTRUCCIONES DE INTEGRACIÓN:
-// Copia TODO este contenido y pégalo al FINAL de tu Código.gs
-// No modifica ninguna función existente.
-// ============================================================
-
-// ============================================================
-// CONFIGURACIÓN
-// ============================================================
 
 const TW_CONFIG = {
   SHEET_REGISTRY: 'Template_Registry',
@@ -2926,7 +2835,7 @@ const TW_CONFIG = {
   SHEET_AUDIT: 'Audit_Log',
   SHEET_TEAM: 'Admin_Team',
   DRIVE_ROOT_FOLDER_NAME: 'RappiMind_Templates',
-  ADMIN_EMAILS: ['juan.gallego@rappi.com', 'david.gaviria@rappi.com'],
+  ADMIN_EMAILS: ['juan.gallego@rappi.com'],
   
   // Mapeo de países para carpetas
   COUNTRY_FOLDERS: {
@@ -2993,17 +2902,11 @@ function analyzeTextForPlaceholders(payload) {
       return buildResponse(false, 'El texto es muy corto. Pega el T&C completo.');
     }
 
-    // Construir prompt para Gemini
     const prompt = buildAnalysisPrompt(text, countryCode, campaignType);
-    
-    // Llamar a Gemini
     const geminiResult = callGeminiForAnalysis(prompt);
-    
-    // Registrar en audit log
     logAuditEvent('tw_analyze', userEmail, { countryCode, campaignType, textLength: text.length });
     
     return buildResponse(true, 'Análisis completado', geminiResult);
-    
   } catch (e) {
     Logger.log('Error en analyzeTextForPlaceholders: ' + e.message);
     return buildResponse(false, 'Error al analizar el texto: ' + e.message);
@@ -3015,58 +2918,34 @@ function buildAnalysisPrompt(text, countryCode, campaignType) {
     .map(([key, val]) => `- {{${key}}}: ${val.label}`)
     .join('\n');
 
-  return `Eres un asistente legal especializado en términos y condiciones de campañas de marketing en Latinoamérica.
-
-Analiza el siguiente documento de T&C y detecta TODOS los valores que son variables (que cambiarían entre una campaña y otra).
-
-País: ${countryCode || 'No especificado'}
-Tipo de campaña: ${campaignType || 'No especificado'}
-
-PLACEHOLDERS ESTÁNDAR YA DEFINIDOS EN EL SISTEMA (úsalos cuando correspondan):
+  return `Eres un abogado experto en marketing de Rappi LATAM.
+Analiza este documento de T&C para ${countryCode} (${campaignType}) y detecta TODOS los valores variables.
+Usa los siguientes placeholders si aplican, o crea nuevos en MAYUSCULAS_CON_GUIONES_BAJOS:
 ${knownKeys}
 
-INSTRUCCIONES:
-1. Identifica cada valor variable en el texto
-2. Para cada uno, sugiere el placeholder más apropiado del sistema (o crea uno nuevo en MAYUSCULAS_CON_GUIONES_BAJOS si no existe)
-3. Clasifica cada detección con nivel de confianza: HIGH (valor claramente variable), MEDIUM (probablemente variable), LOW (podría ser fijo)
-4. Si un valor parece siempre fijo (ej: "República de Colombia"), NO lo incluyas
-5. Agrupa valores del mismo tipo (ej: varias fechas deben mapearse a sus respectivos placeholders)
-
-RESPONDE ÚNICAMENTE con un JSON con esta estructura exacta (sin markdown, sin explicación adicional):
+RESPONDE ÚNICAMENTE CON ESTE JSON:
 {
   "detections": [
-    {
-      "original_text": "texto exacto encontrado en el documento",
-      "suggested_placeholder": "NOMBRE_DEL_PLACEHOLDER",
-      "label": "Descripción amigable",
-      "confidence": "HIGH|MEDIUM|LOW",
-      "context": "fragmento de contexto donde aparece (máx 80 chars)",
-      "occurrences": 2
-    }
-  ],
-  "summary": {
-    "total_variables": 10,
-    "high_confidence": 7,
-    "campaign_type_detected": "Cashback|Concurso|Unknown",
-    "notes": "observación general sobre el documento"
-  }
+    { "original_text": "...", "suggested_placeholder": "...", "label": "...", "confidence": "HIGH|MEDIUM|LOW" }
+  ]
+}
+---
+${text.substring(0, 15000)}`;
 }
 
-DOCUMENTO A ANALIZAR:
----
-${text.substring(0, 15000)}
----`;
+function fallbackAnalysis(originalText) {
+  // Análisis básico en caso de fallo de API
+  return { detections: [], summary: { notes: 'Análisis IA falló, usando modo manual.' } };
 }
 
 function callGeminiForAnalysis(prompt) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  let apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   
   if (!apiKey) {
-    // Fallback: análisis básico por regex sin Gemini
-    return fallbackAnalysis(prompt);
+    apiKey = 'AIzaSyB-HWnobl4UwQDGnk3zqN915sLvIJ_qOnM'; // Llave de respaldo
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
   
   const requestBody = {
     contents: [{ parts: [{ text: prompt }] }],
@@ -3383,7 +3262,7 @@ function getOrCreateTemplateFolder(countryCode, campaignType) {
 function getTemplatesList(payload) {
   try {
     const { filters, userEmail } = payload;
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = SpreadsheetApp.openById('1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI');
     const sheet = ss.getSheetByName(TW_CONFIG.SHEET_REGISTRY);
     
     if (!sheet) {
@@ -3440,7 +3319,7 @@ function updateTemplateStatus(payload) {
       'archived': ['active']
     };
 
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = SpreadsheetApp.openById('1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI');
     const sheet = ss.getSheetByName(TW_CONFIG.SHEET_REGISTRY);
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
@@ -3488,7 +3367,7 @@ function updateTemplateStatus(payload) {
 // ============================================================
 
 function registerTemplate(data) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = SpreadsheetApp.openById('1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI');
   let sheet = ss.getSheetByName(TW_CONFIG.SHEET_REGISTRY);
   
   // Crear hoja si no existe
@@ -3525,7 +3404,7 @@ function registerTemplate(data) {
 }
 
 function registerTemplateFields(mappings, metadata) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = SpreadsheetApp.openById('1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI');
   let sheet = ss.getSheetByName(TW_CONFIG.SHEET_FIELDS);
   
   if (!sheet) {
@@ -3567,7 +3446,7 @@ function getAdminTeam(payload) {
       return buildResponse(false, 'Sin permisos para ver el equipo.');
     }
 
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = SpreadsheetApp.openById('1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI');
     const sheet = ss.getSheetByName(TW_CONFIG.SHEET_TEAM);
     
     if (!sheet) {
@@ -3604,7 +3483,7 @@ function addTeamMember(payload) {
       return buildResponse(false, 'Solo se permiten emails @rappi.com.');
     }
 
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = SpreadsheetApp.openById('1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI');
     let sheet = ss.getSheetByName(TW_CONFIG.SHEET_TEAM);
     
     if (!sheet) {
@@ -3632,7 +3511,7 @@ function removeTeamMember(payload) {
       return buildResponse(false, 'Solo el Owner puede eliminar miembros.');
     }
 
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = SpreadsheetApp.openById('1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI');
     const sheet = ss.getSheetByName(TW_CONFIG.SHEET_TEAM);
     if (!sheet) return buildResponse(false, 'Hoja de equipo no encontrada.');
 
@@ -3666,7 +3545,7 @@ function getUserRole(email) {
   
   // Buscar en la hoja de equipo
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = SpreadsheetApp.openById('1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI');
     const sheet = ss.getSheetByName(TW_CONFIG.SHEET_TEAM);
     if (!sheet) return 'none';
     
@@ -3689,7 +3568,7 @@ function getUserRole(email) {
 
 function logAuditEvent(action, userEmail, details) {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = SpreadsheetApp.openById('1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI');
     let sheet = ss.getSheetByName(TW_CONFIG.SHEET_AUDIT);
     
     if (!sheet) {
@@ -3774,28 +3653,625 @@ function buildResponse(success, message, data) {
   return { success, message, data: data || null };
 }
 
-// ============================================================
-// INSTRUCCIONES DE INTEGRACIÓN
-// ============================================================
-//
-// Tu sistema usa google.script.run (NO doGet/doPost).
-// Por eso NO necesitas agregar nada a doPost ni doGet.
-//
-// SOLO HAY 2 PASOS:
-//
-// PASO 1: Pega este archivo al FINAL de tu Código.gs
-//         (después de la última función existente)
-//         Sin borrar nada, sin modificar nada.
-//
-// PASO 2: Configura la Gemini API Key (opcional pero recomendado):
-//         Apps Script → Configuración del proyecto → Propiedades de script
-//         Clave: GEMINI_API_KEY
-//         Valor: tu API key (obtenla en https://aistudio.google.com/apikey)
-//
-//         Sin la key, el wizard usa análisis básico por regex.
-//         Con la key, Gemini detecta automáticamente todos los campos.
-//
-// ¡Listo! El frontend usa google.script.run.analyzeTextForPlaceholders(data)
-// etc., igual que el resto de RappiMind.
-//
-// ============================================================
+function adminGetTemplates() {
+  try {
+    _requireRole('viewer'); // <-- BLOQUEO APLICADO
+    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+    let sheet = ss.getSheetByName(REGISTRY_SHEET_NAME);
+    if (!sheet) return JSON.stringify({ status: 'ok', templates: [] });
+    return JSON.stringify({ status: 'ok', templates: _getSheetAsObjects(sheet) });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
+
+function adminGetLogs() {
+  try {
+    _requireRole('viewer'); // <-- BLOQUEO APLICADO
+    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+    const sheet = ss.getSheetByName('Respuestas_Audit_V2');
+    if (!sheet) return JSON.stringify({ status: 'ok', logs: [] });
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) return JSON.stringify({ status: 'ok', logs: [] });
+    
+    const logs = [];
+    const startRow = Math.max(1, data.length - 50);
+    for (let i = data.length - 1; i >= startRow; i--) {
+      const row = data[i];
+      logs.push({
+        timestamp: row[0] ? new Date(row[0]).toLocaleString('es-CO') : '-',
+        email: row[1] || '-', 
+        docUrl: row[2] || '', 
+        type: row[3] || '-',
+        country: row[4] || 'CO', 
+        shop: row[5] || '-'
+      });
+    }
+    return JSON.stringify({ status: 'ok', logs: logs });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
+
+function adminGetFields() {
+  try {
+    _requireRole('viewer'); // <-- BLOQUEO APLICADO
+    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+    let sheet = ss.getSheetByName(FIELDS_SHEET_NAME);
+    if (!sheet) return JSON.stringify({ status: 'ok', fields: [] });
+    return JSON.stringify({ status: 'ok', fields: _getSheetAsObjects(sheet) });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
+// =================================================================
+// 2. GENERADOR INTELIGENTE (SMART MIDDLEWARE LEGAL)
+//    Para tipos con processing_mode = 'template_only'
+//    Aplica formateo legal automático basado en Template_Fields
+// =================================================================
+function _generateSmartTemplate(template, payload, vars, submitterEmail) {
+  vars['Email Generador'] = submitterEmail;
+  
+  // --- Datos base universales (usan processCommonVariables para fechas/territorio) ---
+  let data;
+  try {
+    data = processCommonVariables(vars);
+  } catch (e) {
+    // Si processCommonVariables falla (campos faltantes), construir mínimo
+    data = {};
+  }
+  
+  data.dinamica = vars['Tipo de Dinámica'];
+  data.nombreCampana = vars['Nombre de Campaña (Opcional)'] || vars['Tipo de Dinámica'].toUpperCase();
+  data.docName = 'T&C - ' + data.nombreCampana;
+  
+  // --- Obtener definiciones de campos para formateo inteligente ---
+  const fieldsDef = _getFieldsForType(template.campaign_type, template.country_code);
+  const placeholders = {};
+  
+  // --- Inyectar campos universales ya procesados (si processCommonVariables funcionó) ---
+  if (data.textoTerritorio) placeholders['{{TEXTO_TERRITORIO}}'] = data.textoTerritorio;
+  if (data.startFmtDate) placeholders['{{FECHA_INICIO}}'] = data.startFmtDate;
+  if (data.endFmtDate) placeholders['{{FECHA_FIN}}'] = data.endFmtDate;
+  if (data.startFmtTime) placeholders['{{HORA_INICIO}}'] = data.startFmtTime;
+  if (data.endFmtTime) placeholders['{{HORA_FIN}}'] = data.endFmtTime;
+  placeholders['{{NOMBRE_CAMPANA}}'] = data.nombreCampana;
+  placeholders['{{NOMBRE_CAMPANA_UPPER}}'] = data.nombreCampana.toUpperCase();
+  placeholders['{{NOMBRE_CAMPANA_LOWER}}'] = data.nombreCampana.toLowerCase();
+  
+  // --- Inyectar Country Settings (constantes legales del país) ---
+  const countrySettings = _getCountrySettings(template.country_code);
+  placeholders['{{LEGAL_PAIS}}'] = countrySettings.legal_country;
+  placeholders['{{LEGAL_MONEDA}}'] = countrySettings.currency_name;
+  placeholders['{{LEGAL_MONEDA_CODIGO}}'] = countrySettings.currency_code;
+  placeholders['{{LEGAL_MONEDA_SIMBOLO}}'] = countrySettings.currency_symbol;
+  placeholders['{{ENTIDAD_VIGILANCIA}}'] = countrySettings.legal_entity;
+  
+  // --- Smart Middleware: Formateo legal automático por campo ---
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === '') return;
+    
+    const fieldConfig = fieldsDef.find(f => f.field_id === key);
+    const placeholderKey = '{{' + key.toUpperCase() + '}}';
+    
+    // Si el campo tiene un placeholder explícito definido en Template_Fields, usarlo
+    const actualPlaceholder = (fieldConfig && fieldConfig.placeholder) 
+      ? fieldConfig.placeholder 
+      : placeholderKey;
+    
+    if (fieldConfig && fieldConfig.format_as) {
+      // Formateo explícito definido en la sheet
+      switch (fieldConfig.format_as) {
+        case 'money':
+          const moneyNum = Number(value);
+          if (!isNaN(moneyNum)) {
+            placeholders[actualPlaceholder] = moneyNum.toLocaleString('es-CO');
+            // Generar variante en letras automáticamente
+            const letrasKey = actualPlaceholder.replace('}}', '_LETRAS}}');
+            placeholders[letrasKey] = numeroALetras(moneyNum);
+            // Generar variante completa legal (letras + número)
+            const fullKey = actualPlaceholder.replace('}}', '_LEGAL}}');
+            placeholders[fullKey] = numeroALetras(moneyNum) + ' (' + moneyNum.toLocaleString('es-CO') + ') ' + countrySettings.currency_name;
+          } else {
+            placeholders[actualPlaceholder] = String(value);
+          }
+          break;
+          
+        case 'percentage':
+          const pctNum = Number(value);
+          if (!isNaN(pctNum)) {
+            placeholders[actualPlaceholder] = pctNum + '%';
+            const pctLetrasKey = actualPlaceholder.replace('}}', '_LETRAS}}');
+            placeholders[pctLetrasKey] = numeroALetras(Math.floor(pctNum)) + ' por ciento (' + pctNum + '%)';
+          } else {
+            placeholders[actualPlaceholder] = String(value);
+          }
+          break;
+          
+        case 'date_legal':
+          const dateObj = parseFormDate(value);
+          if (dateObj && !isNaN(dateObj.getTime())) {
+            placeholders[actualPlaceholder] = formatDateInSpanish(dateObj);
+          } else {
+            placeholders[actualPlaceholder] = String(value);
+          }
+          break;
+          
+        case 'number_words':
+          const wordNum = Number(value);
+          if (!isNaN(wordNum)) {
+            placeholders[actualPlaceholder] = String(wordNum);
+            const wordLetrasKey = actualPlaceholder.replace('}}', '_LETRAS}}');
+            placeholders[wordLetrasKey] = numeroALetras(wordNum);
+          } else {
+            placeholders[actualPlaceholder] = String(value);
+          }
+          break;
+          
+        default:
+          // 'text' o cualquier otro → texto crudo
+          placeholders[actualPlaceholder] = String(value);
+      }
+    } else if (fieldConfig && fieldConfig.field_type) {
+      // Fallback: inferir formato desde field_type si no hay format_as
+      switch (fieldConfig.field_type) {
+        case 'date':
+          const fbDate = parseFormDate(value);
+          if (fbDate && !isNaN(fbDate.getTime())) {
+            placeholders[actualPlaceholder] = formatDateInSpanish(fbDate);
+          } else {
+            placeholders[actualPlaceholder] = String(value);
+          }
+          break;
+        case 'number':
+          // Sin format_as explícito, solo formatea con separadores
+          const fbNum = Number(value);
+          if (!isNaN(fbNum)) {
+            placeholders[actualPlaceholder] = fbNum.toLocaleString('es-CO');
+          } else {
+            placeholders[actualPlaceholder] = String(value);
+          }
+          break;
+        default:
+          placeholders[actualPlaceholder] = String(value);
+      }
+    } else {
+      // Campo no definido en Template_Fields → texto crudo (fallback seguro)
+      placeholders[actualPlaceholder] = String(value);
+    }
+  });
+  
+  // --- Clonar template y reemplazar ---
+  const templateFile = DriveApp.getFileById(template.template_doc_id);
+  const newFile = templateFile.makeCopy(data.docName);
+  
+  if (DRIVE_FOLDER_ID) {
+    try {
+      const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+      folder.addFile(newFile);
+      DriveApp.getRootFolder().removeFile(newFile);
+    } catch (e) { /* ok */ }
+  }
+  
+  const doc = DocumentApp.openById(newFile.getId());
+  const body = doc.getBody();
+  
+  Object.entries(placeholders).forEach(([key, value]) => {
+    const safeValue = (value !== null && value !== undefined) ? String(value) : '';
+    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    body.replaceText(escapedKey, safeValue);
+  });
+  
+  // Limpiar placeholders no utilizados
+  body.replaceText('\\{\\{[A-Z_0-9]+\\}\\}', '');
+  
+  doc.saveAndClose();
+  
+  const publicUrl = setPublicViewPermissions(doc);
+  saveResponseToSheet(vars, publicUrl);
+  sendEmailNotification(submitterEmail, data.docName, publicUrl, data);
+  
+  return { docUrl: publicUrl, docName: data.docName };
+}
+
+
+// =================================================================
+// 3. CAMPAIGN TYPES — CATÁLOGO DINÁMICO DE DINÁMICAS
+// =================================================================
+const CAMPAIGN_TYPES_SHEET = 'Campaign_Types';
+
+function _getCampaignTypeConfig(campaignType) {
+  try {
+    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+    const sheet = ss.getSheetByName(CAMPAIGN_TYPES_SHEET);
+    if (!sheet) return null;
+    
+    const types = _getSheetAsObjects(sheet);
+    return types.find(t => 
+      (t.type_name === campaignType || t.type_id === campaignType) && 
+      t.status === 'active'
+    ) || null;
+  } catch (e) {
+    Logger.log('⚠️ Error leyendo Campaign_Types: ' + e.message);
+    return null;
+  }
+}
+
+// --- CRUD para Admin Panel ---
+function adminGetCampaignTypes() {
+  try {
+    _requireRole('viewer');
+    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+    const sheet = ss.getSheetByName(CAMPAIGN_TYPES_SHEET);
+    if (!sheet) return JSON.stringify({ status: 'ok', types: [] });
+    return JSON.stringify({ status: 'ok', types: _getSheetAsObjects(sheet) });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
+
+function adminSaveCampaignType(jsonStr, editIndex) {
+  try {
+    _requireRole('admin');
+    const d = JSON.parse(jsonStr);
+    
+    if (!d.type_id || !d.type_name) {
+      return JSON.stringify({ status: 'error', message: 'ID y nombre son requeridos' });
+    }
+    
+    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+    let sheet = ss.getSheetByName(CAMPAIGN_TYPES_SHEET);
+    
+    if (!sheet) {
+      sheet = ss.insertSheet(CAMPAIGN_TYPES_SHEET);
+      const headers = ['type_id', 'type_name', 'description', 'parent_type', 'processing_mode', 'icon', 'color', 'status', 'countries', 'created_by', 'created_date'];
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      sheet.getRange(1, 1, 1, headers.length).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
+      sheet.setFrozenRows(1);
+    }
+    
+    const callerEmail = Session.getActiveUser().getEmail();
+    const row = [
+      d.type_id,
+      d.type_name,
+      d.description || '',
+      d.parent_type || '',
+      d.processing_mode || 'template_only',
+      d.icon || 'fa-file-lines',
+      d.color || '#FF5C00',
+      d.status || 'active',
+      d.countries || 'ALL',
+      d.created_by || callerEmail,
+      d.created_date || new Date().toISOString().split('T')[0]
+    ];
+    
+    if (editIndex >= 0) {
+      sheet.getRange(editIndex + 2, 1, 1, row.length).setValues([row]);
+    } else {
+      sheet.appendRow(row);
+    }
+    
+    _logApprovalAction('campaign_type_save', d.type_id + ' (' + d.type_name + ') por ' + callerEmail);
+    return JSON.stringify({ status: 'ok', message: 'Dinámica guardada: ' + d.type_name });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
+
+function adminDeleteCampaignType(index) {
+  try {
+    _requireRole('admin');
+    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+    const sheet = ss.getSheetByName(CAMPAIGN_TYPES_SHEET);
+    if (!sheet) return JSON.stringify({ status: 'error', message: 'Sheet no existe' });
+    
+    // Verificar que no haya templates vinculados
+    const types = _getSheetAsObjects(sheet);
+    const typeToDelete = types[index];
+    if (typeToDelete) {
+      const registry = _getTemplateRegistry();
+      const linked = registry.filter(r => r.campaign_type === typeToDelete.type_name);
+      if (linked.length > 0) {
+        return JSON.stringify({ 
+          status: 'error', 
+          message: 'No se puede eliminar: hay ' + linked.length + ' template(s) vinculado(s) a esta dinámica. Desactívalos primero.' 
+        });
+      }
+    }
+    
+    sheet.deleteRow(index + 2);
+    _logApprovalAction('campaign_type_delete', 'Eliminó tipo #' + index);
+    return JSON.stringify({ status: 'ok' });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
+
+// Endpoint para el formulario del usuario final (solo tipos activos)
+function getCampaignTypesForUser(countryCode) {
+  try {
+    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+    const sheet = ss.getSheetByName(CAMPAIGN_TYPES_SHEET);
+    if (!sheet) {
+      // Fallback: retornar los 2 tipos legacy
+      return JSON.stringify({ status: 'ok', types: [
+        { type_id: 'cashback', type_name: 'Cashback', icon: 'fa-coins', color: '#00D68F', description: 'Créditos devueltos por compra' },
+        { type_id: 'concurso', type_name: 'Concurso Mayor Comprador', icon: 'fa-trophy', color: '#8B5CF6', description: 'Concurso por mayor compra' }
+      ]});
+    }
+    
+    const code = countryCode || 'CO';
+    const types = _getSheetAsObjects(sheet).filter(t => 
+      t.status === 'active' && 
+      (t.countries === 'ALL' || String(t.countries).includes(code))
+    );
+    
+    return JSON.stringify({ status: 'ok', types: types });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
+
+
+// =================================================================
+// 4. COUNTRY SETTINGS — CONSTANTES LEGALES POR PAÍS
+// =================================================================
+const COUNTRY_SETTINGS_SHEET = 'Country_Settings';
+
+function _getCountrySettings(countryCode) {
+  // Defaults hardcodeados como fallback seguro
+  const defaults = {
+    'CO': { legal_country: 'la República de Colombia', currency_name: 'pesos M/Cte.', currency_code: 'COP', currency_symbol: '$', legal_entity: 'la Superintendencia de Industria y Comercio (SIC)', timezone: 'America/Bogota' },
+    'MX': { legal_country: 'los Estados Unidos Mexicanos', currency_name: 'pesos MXN', currency_code: 'MXN', currency_symbol: '$', legal_entity: 'la Procuraduría Federal del Consumidor (PROFECO)', timezone: 'America/Mexico_City' },
+    'PE': { legal_country: 'la República del Perú', currency_name: 'soles', currency_code: 'PEN', currency_symbol: 'S/', legal_entity: 'el Instituto Nacional de Defensa de la Competencia y de la Protección de la Propiedad Intelectual (INDECOPI)', timezone: 'America/Lima' },
+    'CL': { legal_country: 'la República de Chile', currency_name: 'pesos CLP', currency_code: 'CLP', currency_symbol: '$', legal_entity: 'el Servicio Nacional del Consumidor (SERNAC)', timezone: 'America/Santiago' },
+    'AR': { legal_country: 'la República Argentina', currency_name: 'pesos ARS', currency_code: 'ARS', currency_symbol: '$', legal_entity: 'la Dirección Nacional de Defensa del Consumidor', timezone: 'America/Buenos_Aires' },
+    'EC': { legal_country: 'la República del Ecuador', currency_name: 'dólares USD', currency_code: 'USD', currency_symbol: '$', legal_entity: 'la Defensoría del Pueblo', timezone: 'America/Guayaquil' },
+    'UY': { legal_country: 'la República Oriental del Uruguay', currency_name: 'pesos UYU', currency_code: 'UYU', currency_symbol: '$', legal_entity: 'el Área de Defensa del Consumidor', timezone: 'America/Montevideo' },
+    'CR': { legal_country: 'la República de Costa Rica', currency_name: 'colones CRC', currency_code: 'CRC', currency_symbol: '₡', legal_entity: 'el Ministerio de Economía, Industria y Comercio (MEIC)', timezone: 'America/Costa_Rica' },
+    'BR': { legal_country: 'la República Federativa del Brasil', currency_name: 'reais BRL', currency_code: 'BRL', currency_symbol: 'R$', legal_entity: 'el PROCON y la Secretaría Nacional del Consumidor (SENACON)', timezone: 'America/Sao_Paulo' }
+  };
+  
+  // Intentar leer de la sheet (override)
+  try {
+    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+    const sheet = ss.getSheetByName(COUNTRY_SETTINGS_SHEET);
+    if (sheet) {
+      const settings = _getSheetAsObjects(sheet);
+      const found = settings.find(s => s.country_code === countryCode);
+      if (found) return found;
+    }
+  } catch (e) {
+    Logger.log('⚠️ Error leyendo Country_Settings, usando defaults: ' + e.message);
+  }
+  
+  return defaults[countryCode] || defaults['CO'];
+}
+
+// Admin endpoint
+function adminGetCountrySettings() {
+  try {
+    _requireRole('viewer');
+    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+    const sheet = ss.getSheetByName(COUNTRY_SETTINGS_SHEET);
+    if (!sheet) return JSON.stringify({ status: 'ok', settings: [] });
+    return JSON.stringify({ status: 'ok', settings: _getSheetAsObjects(sheet) });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
+
+
+// =================================================================
+// 5. FIELDS HELPER — Obtener campos por tipo y país
+// =================================================================
+function _getFieldsForType(campaignType, countryCode) {
+  try {
+    const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+    const sheet = ss.getSheetByName(FIELDS_SHEET_NAME);
+    if (!sheet) return [];
+    
+    const allFields = _getSheetAsObjects(sheet);
+    return allFields.filter(f => {
+      const appliesToCampaign = f.campaign_type === 'ALL' || String(f.campaign_type).includes(campaignType);
+      const appliesToCountry = f.country_code === 'ALL' || String(f.country_code).includes(countryCode);
+      return appliesToCampaign && appliesToCountry;
+    });
+  } catch (e) {
+    Logger.log('⚠️ Error leyendo campos: ' + e.message);
+    return [];
+  }
+}
+
+// Endpoint para formulario dinámico del usuario final
+function getFieldsForUserForm(campaignType, countryCode) {
+  try {
+    const fields = _getFieldsForType(campaignType, countryCode || 'CO');
+    // Solo retornar campos que el usuario final necesita ver
+    const userFields = fields.map(f => ({
+      field_id: f.field_id,
+      label: f.label_es,
+      field_type: f.field_type,
+      icon: f.icon,
+      required: f.required === 'TRUE' || f.required === true,
+      section: f.section,
+      options: f.options ? String(f.options).split('|') : [],
+      default_value: f.default_value || '',
+      tooltip: f.tooltip || '',
+      order: Number(f.order) || 99,
+      group: f.group || ''
+    })).sort((a, b) => a.order - b.order);
+    
+    return JSON.stringify({ status: 'ok', fields: userFields });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
+
+
+// =================================================================
+// 6. SETUP FUNCTIONS — Ejecutar UNA sola vez cada una
+// =================================================================
+
+/**
+ * Crea la sheet Campaign_Types y siembra los 2 tipos iniciales.
+ * Ejecutar UNA vez desde el editor de Apps Script.
+ */
+function setupCampaignTypes() {
+  Logger.log('🎯 Creando catálogo de dinámicas...');
+  
+  const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+  let sheet = ss.getSheetByName(CAMPAIGN_TYPES_SHEET);
+  
+  if (sheet) {
+    Logger.log('⚠️ Campaign_Types ya existe. Saltando.');
+    return;
+  }
+  
+  sheet = ss.insertSheet(CAMPAIGN_TYPES_SHEET);
+  const headers = ['type_id', 'type_name', 'description', 'parent_type', 'processing_mode', 'icon', 'color', 'status', 'countries', 'created_by', 'created_date'];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.getRange(1, 1, 1, headers.length).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
+  sheet.setFrozenRows(1);
+  
+  const callerEmail = Session.getActiveUser().getEmail();
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Sembrar tipos iniciales (legacy = usan el motor hardcodeado actual)
+  const types = [
+    ['cashback', 'Cashback', 'Créditos devueltos al usuario por compra en tienda participante', '', 'legacy', 'fa-coins', '#00D68F', 'active', 'ALL', callerEmail, today],
+    ['concurso', 'Concurso Mayor Comprador', 'Concurso donde ganan los usuarios que más compren (valor o cantidad)', '', 'legacy', 'fa-trophy', '#8B5CF6', 'active', 'ALL', callerEmail, today]
+  ];
+  
+  types.forEach(t => sheet.appendRow(t));
+  
+  Logger.log('✅ Campaign_Types creada con ' + types.length + ' tipos iniciales');
+  Logger.log('');
+  Logger.log('👉 Para agregar nuevos tipos, usa el Admin Panel > pestaña Dinámicas');
+  Logger.log('   o agrega filas directamente a la sheet Campaign_Types');
+}
+
+/**
+ * Crea la sheet Country_Settings y siembra los 9 países de Rappi.
+ * Ejecutar UNA vez desde el editor de Apps Script.
+ */
+function setupCountrySettings() {
+  Logger.log('🌎 Creando configuración de países...');
+  
+  const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+  let sheet = ss.getSheetByName(COUNTRY_SETTINGS_SHEET);
+  
+  if (sheet) {
+    Logger.log('⚠️ Country_Settings ya existe. Saltando.');
+    return;
+  }
+  
+  sheet = ss.insertSheet(COUNTRY_SETTINGS_SHEET);
+  const headers = ['country_code', 'country_name', 'legal_country', 'currency_name', 'currency_code', 'currency_symbol', 'legal_entity', 'timezone'];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.getRange(1, 1, 1, headers.length).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
+  sheet.setFrozenRows(1);
+  
+  const countries = [
+    ['CO', 'Colombia', 'la República de Colombia', 'pesos M/Cte.', 'COP', '$', 'la Superintendencia de Industria y Comercio (SIC)', 'America/Bogota'],
+    ['MX', 'México', 'los Estados Unidos Mexicanos', 'pesos MXN', 'MXN', '$', 'la Procuraduría Federal del Consumidor (PROFECO)', 'America/Mexico_City'],
+    ['PE', 'Perú', 'la República del Perú', 'soles', 'PEN', 'S/', 'el Instituto Nacional de Defensa de la Competencia y de la Protección de la Propiedad Intelectual (INDECOPI)', 'America/Lima'],
+    ['CL', 'Chile', 'la República de Chile', 'pesos CLP', 'CLP', '$', 'el Servicio Nacional del Consumidor (SERNAC)', 'America/Santiago'],
+    ['AR', 'Argentina', 'la República Argentina', 'pesos ARS', 'ARS', '$', 'la Dirección Nacional de Defensa del Consumidor', 'America/Buenos_Aires'],
+    ['EC', 'Ecuador', 'la República del Ecuador', 'dólares USD', 'USD', '$', 'la Defensoría del Pueblo', 'America/Guayaquil'],
+    ['UY', 'Uruguay', 'la República Oriental del Uruguay', 'pesos UYU', 'UYU', '$', 'el Área de Defensa del Consumidor', 'America/Montevideo'],
+    ['CR', 'Costa Rica', 'la República de Costa Rica', 'colones CRC', 'CRC', '₡', 'el Ministerio de Economía, Industria y Comercio (MEIC)', 'America/Costa_Rica'],
+    ['BR', 'Brasil', 'la República Federativa del Brasil', 'reais BRL', 'BRL', 'R$', 'el PROCON y la Secretaría Nacional del Consumidor (SENACON)', 'America/Sao_Paulo']
+  ];
+  
+  countries.forEach(c => sheet.appendRow(c));
+  
+  Logger.log('✅ Country_Settings creada con ' + countries.length + ' países');
+}
+
+
+// =================================================================
+// 7. MEJORA: Template_Fields necesita columna format_as
+//    Ejecutar UNA vez para agregar la columna si no existe
+// =================================================================
+function upgradeTemplateFieldsFormatting() {
+  Logger.log('📋 Actualizando Template_Fields con columna format_as...');
+  
+  const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+  const sheet = ss.getSheetByName(FIELDS_SHEET_NAME);
+  if (!sheet) {
+    Logger.log('⚠️ Template_Fields no existe aún. Se creará cuando se necesite.');
+    return;
+  }
+  
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  
+  if (headers.indexOf('format_as') === -1) {
+    const nextCol = sheet.getLastColumn() + 1;
+    sheet.getRange(1, nextCol).setValue('format_as');
+    sheet.getRange(1, nextCol).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
+    Logger.log('✅ Columna format_as agregada');
+    
+    // Actualizar campos existentes con format_as correcto
+    const data = sheet.getDataRange().getValues();
+    const fieldIdCol = headers.indexOf('field_id');
+    
+    // Mapeo de campos conocidos a su formato
+    const formatMap = {
+      'cashbackPct': 'percentage',
+      'cap': 'money',
+      'budget': 'money',
+      'startDate': 'date_legal',
+      'endDate': 'date_legal',
+      'announcementDate': 'date_legal',
+      'numberOfWinners': 'number_words',
+      'maxOrders': 'number_words'
+    };
+    
+    for (let i = 1; i < data.length; i++) {
+      const fieldId = data[i][fieldIdCol];
+      if (formatMap[fieldId]) {
+        sheet.getRange(i + 1, nextCol).setValue(formatMap[fieldId]);
+      }
+    }
+    Logger.log('✅ Formatos asignados a campos conocidos');
+  } else {
+    Logger.log('ℹ️ Columna format_as ya existe');
+  }
+}
+
+
+// =================================================================
+// 8. MEJORA: Template Registry necesita columna vertical
+//    Ejecutar UNA vez para agregar la columna si no existe
+// =================================================================
+function upgradeRegistryVertical() {
+  Logger.log('📋 Actualizando Template_Registry con columna vertical...');
+  
+  const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+  const sheet = ss.getSheetByName(REGISTRY_SHEET_NAME);
+  if (!sheet) {
+    Logger.log('⚠️ Template_Registry no existe.');
+    return;
+  }
+  
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  
+  if (headers.indexOf('vertical') === -1) {
+    const nextCol = sheet.getLastColumn() + 1;
+    sheet.getRange(1, nextCol).setValue('vertical');
+    sheet.getRange(1, nextCol).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
+    Logger.log('✅ Columna vertical agregada al Registry');
+    
+    // Setear 'ALL' en todos los templates existentes
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      for (let i = 2; i <= lastRow; i++) {
+        sheet.getRange(i, nextCol).setValue('ALL');
+      }
+      Logger.log('✅ Templates existentes marcados como vertical: ALL');
+    }
+  } else {
+    Logger.log('ℹ️ Columna vertical ya existe');
+  }
+}
