@@ -454,14 +454,12 @@
       max-width: 768px;
       margin: 0 auto;
     }
-
     /* Ajustar padding del formulario para que no tape contenido */
     #mainForm main {
       padding-bottom: 140px;
     }
-  <style>
   /* Animations */
-  @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0);
   @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
 
   /* Tabs */
@@ -587,7 +585,6 @@
 @keyframes twPulse { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
 /* ================================== */
 </style>
-  </style>
 </head>
 
 <body class="antialiased">
@@ -3434,7 +3431,7 @@
         alert('✅ Link oficial copiado al portapapeles');
       });
     }
-
+  </script>
   <button onclick="toggleChat()" class="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-rappi-coral to-purple-700 rounded-full shadow-2xl flex items-center justify-center z-50 hover:scale-110 transition-transform duration-300 group border-4 border-white">
     <i class="fa-solid fa-sparkles text-white text-2xl group-hover:hidden"></i>
     <i class="fa-solid fa-robot text-white text-2xl hidden group-hover:block animate-bounce"></i>
@@ -5305,6 +5302,30 @@ function checkAdminAccess() {
   if (btn) btn.style.display = 'flex';
 }
 
+// ============================================
+// OVERRIDE: PROTECCIÓN DE NAVEGACIÓN ADMIN
+// ============================================
+(function() {
+  var _origShowPage = showPage;
+  showPage = function(id) {
+    if (id === 'adminPage') {
+      showAdminPanel();
+      return;
+    }
+    
+    _origShowPage(id);
+    
+    var toggle = document.getElementById('previewToggle');
+    if (toggle) toggle.style.display = (id === 'formPage') ? 'flex' : 'none';
+    
+    if (id !== 'formPage' && typeof previewVisible !== 'undefined' && previewVisible) {
+      previewVisible = false;
+      var drawer = document.getElementById('previewDrawer');
+      if (drawer) drawer.classList.remove('open');
+      if (toggle) toggle.classList.remove('active');
+    }
+  };
+})();
 </script>  
 </body>
 </html>
