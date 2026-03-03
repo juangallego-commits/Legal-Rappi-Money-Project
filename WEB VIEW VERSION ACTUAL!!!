@@ -459,16 +459,101 @@
     #mainForm main {
       padding-bottom: 140px;
     }
+/* ========================================= */
+    /* DARK THEME & FONDOS                       */
+    /* ========================================= */
+    body { 
+      background-color: #08080C !important;
+      color: #F5F5F7;
+      font-family: 'Nunito', sans-serif;
+    }
+
+    .grid-bg {
+      position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,92,0,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,92,0,0.03) 1px, transparent 1px);
+      background-size: 64px 64px;
+    }
+    .glow-orb { position: fixed; pointer-events: none; z-index: -1; border-radius: 50%; filter: blur(120px); }
+    .glow-orb-1 { width: 600px; height: 600px; top: -200px; left: -100px; background: #FF5C00; opacity: 0.12; }
+    .glow-orb-2 { width: 400px; height: 400px; bottom: -150px; right: -50px; background: #FF8B69; opacity: 0.08; }
+
+    /* ========================================= */
+    /* COMPONENTES (Inputs, Cards, Steps)        */
+    /* ========================================= */
+    .custom-input { 
+      width: 100%; padding: 14px 16px 14px 46px; 
+      border-radius: 14px; border: 2px solid #2A2A3C; 
+      background: #1A1A25; font-size: 15px; color: #F5F5F7; 
+      transition: all 0.2s; font-weight: 500;
+    }
+    .custom-input:focus { 
+      background: #14141C; border-color: #FF5C00; outline: none;
+      box-shadow: 0 0 0 4px rgba(255, 92, 0, 0.15);
+    }
+    select.custom-input {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23C8C8D4' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); 
+    }
+
+    .card-section, .feature-card, .country-card, .history-item {
+      background: #14141C !important; 
+      border: 1px solid #2A2A3C !important;
+    }
+    .card-section:hover, .feature-card:hover, .country-card:hover, .history-item:hover { 
+      border-color: #FF5C00 !important;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.4) !important;
+    }
+
+    .step { 
+      background: #1A1A25 !important; border: 2px solid transparent;
+    }
+    .step.active { 
+      background: rgba(255, 92, 0, 0.12) !important; border-color: #FF5C00 !important; 
+    }
+    .step-number { background: #2A2A3C !important; color: #C8C8D4 !important; }
+    .step.active .step-number { background: #FF5C00 !important; color: white !important; }
+    .step.completed { background: rgba(16, 185, 129, 0.12) !important; border-color: #10B981 !important; }
+    .step.completed .step-number { background: #10B981 !important; color: white !important; }
+
+    /* Ajuste de colores rápidos para el HTML existente */
+    .text-gray-900, .text-gray-800 { color: #FFFFFF !important; }
+    .text-gray-600, .text-gray-700 { color: #C8C8D4 !important; }
+    .bg-white { background-color: #14141C !important; }
+    .bg-gray-50 { background-color: #1A1A25 !important; }
+    .border-gray-200 { border-color: #2A2A3C !important; }
   </style>
 </head>
 
 <body class="antialiased">
+<!-- Fondos Dark Theme -->
+  <div class="grid-bg"></div>
+  <div class="glow-orb glow-orb-1"></div>
+  <div class="glow-orb glow-orb-2"></div>
+
+  <!-- Modal BETA -->
+  <div id="betaModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+    <div class="bg-[#14141C] border border-[#2A2A3C] rounded-3xl p-8 max-w-md w-full text-center shadow-2xl animate-slide-in">
+      <div class="w-16 h-16 bg-amber-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-amber-500/30">
+        <i class="fa-solid fa-flask text-amber-400 text-3xl"></i>
+      </div>
+      <h2 class="text-2xl font-black text-white mb-3">RappiMind Beta v2.4</h2>
+      <p class="text-[#C8C8D4] mb-6 leading-relaxed text-sm">
+        Estás navegando en la versión <strong>Beta v2.4</strong>. Hemos implementado el nuevo <strong>Dark Mode</strong> para una experiencia más inmersiva.
+        <br><br>
+        La generación de documentos de Cashback y Concursos funciona perfectamente. Otras funcionalidades futuras llegarán pronto.
+      </p>
+      <button onclick="closeBetaModal()" class="btn-primary w-full py-4 rounded-xl text-white font-bold flex justify-center items-center gap-2">
+        <i class="fa-solid fa-rocket"></i> Entendido, ¡vamos a probar!
+      </button>
+    </div>
+  </div>
   <!-- ============================================ -->
   <!-- LANDING PAGE -->
   <!-- ============================================ -->
   <div id="landingPage" class="min-h-screen">
     <!-- Header -->
-    <nav class="bg-white/90 backdrop-blur-lg sticky top-0 z-50 border-b border-gray-100 shadow-sm">
+    <nav class="bg-[#0E0E14]/90 backdrop-blur-lg sticky top-0 z-50 border-b border-gray-100 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
           <div class="flex items-center gap-3">
@@ -498,7 +583,7 @@
   <i class="fa-solid fa-shield-halved"></i>
   <span class="hidden sm:inline">Admin</span>
 </button>
-            <span class="badge badge-new">V2.3</span>
+            <span class="badge bg-amber-500/20 text-amber-400 border border-amber-500/30">BETA v2.4</span>
           </div>
         </div>
       </div>
@@ -946,7 +1031,7 @@
   <!-- ============================================ -->
   <div id="mainForm" class="hidden min-h-screen">
     <!-- Header con país -->
-    <nav class="bg-white/90 backdrop-blur-lg sticky top-0 z-50 border-b border-gray-100 shadow-sm">
+    <nav class="bg-[#0E0E14]/90 backdrop-blur-lg sticky top-0 z-50 border-b border-gray-100 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
           <div class="flex items-center gap-4">
@@ -1787,7 +1872,7 @@
   <!-- HELP CENTER PAGE -->
   <!-- ============================================ -->
   <div id="helpCenterPage" class="hidden min-h-screen pb-20">
-    <nav class="bg-white/90 backdrop-blur-lg sticky top-0 z-50 border-b border-gray-100 shadow-sm">
+    <nav class="bg-[#0E0E14]/90 backdrop-blur-lg sticky top-0 z-50 border-b border-gray-100 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16">
           <div class="flex items-center gap-4">
@@ -5169,6 +5254,17 @@ function checkAdminAccess() {
 document.addEventListener('DOMContentLoaded', function() {
   checkAdminAccess();
 });
-</script>  
+</script>
+// LOGICA MODAL BETA
+  document.addEventListener('DOMContentLoaded', function() {
+    if (!localStorage.getItem('rmBetaSeen')) {
+      document.getElementById('betaModal').classList.remove('hidden');
+    }
+  });
+
+  function closeBetaModal() {
+    document.getElementById('betaModal').classList.add('hidden');
+    localStorage.setItem('rmBetaSeen', '1');
+  }
 </body>
 </html>
