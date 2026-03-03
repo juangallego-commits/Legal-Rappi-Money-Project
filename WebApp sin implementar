@@ -5301,31 +5301,3 @@ function checkAdminAccess() {
   const btn = document.getElementById('adminBtn');
   if (btn) btn.style.display = 'flex';
 }
-
-// ============================================
-// OVERRIDE: PROTECCIÓN DE NAVEGACIÓN ADMIN
-// ============================================
-(function() {
-  var _origShowPage = showPage;
-  showPage = function(id) {
-    if (id === 'adminPage') {
-      showAdminPanel();
-      return;
-    }
-    
-    _origShowPage(id);
-    
-    var toggle = document.getElementById('previewToggle');
-    if (toggle) toggle.style.display = (id === 'formPage') ? 'flex' : 'none';
-    
-    if (id !== 'formPage' && typeof previewVisible !== 'undefined' && previewVisible) {
-      previewVisible = false;
-      var drawer = document.getElementById('previewDrawer');
-      if (drawer) drawer.classList.remove('open');
-      if (toggle) toggle.classList.remove('active');
-    }
-  };
-})();
-</script>  
-</body>
-</html>
