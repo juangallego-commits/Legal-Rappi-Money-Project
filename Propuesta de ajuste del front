@@ -2477,7 +2477,7 @@ details.help-faq .faq-body { padding:14px 16px; border-top:1px solid var(--borde
         if (new Date(ed) < new Date(sd)) { alert('Fecha fin debe ser >= fecha inicio.'); return false; }
         return true;
       case 3:
-        if (selectedType === 'Cashback') {
+        if (isCashbackType(selectedType)) {
           var p = parseFloat(document.getElementById('fPct').value);
           var c = parseFloat(document.getElementById('fCap').value);
           var b = parseFloat(document.getElementById('fBudget').value);
@@ -2522,10 +2522,10 @@ details.help-faq .faq-body { padding:14px 16px; border-top:1px solid var(--borde
     document.getElementById('btnNext2').disabled = !(sd && ed && new Date(ed) >= new Date(sd));
 
     var s3ok = false;
-    if (selectedType === 'Cashback') {
+    if (isCashbackType(selectedType)) {
       var p=parseFloat(document.getElementById('fPct').value), c=parseFloat(document.getElementById('fCap').value), b=parseFloat(document.getElementById('fBudget').value);
       s3ok = p>=1&&p<=100&&c>=1000&&b>=10000;
-    } else if (selectedType === 'Concurso') {
+    } else if (isConcursoType(selectedType)) {
       s3ok = !!document.getElementById('fOrgName').value.trim()&&!!document.getElementById('fOrgPhone').value.trim()&&!!document.getElementById('fOrgEmail').value.trim()&&!!document.getElementById('fAnnouncement').value;
     }
     document.getElementById('btnNext3').disabled = !s3ok;
@@ -2543,10 +2543,10 @@ details.help-faq .faq-body { padding:14px 16px; border-top:1px solid var(--borde
     var ed = document.getElementById('fEndDate').value;
     if (sd && ed && new Date(ed) >= new Date(sd)) completed++;
     var s3ok = false;
-    if (selectedType === 'Cashback') {
+    if (isCashbackType(selectedType)) {
       var p=parseFloat(document.getElementById('fPct').value), c=parseFloat(document.getElementById('fCap').value), b=parseFloat(document.getElementById('fBudget').value);
       s3ok = p>=1&&p<=100&&c>=1000&&b>=10000;
-    } else if (selectedType === 'Concurso') {
+    } else if (isConcursoType(selectedType)) {
       s3ok = !!document.getElementById('fOrgName').value.trim()&&!!document.getElementById('fOrgPhone').value.trim()&&!!document.getElementById('fOrgEmail').value.trim()&&!!document.getElementById('fAnnouncement').value;
     }
     if (s3ok) completed++;
@@ -2605,20 +2605,20 @@ details.help-faq .faq-body { padding:14px 16px; border-top:1px solid var(--borde
 
     // Build prizes string for Concurso
     var prizes = '';
-    if (selectedType === 'Concurso') {
-      if (prizeType === 'credits') {
-        prizes = (document.getElementById('fCreditsAmount').value || '0') + ' Créditos Rappi';
-      } else {
-        prizes = document.getElementById('fPhysicalPrize').value || '';
-      }
-    }
+    if (isConcursoType(selectedType)) {
+  if (prizeType === 'credits') {
+    prizes = (document.getElementById('fCreditsAmount').value || '0') + ' Créditos Rappi';
+  } else {
+    prizes = document.getElementById('fPhysicalPrize').value || '';
+  }
+}
 
     var payload = {
       countryCode: document.getElementById('hCountryCode').value,
       currencyCode: document.getElementById('hCurrencyCode').value,
       currencySymbol: document.getElementById('hCurrencySymbol').value,
       userEmail: document.getElementById('fEmail').value.trim(),
-      dynamicType: selectedType === 'Concurso' ? 'Concurso Mayor Comprador' : selectedType,
+      dynamicType: normalizeCampaignType(selectedType),
       campaignName: document.getElementById('fCampaignName').value.trim(),
       shopName: document.getElementById('fShop').value.trim(),
       territory: document.getElementById('fTerritory').value.trim(),
@@ -2702,7 +2702,7 @@ details.help-faq .faq-body { padding:14px 16px; border-top:1px solid var(--borde
         startTime: document.getElementById('fStartTime').value,
         endTime: document.getElementById('fEndTime').value
       };
-      if (selectedType === 'Cashback') {
+      if (isCashbackType(selectedType)) {
         draft.pct = document.getElementById('fPct').value;
         draft.cap = document.getElementById('fCap').value;
         draft.budget = document.getElementById('fBudget').value;
@@ -2724,7 +2724,7 @@ details.help-faq .faq-body { padding:14px 16px; border-top:1px solid var(--borde
       if (d.endDate) document.getElementById('fEndDate').value = d.endDate;
       if (d.startTime) document.getElementById('fStartTime').value = d.startTime;
       if (d.endTime) document.getElementById('fEndTime').value = d.endTime;
-      if (selectedType === 'Cashback') {
+      if (isCashbackType(selectedType)) {
         if (d.pct) document.getElementById('fPct').value = d.pct;
         if (d.cap) document.getElementById('fCap').value = d.cap;
         if (d.budget) document.getElementById('fBudget').value = d.budget;
@@ -2750,12 +2750,12 @@ details.help-faq .faq-body { padding:14px 16px; border-top:1px solid var(--borde
     var demos = [
       { type:'Cashback', shop:'Hamburguesas El Corral', territory:'Nacional', pct:20, cap:20000, budget:1000000 },
       { type:'Cashback', shop:'D1 Express', territory:'Bogotá, Medellín', pct:15, cap:10000, budget:500000 },
-      { type:'Concurso', shop:'Coca-Cola FEMSA', territory:'Nacional', org:'INDUSTRIA NACIONAL DE GASEOSAS S.A.S.', phone:'018000912580', email:'pqr@coca-cola.com', winners:3, credits:100000 }
+      { type:'Concurso Mayor Comprador', shop:'Coca-Cola FEMSA', territory:'Nacional', org:'INDUSTRIA NACIONAL DE GASEOSAS S.A.S.', phone:'018000912580', email:'pqr@coca-cola.com', winners:3, credits:100000 }
     ];
     var d = demos[demoIdx % demos.length]; demoIdx++;
     selectedType = d.type;
-    document.getElementById('cashbackFields').classList.toggle('hidden', d.type !== 'Cashback');
-    document.getElementById('concursoFields').classList.toggle('hidden', d.type !== 'Concurso');
+    document.getElementById('cashbackFields').classList.toggle('hidden', !isConcursoType(d.type);
+    document.getElementById('concursoFields').classList.toggle('hidden', isCashbackType(d.type);
     document.getElementById('step3Title').textContent = d.type === 'Cashback' ? 'Variables de Cashback' : 'Variables del Concurso';
     document.getElementById('fEmail').value = 'test@rappi.com';
     document.getElementById('fShop').value = d.shop;
@@ -3949,17 +3949,34 @@ function sendFeedback() {
   // ==========================================================
   // PHASE 2: TOGGLE FORM FIELDS (Cashback vs Concurso)
   // ==========================================================
+function normalizeCampaignType(type) {
+  var t = String(type || '').trim();
+  if (t === 'Concurso') return 'Concurso Mayor Comprador';
+  return t;
+}
+
+function isCashbackType(type) {
+  return normalizeCampaignType(type) === 'Cashback';
+}
+
+function isConcursoType(type) {
+  return normalizeCampaignType(type) === 'Concurso Mayor Comprador';
+}
   function toggleFormFields() {
     var cashback = document.getElementById('section-cashback');
     var concurso = document.getElementById('section-concurso');
     if (!cashback || !concurso) return;
 
-    if (selectedType === 'Cashback') {
-      cashback.classList.remove('hidden');
-      concurso.classList.add('hidden');
-    } else if (selectedType === 'Concurso') {
-      cashback.classList.add('hidden');
-      concurso.classList.remove('hidden');
+    if (isCashbackType(selectedType)) {
+  cashback.classList.remove('hidden');
+  concurso.classList.add('hidden');
+} else if (isConcursoType(selectedType)) {
+  cashback.classList.add('hidden');
+  concurso.classList.remove('hidden');
+} else {
+  cashback.classList.add('hidden');
+  concurso.classList.add('hidden');
+}
     } else {
       cashback.classList.add('hidden');
       concurso.classList.add('hidden');
@@ -4042,7 +4059,7 @@ function sendFeedback() {
   var _origSubmitForm = submitForm;
   submitForm = function() {
     // Check if concurso with physical prize needs data transfer
-    if (selectedType === 'Concurso') {
+    if (isConcursoType(selectedType)) {
       var prizeEl = document.querySelector('input[name="prizeType"]:checked');
       var prizeType = prizeEl ? prizeEl.value : 'credits';
       var deliveryEl = document.querySelector('input[name="deliveryBy"]:checked');
