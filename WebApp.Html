@@ -2739,19 +2739,33 @@
       updateSteps();
 
       const allValid = validationState.section1 && validationState.section2 && validationState.section3;
-      const submitBtn = document.getElementById('btnSubmit');
-      const submitHint = document.getElementById('submitHint');
-      
-      submitBtn.disabled = !allValid;
-      if (allValid) {
-        submitHint.textContent = '¡Listo! Haz clic para generar el documento';
-        submitHint.classList.add('text-green-600');
-        submitHint.classList.remove('text-gray-500');
-      } else {
-        submitHint.textContent = 'Completa los campos requeridos';
-        submitHint.classList.add('text-gray-500');
-        submitHint.classList.remove('text-green-600');
-      }
+const submitBtn = document.getElementById('btnSubmit');
+const submitHint = document.getElementById('submitHint');
+
+submitBtn.disabled = !allValid;
+
+let missing = [];
+if (!validationState.section1) missing.push('correo corporativo Rappi y tipo de campaña');
+if (!validationState.section2) missing.push('datos básicos: tienda, territorio y fechas');
+if (!validationState.section3) {
+  if (dynamicType.value === 'Cashback') {
+    missing.push('datos de cashback: % , tope y presupuesto');
+  } else if (dynamicType.value === 'Concurso Mayor Comprador') {
+    missing.push('datos de concurso: organizador, premio y anuncio');
+  } else {
+    missing.push('configuración del tipo de dinámica');
+  }
+}
+
+if (allValid) {
+  submitHint.textContent = '¡Listo! Haz clic para generar el documento';
+  submitHint.classList.add('text-green-600');
+  submitHint.classList.remove('text-gray-500', 'text-red-500');
+} else {
+  submitHint.textContent = 'Falta completar: ' + missing.join(' · ');
+  submitHint.classList.add('text-red-500');
+  submitHint.classList.remove('text-green-600', 'text-gray-500');
+}
     }
 
     function updateSteps() {
@@ -2846,44 +2860,54 @@
     }
 
     function fillTestValues() {
-      const today = new Date().toISOString().split('T')[0];
-      const type = document.getElementById('dynamicType').value || 'Cashback';
-      
-      document.getElementById('userEmail').value = 'test@rappi.com';
-      document.getElementById('dynamicType').value = type;
-      toggleFormFields();
-      
-      document.getElementById('campaignName').value = 'Campaña Test ' + Math.floor(Math.random() * 1000);
-      document.getElementById('shopName').value = 'Hamburguesas El Corral';
-      document.getElementById('territory').value = 'Nacional';
-      
-      document.getElementById('startDate').value = today;
-      document.getElementById('endDate').value = today;
-      document.getElementById('startTime').value = '12:00';
-      document.getElementById('endTime').value = '23:59';
-      
-      if (type === 'Cashback') {
-        document.getElementById('cashbackPct').value = '20';
-        document.getElementById('cap').value = '20000';
-        document.getElementById('budget').value = '1000000';
-      } else {
-        document.getElementById('organizerLegalName').value = 'HAMBURGUESAS EL CORRAL S.A.S.';
-        document.getElementById('organizerPhone').value = '018000112233';
-        document.getElementById('organizerEmail').value = 'pqr@elcorral.com';
-        document.getElementById('numberOfWinners').value = '3';
-        document.getElementById('creditsAmount').value = '50000';
-        
-        const nextWeek = new Date();
-        nextWeek.setDate(nextWeek.getDate() + 7);
-        document.getElementById('announcementDate').value = nextWeek.toISOString().split('T')[0];
-      }
-      
-      saveDraft();
-      updateProgress();
-      updatePreview();
-      
-      alert('✅ Datos de prueba cargados. Revisa y genera el documento.');
-    }
+  const today = new Date().toISOString().split('T')[0];
+  const type = document.getElementById('dynamicType').value || 'Cashback';
+
+  document.getElementById('userEmail').value = 'legal@rappi.com';
+  document.getElementById('dynamicType').value = type;
+  toggleFormFields();
+
+  document.getElementById('campaignName').value = 'Campaña Test ' + Math.floor(Math.random() * 1000);
+  document.getElementById('shopName').value = 'Hamburguesas El Corral';
+  document.getElementById('territory').value = 'Nacional';
+
+  document.getElementById('startDate').value = today;
+  document.getElementById('endDate').value = today;
+  document.getElementById('startTime').value = '12:00';
+  document.getElementById('endTime').value = '23:59';
+
+  const extraEmails = document.getElementById('extraEmails');
+  const userSegment = document.getElementById('userSegment');
+  const paymentMethods = document.getElementById('paymentMethods');
+  const maxOrders = document.getElementById('maxOrders');
+
+  if (extraEmails) extraEmails.value = '';
+  if (userSegment) userSegment.value = 'Todos los usuarios';
+  if (paymentMethods) paymentMethods.value = 'Todos excepto Efectivo';
+  if (maxOrders) maxOrders.value = '1';
+
+  if (type === 'Cashback') {
+    document.getElementById('cashbackPct').value = '20';
+    document.getElementById('cap').value = '20000';
+    document.getElementById('budget').value = '1000000';
+  } else {
+    document.getElementById('organizerLegalName').value = 'HAMBURGUESAS EL CORRAL S.A.S.';
+    document.getElementById('organizerPhone').value = '018000112233';
+    document.getElementById('organizerEmail').value = 'pqr@elcorral.com';
+    document.getElementById('numberOfWinners').value = '3';
+    document.getElementById('creditsAmount').value = '50000';
+
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    document.getElementById('announcementDate').value = nextWeek.toISOString().split('T')[0];
+  }
+
+  saveDraft();
+  updateProgress();
+  updatePreview();
+
+  alert('✅ Datos de prueba cargados. Revisa y genera el documento.');
+}
 
     function copyDocLink() {
       const link = document.getElementById('docLink').href;
@@ -2923,14 +2947,21 @@
       loading.classList.remove('hidden');
       
       const formDataObj = new FormData(form);
-      const payload = {};
-      formDataObj.forEach((value, key) => payload[key] = value);
-      
-      if (payload.dynamicType === 'Concurso Mayor Comprador') {
-        payload.prizes = payload.prizeType === 'credits' 
-          ? `${payload.creditsAmount} Créditos Rappi`
-          : payload.physicalPrizeDescription;
-      }
+const payload = {};
+formDataObj.forEach((value, key) => payload[key] = value);
+
+// Defaults defensivos para evitar errores del motor legacy
+payload.extraEmails = payload.extraEmails || '';
+payload.userSegment = payload.userSegment || 'Todos los usuarios';
+payload.paymentMethods = payload.paymentMethods || 'Todos excepto Efectivo';
+payload.maxOrders = payload.maxOrders || '1';
+payload.specialConditions = payload.specialConditions || '';
+
+if (payload.dynamicType === 'Concurso Mayor Comprador') {
+  payload.prizes = payload.prizeType === 'credits' 
+    ? `${payload.creditsAmount} Créditos Rappi`
+    : payload.physicalPrizeDescription;
+}
       
       // Llamar a Google Apps Script
       google.script.run
