@@ -3656,12 +3656,16 @@
               <option value="">Seleccionar...</option><option value="CO">🇨🇴 Colombia</option><option value="MX">🇲🇽 México</option><option value="CR">🇨🇷 Costa Rica</option><option value="BR">🇧🇷 Brasil</option>
             </select>
           </div>
+          <!-- ---INICIO COPIAR--- -->
           <div>
             <label class="block text-xs font-bold text-gray-600 mb-1">Tipo de campaña *</label>
-            <select id="tw-campaign-type" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-rappi outline-none">
-              <option value="">Seleccionar...</option><option value="Cashback">Cashback</option><option value="Concurso">Concurso</option>
-            </select>
+            <input type="text" id="tw-campaign-type" list="tw-campaign-list"
+                   placeholder="Ej: Cashback, Descuento Delivery..."
+                   autocomplete="off"
+                   class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-rappi outline-none" />
+            <datalist id="tw-campaign-list"></datalist>
           </div>
+<!-- ---FIN COPIAR--- -->
           <div><label class="block text-xs font-bold text-gray-600 mb-1">Versión</label><input id="tw-version" type="text" value="1.0" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-rappi outline-none"/></div>
           <div><label class="block text-xs font-bold text-gray-600 mb-1">Notas</label><input id="tw-notes" type="text" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-rappi outline-none"/></div>
         </div>
@@ -4153,7 +4157,7 @@ function switchAdminTab(tab) {
     case 'logs': loadAdminLogs(); break;
     // 👇 ESTA ES LA LÍNEA NUEVA 👇
     case 'guide': break;
-    case 'wizard': break;
+    case 'wizard': twLoadCampaignTypes(); break;
   }
 }
 
@@ -4957,9 +4961,10 @@ async function twCreateTemplate() {
   try {
     const confirmedMappings = TW.mappings.filter(m => m.confirmed).map(m => ({ original_text: m.original_text, placeholder: m.placeholder, label: m.label, confirmed: true }));
     
-    // FIX MAESTRO: Agregamos userEmail al payload
     const res = await twCallBackend('tw_createTemplate', { 
       originalText: TW.originalText, 
+      sourceDocId: TW.docId || null,
+      sourceDocTitle: TW.docTitle || null,
       mappings: confirmedMappings, 
       metadata: TW.metadata,
       userEmail: currentUser.email 
@@ -4972,7 +4977,29 @@ async function twCreateTemplate() {
     [1,2,3,4].forEach(i => { document.getElementById('twstep-'+i)?.classList.add('done'); document.getElementById('twstep-'+i)?.classList.remove('active'); document.getElementById('twconn-'+i)?.classList.add('done'); });
   } catch (e) { alert('Error: ' + e.message); btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Crear Template'; }
 }
-
+function twLoadCampaignTypes() {
+  google.script.run
+    .withSuccessHandler(function(raw) {
+      try {
+        var types = JSON.parse(raw);
+        var dl = document.getElementById('tw-campaign-list');
+        if (!dl) return;
+        dl.innerHTML = '';
+        if (Array.isArray(types)) {
+          types.forEach(function(t) {
+            var opt = document.createElement('option');
+            opt.value = t.type_name;
+            opt.textContent = t.type_name + (t.description ? ' — ' + t.description : '');
+            dl.appendChild(opt);
+          });
+        }
+      } catch(e) { console.error('twLoadCampaignTypes parse error:', e); }
+    })
+    .withFailureHandler(function(err) {
+      console.error('twLoadCampaignTypes failed:', err);
+    })
+    .getCampaignTypesForUser();
+}
 function twReset() {
   TW.step = 1; TW.source = 'text'; TW.originalText = ''; TW.docId = null; TW.mappings = []; TW.metadata = {};
   document.getElementById('tw-text-input').value = ''; document.getElementById('tw-doc-url').value = ''; document.getElementById('tw-responsibility-check').checked = false;
