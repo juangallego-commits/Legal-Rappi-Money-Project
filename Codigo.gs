@@ -40,7 +40,7 @@ function coreEngineV2(payload, submitterEmail) {
     
     if (template) {
       if (typeConfig && typeConfig.processing_mode === 'template_only') {
-        return _generateSmartTemplate(template, payload, vars, submitterEmail); // Esta función vive en Admin.gs
+        return _generateSmartTemplate(template, payload, vars, submitterEmail);
       } else {
         return _generateWithTemplate(template, vars, submitterEmail);
       }
@@ -49,7 +49,185 @@ function coreEngineV2(payload, submitterEmail) {
   
   throw new Error("No se encontró una plantilla de documento activa para este tipo de dinámica en este país.");
 }
+// ---INICIO COPIAR---
+// -----------------------------------------------------------------
+// GENERADOR SMART (TEMPLATE_ONLY) — Dinámicas importadas via Wizard
+// -----------------------------------------------------------------
+function _generateSmartTemplate(template, payload, vars, submitterEmail) {
+  // 1. Obtener campos definidos para esta combinación tipo+país
+  var fieldsSheet = _getSheet(FIELDS_SHEET_NAME);
+  if (!fieldsSheet) throw new Error('Sheet Template_Fields no encontrada.');
 
+  var allFields = _sheetToObjects(fieldsSheet);
+  var campaignType = vars['Tipo de Dinámica'] || template.campaign_type;
+  var countryCode = payload.countryCode || template.country_code || 'CO';
+
+  var relevantFields = allFields.filter(function(f) {
+    var matchType = (f.campaign_type === 'ALL' || f.campaign_type === campaignType);
+    var matchCountry = (f.country_code === 'ALL' || f.country_code === countryCode);
+    return matchType && matchCountry;
+  });
+
+  // 2. Construir mapa de placeholders cruzando payload con Template_Fields
+  var placeholders = {};
+
+  relevantFields.forEach(function(field) {
+    var fieldId = field.field_id;
+    var placeholder = field.placeholder; // Ej: "{{FECHA_INICIO}}"
+    if (!placeholder) return;
+
+    // Buscar el valor en múltiples ubicaciones del payload
+    var value = '';
+    if (payload[fieldId] !== undefined && payload[fieldId] !== null) {
+      value = String(payload[fieldId]);
+    } else if (payload.dynamicFields && payload.dynamicFields[fieldId] !== undefined) {
+      value = String(payload.dynamicFields[fieldId]);
+    } else if (vars[field.label_es] !== undefined) {
+      value = String(vars[field.label_es]);
+    }
+
+    // Aplicar formateo si tiene format_as
+    if (value && field.format_as) {
+      value = _applySmartFormat(value, field.format_as, countryCode);
+    }
+
+    var cleanKey = placeholder.replace(/^\{\{/, '').replace(/\}\}$/, '');
+    placeholders['{{' + cleanKey + '}}'] = value;
+  });
+
+  // 3. Nombre del documento
+  var campaignName = payload.campaignName || vars['Nombre de Campaña (Opcional)'] || campaignType;
+  var shopName = payload.shopName || vars['Tienda Participante'] || 'General';
+  var today = new Date();
+  var dateStr = today.getFullYear() + '-' +
+    String(today.getMonth() + 1).padStart(2, '0') + '-' +
+    String(today.getDate()).padStart(2, '0');
+  var docName = 'T&C ' + shopName + ' - ' + campaignName + ' (' + dateStr + ')';
+
+  // 4. Clonar el template Doc
+  var newFile = DriveApp.getFileById(template.template_doc_id).makeCopy(docName);
+
+  if (DRIVE_FOLDER_ID) {
+    try {
+      DriveApp.getFolderById(DRIVE_FOLDER_ID).addFile(newFile);
+      DriveApp.getRootFolder().removeFile(newFile);
+    } catch(e) {}
+  }
+
+  // 5. Abrir y hacer reemplazos
+  var doc = DocumentApp.openById(newFile.getId());
+  var body = doc.getBody();
+
+  // 5a. Reemplazar placeholders con valor
+  Object.keys(placeholders).forEach(function(key) {
+    var value = placeholders[key];
+    if (value !== null && value !== undefined && value !== '') {
+      var escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      body.replaceText(escaped, value);
+    }
+  });
+
+  // 5b. SMART DELETION: Viñetas vacías (solo placeholder)
+  var listItems = body.getListItems();
+  for (var i = listItems.length - 1; i >= 0; i--) {
+    if (listItems[i].getText().trim().match(/^\{\{[A-Z_0-9]+\}\}$/)) {
+      listItems[i].removeFromParent();
+    }
+  }
+
+  // 5c. SMART DELETION: Párrafos vacíos (solo placeholder)
+  var paragraphs = body.getParagraphs();
+  for (var j = paragraphs.length - 1; j >= 0; j--) {
+    if (paragraphs[j].getText().trim().match(/^\{\{[A-Z_0-9]+\}\}$/)) {
+      paragraphs[j].removeFromParent();
+    }
+  }
+
+  // 5d. Limpiar placeholders sueltos residuales
+  body.replaceText('\\{\\{[A-Z_0-9_]+\\}\\}', '');
+  doc.saveAndClose();
+
+  // 6. Permisos + tracking
+  var publicUrl = setPublicViewPermissions(doc);
+
+  var auditVars = {
+    'Tipo de Dinámica': campaignType,
+    'Tienda Participante': shopName,
+    'Nombre de Campaña (Opcional)': campaignName,
+    'Email Generador': submitterEmail
+  };
+  relevantFields.forEach(function(f) {
+    var cleanKey = (f.placeholder || '').replace(/^\{\{/, '').replace(/\}\}$/, '');
+    if (cleanKey && placeholders['{{' + cleanKey + '}}']) {
+      auditVars[f.label_es || f.field_id] = placeholders['{{' + cleanKey + '}}'];
+    }
+  });
+
+  try { saveResponseToSheet(auditVars, publicUrl); } catch(e) { Logger.log('⚠️ Audit: ' + e.message); }
+
+  // 7. Email
+  try {
+    sendEmailNotification(submitterEmail, docName, publicUrl, {
+      docName: docName,
+      dinamica: campaignType,
+      tiendaDisplay: shopName,
+      textoVigenciaEmail: (payload.startDate || '') + ' → ' + (payload.endDate || ''),
+      condicionesEspeciales: payload.specialConditions || ''
+    });
+  } catch(e) { Logger.log('⚠️ Email: ' + e.message); }
+
+  return { docUrl: publicUrl, docName: docName };
+}
+
+// -----------------------------------------------------------------
+// FORMATO INTELIGENTE para campos de templates importados
+// -----------------------------------------------------------------
+function _applySmartFormat(value, formatType, countryCode) {
+  try {
+    switch(formatType) {
+      case 'date_legal':
+        var parts = value.split('-');
+        if (parts.length === 3) {
+          var day = parseInt(parts[2]);
+          var monthIdx = parseInt(parts[1]) - 1;
+          if (monthIdx >= 0 && monthIdx < 12) {
+            return day + ' de ' + MESES_ES[monthIdx] + ' de ' + parts[0];
+          }
+        }
+        return value;
+
+      case 'money':
+        var symbol = '$';
+        try {
+          var cSheet = _getSheet(COUNTRY_SETTINGS_SHEET);
+          if (cSheet) {
+            var cData = _sheetToObjects(cSheet);
+            var cc = cData.find(function(c) { return c.country_code === countryCode; });
+            if (cc) symbol = cc.currency_symbol || '$';
+          }
+        } catch(e) {}
+        var num = parseFloat(value);
+        if (!isNaN(num)) return symbol + num.toLocaleString('es-CO');
+        return value;
+
+      case 'percentage':
+        var pct = parseFloat(value);
+        if (!isNaN(pct)) return pct + '%';
+        return value;
+
+      case 'number_words':
+        var numWords = ['cero','uno','dos','tres','cuatro','cinco','seis','siete',
+                        'ocho','nueve','diez','once','doce','trece','catorce','quince',
+                        'dieciséis','diecisiete','dieciocho','diecinueve','veinte'];
+        var n = parseInt(value);
+        if (!isNaN(n) && n >= 0 && n <= 20) return numWords[n] + ' (' + n + ')';
+        return value;
+
+      default:
+        return value;
+    }
+  } catch(e) { return value; }
+}
 // -----------------------------------------------------------------
 // GENERADOR CON PLANTILLA
 // -----------------------------------------------------------------
