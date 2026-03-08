@@ -1044,14 +1044,18 @@
                   <span class="error-message">Ingresa un correo corporativo válido (@rappi.com)</span>
                 </div>
 
-                <div class="input-group">
-                  <i class="fa-solid fa-layer-group"></i>
-                  <select name="dynamicType" id="dynamicType" class="custom-input" onchange="toggleFormFields(); saveDraft(); updatePreview();" required>
-                    <option value="">Selecciona tipo de campaña...</option>
-                    <option value="Cashback">💰 Cashback (Devolución de Créditos)</option>
-                    <option value="Concurso Mayor Comprador">🏆 Concurso / Top Spender</option>
-                  </select>
-                  <span class="error-message">Debes seleccionar un tipo de campaña</span>
+                <!-- Tipo de Campaña: Cargado dinámicamente desde Campaign_Types -->
+                <input type="hidden" name="dynamicType" id="dynamicType" value="">
+                <div>
+                  <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 block">Tipo de Campaña</label>
+                  <div id="dynamicPromoGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Se llena dinámicamente con JS -->
+                    <div class="col-span-full text-center py-6 text-gray-400">
+                      <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 block"></i>
+                      <span class="text-sm">Cargando dinámicas...</span>
+                    </div>
+                  </div>
+                  <span class="error-message" id="dynamicTypeError">Debes seleccionar un tipo de campaña</span>
                 </div>
 
                 <div class="input-group">
@@ -1180,466 +1184,21 @@
                 </div>
               </div>
             </div>
-
-            <!-- SECCIÓN 3 CASHBACK -->
-            <div id="section-cashback" class="card-section p-6 sm:p-8 animate-slide-in hidden" style="animation-delay: 0.2s">
+            <!-- SECCIÓN 3: CAMPOS DINÁMICOS (GOD MODE) -->
+            <div id="section-dynamic-3" class="card-section p-6 sm:p-8 animate-slide-in hidden" style="animation-delay: 0.2s">
               <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-black text-gray-900 flex items-center gap-2">
+                <h2 class="text-xl font-black text-gray-900 flex items-center gap-2" id="section3Title">
                   <div class="w-9 h-9 rounded-full bg-rappi-light flex items-center justify-center">
-                    <i class="fa-solid fa-coins text-rappi text-lg"></i>
+                    <i class="fa-solid fa-sliders text-rappi text-lg" id="section3Icon"></i>
                   </div>
-                  Variables de Cashback
+                  <span id="section3Label">Variables de Campaña</span>
                 </h2>
                 <span class="badge badge-required">Requerido</span>
               </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-                <div class="input-group">
-                  <i class="fa-solid fa-percent"></i>
-                  <input 
-                    type="number" 
-                    name="cashbackPct" 
-                    id="cashbackPct" 
-                    placeholder="% Cashback"
-                    class="custom-input"
-                    min="1"
-                    max="100"
-                    onblur="validatePercentage(this)"
-                    oninput="saveDraft(); updatePreview();"
-                  >
-                  <span class="error-message">Debe estar entre 1 y 100</span>
-                </div>
-
-                <div class="input-group">
-                  <i class="fa-solid fa-ban"></i>
-                  <input 
-                    type="number" 
-                    name="cap" 
-                    id="cap" 
-                    placeholder="Tope x Usuario"
-                    class="custom-input"
-                    min="1000"
-                    onblur="validateCap(this)"
-                    oninput="saveDraft(); updatePreview();"
-                  >
-                  <div class="tooltip-wrapper" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%);">
-                    <i class="fa-solid fa-circle-info tooltip-icon"></i>
-                    <div class="tooltip-content" id="capTooltip">Máximo por usuario</div>
-                  </div>
-                  <span class="error-message">El tope debe ser ≥ 1,000</span>
-                </div>
-
-                <div class="input-group">
-                  <i class="fa-solid fa-sack-dollar"></i>
-                  <input 
-                    type="number" 
-                    name="budget" 
-                    id="budget" 
-                    placeholder="Presupuesto Total"
-                    class="custom-input"
-                    min="10000"
-                    onblur="validateBudget(this)"
-                    oninput="saveDraft(); updatePreview();"
-                  >
-                  <div class="tooltip-wrapper" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%);">
-                    <i class="fa-solid fa-circle-info tooltip-icon"></i>
-                    <div class="tooltip-content" id="budgetTooltip">Presupuesto total</div>
-                  </div>
-                  <span class="error-message">Presupuesto debe ser ≥ 10,000</span>
-                </div>
-              </div>
-
-              <div class="input-group mb-6">
-                <i class="fa-solid fa-location-crosshairs"></i>
-                <select name="redemptionPlace" id="redemptionPlace" class="custom-input" onchange="saveDraft(); updatePreview();">
-                  <option value="Únicamente en la Tienda Participante (Brand Credits)">Únicamente en la Tienda (Brand Credits)</option>
-                  <option value="En cualquier tienda de la sección 'Restaurantes'">En cualquier tienda de "Restaurantes"</option>
-                  <option value="Híbrido: Tienda Marketplace + Turbo Market">Híbrido: Tienda + Turbo Market</option>
-                  <option value="En cualquier sección de la Plataforma (Créditos Generales)">En cualquier sección (Créditos Generales)</option>
-                </select>
-              </div>
-
-              <!-- Config avanzada -->
-              <details class="group bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
-                <summary class="flex justify-between items-center p-4 cursor-pointer font-semibold text-sm text-gray-700 hover:bg-gray-100 transition">
-                  <span><i class="fa-solid fa-sliders mr-2 text-rappi"></i> Configuración Avanzada</span>
-                  <i class="fa-solid fa-chevron-down transition-transform group-open:rotate-180 text-gray-400"></i>
-                </summary>
-                <div class="p-5 border-t border-gray-200 bg-white space-y-5">
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
-                      <label class="text-xs font-bold text-gray-600 mb-2 block flex items-center gap-1">
-                        <i class="fa-solid fa-clock text-rappi"></i>
-                        Momento de Carga
-                      </label>
-                      <select name="loadType" id="loadType" class="custom-input text-sm !pl-3" onchange="toggleLoadDate(this); saveDraft();">
-                        <option value="Inmediatamente (Al finalizar la orden)">Inmediata</option>
-                        <option value="Al día siguiente">Al día siguiente</option>
-                        <option value="Fecha específica">Fecha específica...</option>
-                      </select>
-                      <div id="loadDateContainer" class="hidden mt-3">
-                        <input type="date" name="loadDate" id="loadDate" class="custom-input text-sm !pl-3" oninput="saveDraft();">
-                      </div>
-                    </div>
-
-                    <div>
-                      <label class="text-xs font-bold text-gray-600 mb-2 block flex items-center gap-1">
-                        <i class="fa-regular fa-hourglass text-rappi"></i>
-                        Duración de Créditos
-                      </label>
-                      <select name="validityType" id="validityType" class="custom-input text-sm !pl-3" onchange="toggleValidityFields(this); saveDraft();">
-                        <option value="Por días calendario (Duración)">Por días (Ej: 30)</option>
-                        <option value="Por fechas específicas (Rango)">Por fechas exactas</option>
-                      </select>
-                      <div id="validityDaysContainer" class="mt-3">
-                        <input 
-                          type="number" 
-                          name="validityDays" 
-                          id="validityDays" 
-                          value="30" 
-                          min="1"
-                          max="365"
-                          class="custom-input text-sm !pl-3" 
-                          placeholder="Días"
-                          oninput="saveDraft();"
-                        >
-                      </div>
-                      <div id="validityDatesContainer" class="hidden grid grid-cols-2 gap-3 mt-3">
-                        <input type="date" name="redemptionStart" id="redemptionStart" class="custom-input text-sm !pl-3" oninput="saveDraft();">
-                        <input type="date" name="redemptionEnd" id="redemptionEnd" class="custom-input text-sm !pl-3" oninput="saveDraft();">
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </details>
-            </div>
-
-            <!-- SECCIÓN 3 CONCURSO -->
-            <div id="section-concurso" class="card-section p-6 sm:p-8 animate-slide-in hidden" style="animation-delay: 0.2s">
-              <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-black text-gray-900 flex items-center gap-2">
-                  <div class="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center">
-                    <i class="fa-solid fa-trophy text-blue-600 text-lg"></i>
-                  </div>
-                  Variables de Concurso
-                </h2>
-                <span class="badge badge-required">Requerido</span>
-              </div>
-
-              <!-- Datos del Organizador -->
-              <div class="mb-6 p-5 bg-amber-50 rounded-xl border border-amber-200">
-                <h3 class="text-sm font-bold text-amber-800 mb-4 flex items-center gap-2">
-                  <i class="fa-solid fa-building"></i>
-                  Datos del Organizador (Responsable Legal)
-                </h3>
-                <div class="space-y-4">
-                  <div class="input-group relative">
-                    <i class="fa-solid fa-briefcase"></i>
-                    <input 
-                      type="text" 
-                      name="organizerLegalName" 
-                      id="organizerLegalName" 
-                      placeholder="Razón Social (Ej: INDUSTRIA NACIONAL DE GASEOSAS S.A.S.)"
-                      class="custom-input"
-                      oninput="showOrganizerAutocomplete(this); saveDraft(); updatePreview();"
-                      onfocus="showOrganizerAutocomplete(this);"
-                      onblur="hideAutocomplete();"
-                      autocomplete="off"
-                    >
-                    <div id="organizerAutocomplete" class="autocomplete-dropdown hidden"></div>
-                  </div>
-
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="input-group">
-                      <i class="fa-solid fa-phone"></i>
-                      <input 
-                        type="text" 
-                        name="organizerPhone" 
-                        id="organizerPhone" 
-                        placeholder="Teléfono (Ej: 018000912580)"
-                        class="custom-input"
-                        oninput="saveDraft(); updatePreview();"
-                      >
-                    </div>
-                    <div class="input-group">
-                      <i class="fa-solid fa-envelope"></i>
-                      <input 
-                        type="email" 
-                        name="organizerEmail" 
-                        id="organizerEmail" 
-                        placeholder="Email PQR (Ej: pqr@aliado.com)"
-                        class="custom-input"
-                        oninput="saveDraft(); updatePreview();"
-                      >
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Mecánica del Concurso -->
-              <div class="space-y-5 mb-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div class="input-group">
-                    <i class="fa-solid fa-filter"></i>
-                    <select name="winnerCriteria" id="winnerCriteria" class="custom-input" onchange="saveDraft(); updatePreview();">
-                      <option value="Mayor Venta ($)">Mayor Venta (Valor en $)</option>
-                      <option value="Más Órdenes (#)">Más Órdenes (Cantidad)</option>
-                    </select>
-                  </div>
-
-                  <div class="input-group">
-                    <i class="fa-solid fa-users"></i>
-                    <input 
-                      type="number" 
-                      name="numberOfWinners" 
-                      id="numberOfWinners" 
-                      placeholder="Número de Ganadores"
-                      class="custom-input"
-                      min="1"
-                      max="100"
-                      value="1"
-                      oninput="saveDraft(); updatePreview();"
-                    >
-                  </div>
-                </div>
-
-                <div class="input-group">
-                  <i class="fa-solid fa-layer-group"></i>
-                  <input 
-                    type="text" 
-                    name="verticals" 
-                    id="verticals" 
-                    value="Restaurantes" 
-                    placeholder="Secciones participantes"
-                    class="custom-input"
-                    oninput="saveDraft(); updatePreview();"
-                  >
-                </div>
-
-                <div class="input-group">
-                  <i class="fa-solid fa-box-open"></i>
-                  <input 
-                    type="text" 
-                    name="participatingProducts" 
-                    id="participatingProducts" 
-                    placeholder="Productos participantes (Ej: Todos los productos de la marca)"
-                    class="custom-input"
-                    oninput="saveDraft(); updatePreview();"
-                  >
-                </div>
-              </div>
-
-              <!-- Tipo de Premio -->
-              <div class="mb-6">
-                <h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
-                  <i class="fa-solid fa-gift text-blue-600"></i>
-                  Tipo de Premio
-                </h3>
-
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                  <label class="relative cursor-pointer">
-                    <input type="radio" name="prizeType" value="credits" class="sr-only peer" checked onchange="togglePrizeFields(); saveDraft(); updatePreview();">
-                    <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-blue-500 peer-checked:bg-blue-50 transition">
-                      <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-rappi-light rounded-full flex items-center justify-center">
-                          <i class="fa-solid fa-coins text-rappi"></i>
-                        </div>
-                        <div>
-                          <div class="font-bold text-gray-900">Créditos Rappi</div>
-                          <div class="text-xs text-gray-500">Entrega automática</div>
-                        </div>
-                      </div>
-                    </div>
-                  </label>
-
-                  <label class="relative cursor-pointer">
-                    <input type="radio" name="prizeType" value="physical" class="sr-only peer" onchange="togglePrizeFields(); saveDraft(); updatePreview();">
-                    <div class="p-4 border-2 border-gray-200 rounded-xl peer-checked:border-blue-500 peer-checked:bg-blue-50 transition">
-                      <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center">
-                          <i class="fa-solid fa-box-open text-green-600"></i>
-                        </div>
-                        <div>
-                          <div class="font-bold text-gray-900">Premio Físico</div>
-                          <div class="text-xs text-gray-500">Entrega por Organizador</div>
-                        </div>
-                      </div>
-                    </div>
-                  </label>
-                </div>
-
-                <!-- Campos para Créditos -->
-                <div id="creditsPrizeFields" class="space-y-4 p-4 bg-gray-50 rounded-xl">
-                  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="input-group">
-                      <i class="fa-solid fa-coins"></i>
-                      <input 
-                        type="number" 
-                        name="creditsAmount" 
-                        id="creditsAmount" 
-                        placeholder="Monto por ganador"
-                        class="custom-input"
-                        min="1000"
-                        oninput="saveDraft(); updatePreview();"
-                      >
-                    </div>
-                    <div class="input-group">
-                      <i class="fa-solid fa-clock"></i>
-                      <input 
-                        type="number" 
-                        name="creditLoadDays" 
-                        id="creditLoadDays" 
-                        placeholder="Días para carga"
-                        class="custom-input"
-                        min="1"
-                        max="30"
-                        value="5"
-                        oninput="saveDraft(); updatePreview();"
-                      >
-                    </div>
-                    <div class="input-group">
-                      <i class="fa-solid fa-hourglass-half"></i>
-                      <input 
-                        type="number" 
-                        name="creditsValidityDays" 
-                        id="creditsValidityDays" 
-                        placeholder="Vigencia (días)"
-                        class="custom-input"
-                        min="1"
-                        max="365"
-                        value="30"
-                        oninput="saveDraft(); updatePreview();"
-                      >
-                    </div>
-                  </div>
-                  <div class="input-group">
-                    <i class="fa-solid fa-location-dot"></i>
-                    <select name="creditsRedemptionPlace" id="creditsRedemptionPlace" class="custom-input" onchange="saveDraft(); updatePreview();">
-                      <option value="Únicamente en la Tienda Participante">En la Tienda Participante</option>
-                      <option value="En cualquier tienda de Restaurantes">En cualquier Restaurante</option>
-                      <option value="En cualquier sección de la Plataforma">En toda la Plataforma</option>
-                    </select>
-                  </div>
-                </div>
-
-                <!-- Campos para Premio Físico -->
-                <div id="physicalPrizeFields" class="hidden space-y-4 p-4 bg-gray-50 rounded-xl">
-                  <div class="input-group mb-4">
-                    <i class="fa-solid fa-gift"></i>
-                    <textarea 
-                      name="physicalPrizeDescription" 
-                      id="physicalPrizeDescription" 
-                      rows="3" 
-                      class="custom-input" 
-                      placeholder="Descripción detallada del premio (Ej: 1er lugar: iPhone 15 Pro Max 256GB, 2do lugar: AirPods Pro 2da Gen...)"
-                      style="resize: vertical; min-height: 80px;"
-                      oninput="saveDraft(); updatePreview();"
-                    ></textarea>
-                  </div>
-
-                  <!-- Quién entrega el premio -->
-                  <div class="mb-4">
-                    <label class="text-sm font-bold text-gray-700 mb-3 block">¿Quién entrega el premio físico?</label>
-                    <div class="grid grid-cols-2 gap-3">
-                      <label class="relative cursor-pointer">
-                        <input type="radio" name="prizeDeliveryBy" value="rappi" class="sr-only peer" checked onchange="toggleDataTransferSection();">
-                        <div class="p-3 border-2 border-gray-200 rounded-xl peer-checked:border-green-500 peer-checked:bg-green-50 transition text-center">
-                          <i class="fa-solid fa-motorcycle text-green-600 text-xl mb-1"></i>
-                          <div class="font-bold text-gray-900 text-sm">Rappi</div>
-                          <div class="text-xs text-gray-500">Sin acuerdo adicional</div>
-                        </div>
-                      </label>
-                      <label class="relative cursor-pointer">
-                        <input type="radio" name="prizeDeliveryBy" value="organizer" class="sr-only peer" onchange="toggleDataTransferSection();">
-                        <div class="p-3 border-2 border-gray-200 rounded-xl peer-checked:border-amber-500 peer-checked:bg-amber-50 transition text-center">
-                          <i class="fa-solid fa-building text-amber-600 text-xl mb-1"></i>
-                          <div class="font-bold text-gray-900 text-sm">El Organizador</div>
-                          <div class="text-xs text-amber-600">Requiere acuerdo</div>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  <!-- Sección Acuerdo de Transferencia -->
-                  <div id="dataTransferSection" class="hidden">
-                    <div class="bg-amber-50 border-2 border-amber-300 rounded-xl p-4 mb-4">
-                      <div class="flex items-start gap-3 mb-4">
-                        <div class="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0">
-                          <i class="fa-solid fa-file-signature text-white"></i>
-                        </div>
-                        <div>
-                          <h4 class="font-bold text-amber-900">Acuerdo de Transferencia de Datos Requerido</h4>
-                          <p class="text-sm text-amber-800 mt-1">
-                            Para que Rappi pueda compartir los datos del ganador (nombre, teléfono, dirección) con el Organizador, 
-                            se debe firmar un <strong>Acuerdo de Transferencia de Datos</strong> conforme a la Ley 1581 de 2012.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div class="bg-white rounded-lg p-4 mb-4">
-                        <h5 class="font-bold text-gray-800 text-sm mb-2">📋 El KAM debe:</h5>
-                        <ol class="text-sm text-gray-700 space-y-2 ml-4 list-decimal">
-                          <li>Descargar el modelo de Acuerdo</li>
-                          <li>Completar datos del Organizador (razón social, NIT, representante legal)</li>
-                          <li>Enviar al Organizador para firma</li>
-                          <li>Archivar el acuerdo firmado antes de entregar datos</li>
-                        </ol>
-                      </div>
-
-                      <a 
-                        href="https://docs.google.com/document/d/1ZsaF6p11OmF_12gRtp200sUJNRW_dEcd/edit" 
-                        target="_blank"
-                        class="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition mb-4"
-                      >
-                        <i class="fa-solid fa-download"></i>
-                        Descargar Modelo de Acuerdo
-                      </a>
-
-                      <label class="flex items-start gap-3 cursor-pointer p-3 bg-white rounded-lg border-2 border-gray-200 hover:border-green-400 transition" onclick="event.stopPropagation();">
-                        <input 
-                          type="checkbox" 
-                          id="dataTransferCheckbox" 
-                          name="dataTransferConfirmed" 
-                          value="true"
-                          class="w-5 h-5 mt-0.5 accent-green-600"
-                          onchange="updateProgress();"
-                        >
-                        <div>
-                          <span class="font-bold text-gray-800">Confirmo que el Acuerdo de Transferencia de Datos ya fue gestionado</span>
-                          <p class="text-xs text-gray-500 mt-1">El KAM ya envió el modelo y tiene confirmación del Organizador</p>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Fecha de Anuncio -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-4">
-                  <div>
-                    <label class="text-xs font-bold text-gray-600 mb-2 block">Fecha de Anuncio de Ganadores</label>
-                    <input 
-                      type="date" 
-                      name="announcementDate" 
-                      id="announcementDate" 
-                      class="custom-input !pl-3"
-                      oninput="saveDraft(); updatePreview();"
-                    >
-                  </div>
-                  <div class="input-group">
-                    <i class="fa-solid fa-dollar-sign"></i>
-                    <input 
-                      type="text" 
-                      name="minParticipation" 
-                      id="minParticipation" 
-                      class="custom-input"
-                      placeholder="Mínimo de compra para participar (Opcional)"
-                      oninput="saveDraft(); updatePreview();"
-                    >
-                  </div>
-                </div>
+              <div id="dynamicSection3" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <!-- Renderizado por JS -->
               </div>
             </div>
-
             <!-- SECCIÓN 4: Restricciones -->
             <div class="card-section p-6 sm:p-8 animate-slide-in" style="animation-delay: 0.3s">
               <div class="flex items-center justify-between mb-6">
@@ -1712,15 +1271,20 @@
 
                 <div class="md:col-span-2 input-group">
                   <i class="fa-solid fa-exclamation-circle"></i>
-                  <textarea 
+                  <select 
                     name="specialConditions" 
                     id="specialConditions" 
-                    rows="2" 
                     class="custom-input" 
-                    placeholder="Condiciones especiales (opcional)"
-                    style="resize: vertical;"
-                    oninput="saveDraft(); updatePreview();"
-                  ></textarea>
+                    onchange="saveDraft(); updatePreview();"
+                  >
+                    <option value="">Sin condiciones especiales (Ninguna)</option>
+                    
+                    <option value="Aplica únicamente para consumo en el local (Dine-in).">Aplica únicamente para consumo en el local</option>
+                    <option value="Aplica únicamente para órdenes con envío a domicilio.">Aplica únicamente para envío a domicilio</option>
+                    <option value="Campaña válida únicamente para las primeras 100 órdenes del día.">Límite: Primeras 100 órdenes diarias</option>
+                    <option value="No aplica para combos ni promociones, únicamente productos a precio regular.">No aplica para combos (solo precio regular)</option>
+                    <option value="El descuento máximo permitido por orden no podrá superar el cincuenta por ciento (50%) del valor total de los productos.">Límite de descuento 50% del total</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -2121,7 +1685,319 @@
       section3: false,
       section4: true
     };
+    // ============================================
+    // GOD MODE: RENDERIZADO DINÁMICO
+    // ============================================
+    let campaignTypesCache = [];
+    let currentFieldsCache = [];
 
+    function loadCampaignTypes() {
+      google.script.run
+        .withSuccessHandler(raw => {
+          const types = JSON.parse(raw);
+          campaignTypesCache = types;
+          renderCampaignTypeCards(types);
+        })
+        .withFailureHandler(err => {
+          console.error('Error cargando dinámicas:', err);
+          document.getElementById('dynamicPromoGrid').innerHTML = `
+            <div class="col-span-full text-center py-6 text-red-400">
+              <i class="fa-solid fa-triangle-exclamation text-2xl mb-2 block"></i>
+              <span class="text-sm">Error al cargar las dinámicas</span>
+            </div>`;
+        })
+        .getCampaignTypesForUser();
+    }
+
+    function renderCampaignTypeCards(types) {
+      const grid = document.getElementById('dynamicPromoGrid');
+      if (!types.length) {
+        grid.innerHTML = '<div class="col-span-full text-center py-4 text-gray-400 text-sm">No hay dinámicas activas configuradas.</div>';
+        return;
+      }
+
+      // Filtrar por país si aplica
+      const country = currentCountry || 'CO';
+      const filtered = types.filter(t => {
+        const countries = String(t.countries || 'ALL');
+        return countries === 'ALL' || countries.includes(country);
+      });
+
+      grid.innerHTML = filtered.map(t => `
+        <button type="button"
+          onclick="selectCampaignType('${t.type_name}')"
+          id="typeCard_${t.type_id}"
+          class="campaign-type-card group relative p-4 border-2 border-gray-200 rounded-xl transition-all duration-200 hover:border-gray-300 hover:shadow-md text-left"
+          data-type-name="${t.type_name}"
+        >
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
+                 style="background: ${t.color}15;">
+              <i class="fa-solid ${t.icon} text-lg" style="color: ${t.color};"></i>
+            </div>
+            <div class="min-w-0">
+              <div class="font-bold text-gray-900 text-sm truncate">${t.type_name}</div>
+              <div class="text-xs text-gray-500 truncate">${t.description}</div>
+            </div>
+          </div>
+          <div class="absolute top-2 right-2 w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity type-card-check">
+          </div>
+        </button>
+      `).join('');
+    }
+
+    function selectCampaignType(typeName) {
+      // 1. Actualizar el input hidden
+      document.getElementById('dynamicType').value = typeName;
+
+      // 2. Marcar la tarjeta seleccionada
+      document.querySelectorAll('.campaign-type-card').forEach(card => {
+        const isSelected = card.dataset.typeName === typeName;
+        card.classList.toggle('border-rappi', isSelected);
+        card.classList.toggle('bg-rappi-light', isSelected);
+        card.classList.toggle('shadow-lg', isSelected);
+        card.classList.toggle('border-gray-200', !isSelected);
+        card.classList.toggle('bg-white', !isSelected);
+        const check = card.querySelector('.type-card-check');
+        if (check) {
+          check.innerHTML = isSelected ? '<i class="fa-solid fa-check text-white text-xs"></i>' : '';
+          check.style.background = isSelected ? '#FF4500' : 'transparent';
+          check.style.borderColor = isSelected ? '#FF4500' : '#D1D5DB';
+          check.style.opacity = isSelected ? '1' : '';
+        }
+      });
+
+      // 3. Mostrar sección 3 dinámica y cargar campos
+      const sec3 = document.getElementById('section-dynamic-3');
+      sec3.classList.remove('hidden');
+
+      // 4. Actualizar título de sección 3
+      const typeObj = campaignTypesCache.find(t => t.type_name === typeName);
+      if (typeObj) {
+        document.getElementById('section3Icon').className = `fa-solid ${typeObj.icon} text-lg`;
+        document.getElementById('section3Label').textContent = `Variables de ${typeName}`;
+      }
+
+      // 5. Llamar al backend para cargar campos
+      const country = currentCountry || 'CO';
+      google.script.run
+        .withSuccessHandler(raw => {
+          const fields = JSON.parse(raw);
+          currentFieldsCache = fields;
+          renderDynamicFields(fields);
+          // Attachar listeners después de renderizar
+          attachDynamicListeners();
+          updateProgress();
+          updatePreview();
+        })
+        .withFailureHandler(err => {
+          console.error('Error cargando campos:', err);
+          document.getElementById('dynamicSection3').innerHTML = '<p class="text-red-500 text-sm col-span-full">Error cargando campos.</p>';
+        })
+        .getFieldsForUserForm(typeName, country);
+
+      saveDraft();
+      updateProgress();
+    }
+
+    function renderDynamicFields(fields) {
+      const container3 = document.getElementById('dynamicSection3');
+      const container4 = document.getElementById('dynamicSection4');
+      container3.innerHTML = '';
+      if (container4) container4.innerHTML = '';
+
+      // Agrupar por grupo para headers
+      let currentGroup3 = '';
+      let currentGroup4 = '';
+
+      fields.forEach(f => {
+        // Filtrar secciones 1 y 2 (se manejan estáticamente)
+        if (f.section === '1' || f.section === '2') return;
+
+        // Evaluar dependencias: si depends_on = "prizeType:credits", solo mostrar si prizeType=credits
+        let dependsStyle = '';
+        let dependsAttr = '';
+        if (f.depends_on) {
+          const [depField, depValue] = f.depends_on.split(':');
+          dependsAttr = `data-depends-on="${depField}" data-depends-value="${depValue}"`;
+          // Ocultar por defecto si hay dependencia, se mostrará vía JS
+          dependsStyle = 'display:none;';
+        }
+
+        const target = (f.section === '4') ? (container4 || null) : container3;
+        if (!target) return; // Skip section 4 fields if container doesn't exist (hardcoded)
+        // Header de grupo
+        const groupRef = (f.section === '4') ? currentGroup4 : currentGroup3;
+        if (f.group && f.group !== groupRef) {
+          if (f.section === '4') currentGroup4 = f.group;
+          else currentGroup3 = f.group;
+
+          if (target) target.insertAdjacentHTML('beforeend', `
+            <div class="col-span-full mt-2 mb-1">
+              <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider">${f.group}</h3>
+            </div>
+          `);
+        }
+
+        const requiredAttr = f.required ? 'required' : '';
+        const requiredStar = f.required ? ' *' : '';
+        const iconClass = f.icon ? `fa-solid ${f.icon}` : 'fa-solid fa-pen';
+        const tooltipHtml = f.tooltip ? `
+          <div class="tooltip-wrapper" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);">
+            <i class="fa-solid fa-circle-info tooltip-icon"></i>
+            <div class="tooltip-content">${f.tooltip}</div>
+          </div>` : '';
+
+        let inputHtml = '';
+
+        switch (f.field_type) {
+          case 'select':
+            const options = f.options.map(o => {
+              const selected = (o === f.default_value) ? 'selected' : '';
+              return `<option value="${o}" ${selected}>${o}</option>`;
+            }).join('');
+            inputHtml = `
+              <select name="${f.field_id}" id="${f.field_id}"
+                class="custom-input dynamic-input" ${requiredAttr}
+                onchange="handleDynamicChange('${f.field_id}'); saveDraft(); updatePreview(); updateProgress();">
+                ${f.options.length > 0 ? `<option value="">Selecciona...</option>` : ''}
+                ${options}
+              </select>`;
+            break;
+
+          case 'textarea':
+            inputHtml = `
+              <textarea name="${f.field_id}" id="${f.field_id}"
+                rows="3" class="custom-input dynamic-input" ${requiredAttr}
+                placeholder="${f.label}${requiredStar}"
+                style="resize:vertical;min-height:80px;"
+                oninput="saveDraft(); updatePreview(); updateProgress();"
+              >${f.default_value}</textarea>`;
+            break;
+
+          case 'date':
+            inputHtml = `
+              <input type="date" name="${f.field_id}" id="${f.field_id}"
+                class="custom-input dynamic-input" ${requiredAttr}
+                value="${f.default_value}"
+                onchange="saveDraft(); updatePreview(); updateProgress();">`;
+            break;
+
+          case 'time':
+            inputHtml = `
+              <input type="time" name="${f.field_id}" id="${f.field_id}"
+                class="custom-input dynamic-input" ${requiredAttr}
+                value="${f.default_value}"
+                onchange="saveDraft(); updatePreview(); updateProgress();">`;
+            break;
+
+          case 'number':
+            // Extraer min/max de validation_rule (ej: "min:1,max:100")
+            let minAttr = '';
+            let maxAttr = '';
+            if (f.validation_rule) {
+              const rules = f.validation_rule.split(',');
+              rules.forEach(r => {
+                const [k, v] = r.split(':');
+                if (k.trim() === 'min') minAttr = `min="${v.trim()}"`;
+                if (k.trim() === 'max') maxAttr = `max="${v.trim()}"`;
+              });
+            }
+            inputHtml = `
+              <input type="number" name="${f.field_id}" id="${f.field_id}"
+                class="custom-input dynamic-input" ${requiredAttr}
+                placeholder="${f.label}${requiredStar}"
+                value="${f.default_value}" ${minAttr} ${maxAttr}
+                oninput="saveDraft(); updatePreview(); updateProgress();">`;
+            break;
+
+          case 'email':
+            inputHtml = `
+              <input type="email" name="${f.field_id}" id="${f.field_id}"
+                class="custom-input dynamic-input" ${requiredAttr}
+                placeholder="${f.label}${requiredStar}"
+                value="${f.default_value}"
+                oninput="saveDraft(); updatePreview(); updateProgress();">`;
+            break;
+
+          default: // text, url, etc.
+            inputHtml = `
+              <input type="text" name="${f.field_id}" id="${f.field_id}"
+                class="custom-input dynamic-input" ${requiredAttr}
+                placeholder="${f.label}${requiredStar}"
+                value="${f.default_value}"
+                oninput="saveDraft(); updatePreview(); updateProgress();">`;
+        }
+
+        // Determinar si ocupa ancho completo
+        const isFullWidth = ['textarea'].includes(f.field_type) || f.field_id === 'specialConditions';
+        const colClass = isFullWidth ? 'md:col-span-2' : '';
+
+        const fieldHtml = `
+          <div class="input-group ${colClass}" ${dependsAttr} style="${dependsStyle}" data-field-id="${f.field_id}">
+            <i class="${iconClass}"></i>
+            ${inputHtml}
+            ${tooltipHtml}
+            <span class="error-message">Este campo es requerido</span>
+          </div>
+        `;
+
+        target.insertAdjacentHTML('beforeend', fieldHtml);
+
+        // Si tiene default_value para select, forzar selección
+        if (f.field_type === 'select' && f.default_value) {
+          const sel = document.getElementById(f.field_id);
+          if (sel) sel.value = f.default_value;
+        }
+      });
+
+      // Evaluar dependencias iniciales
+      evaluateDependencies();
+    }
+
+    function handleDynamicChange(fieldId) {
+      // Cuando cambia un campo, re-evaluar dependencias
+      evaluateDependencies();
+    }
+
+    function evaluateDependencies() {
+      document.querySelectorAll('[data-depends-on]').forEach(el => {
+        const depField = el.dataset.dependsOn;
+        const depValue = el.dataset.dependsValue;
+        const source = document.getElementById(depField);
+
+        let currentValue = '';
+        if (source) {
+          if (source.type === 'radio') {
+            const checked = document.querySelector(`[name="${depField}"]:checked`);
+            currentValue = checked ? checked.value : '';
+          } else {
+            currentValue = source.value;
+          }
+        }
+
+        const shouldShow = (currentValue === depValue);
+        el.style.display = shouldShow ? '' : 'none';
+
+        // Si se oculta, quitar required para no bloquear validación
+        const input = el.querySelector('.dynamic-input');
+        if (input) {
+          const fieldDef = currentFieldsCache.find(f => f.field_id === el.dataset.fieldId);
+          if (!shouldShow) {
+            input.removeAttribute('required');
+          } else if (fieldDef && fieldDef.required) {
+            input.setAttribute('required', '');
+          }
+        }
+      });
+    }
+
+    function attachDynamicListeners() {
+      document.querySelectorAll('.dynamic-input').forEach(el => {
+        el.addEventListener('input', updateProgress);
+        el.addEventListener('change', updateProgress);
+      });
+    }
     // ============================================
     // TRIGGER FORM SUBMIT (desde botón externo)
     // ============================================
@@ -2695,42 +2571,38 @@
                                  endDate.value !== '' &&
                                  new Date(endDate.value) >= new Date(startDate.value);
 
-      if (dynamicType.value === 'Cashback') {
-        const pct = document.getElementById('cashbackPct');
-        const cap = document.getElementById('cap');
-        const budget = document.getElementById('budget');
-        validationState.section3 = pct.value !== '' && cap.value !== '' && budget.value !== '' &&
-                                   parseFloat(pct.value) >= 1 && parseFloat(pct.value) <= 100 &&
-                                   parseFloat(cap.value) >= 1000 &&
-                                   parseFloat(budget.value) >= 10000;
-      } else if (dynamicType.value === 'Concurso Mayor Comprador') {
-        const organizer = document.getElementById('organizerLegalName');
-        const phone = document.getElementById('organizerPhone');
-        const orgEmail = document.getElementById('organizerEmail');
-        const winners = document.getElementById('numberOfWinners');
-        const announcement = document.getElementById('announcementDate');
-        
-        const prizeType = document.querySelector('input[name="prizeType"]:checked')?.value;
-        let prizeValid = false;
-        
-        if (prizeType === 'credits') {
-          const amount = document.getElementById('creditsAmount');
-          prizeValid = amount.value !== '' && parseFloat(amount.value) >= 1000;
-        } else {
-          const desc = document.getElementById('physicalPrizeDescription');
-          prizeValid = desc.value.trim() !== '';
+      // GOD MODE: Validación genérica de sección 3
+      if (dynamicType.value !== '') {
+        const reqFields3 = document.querySelectorAll('#dynamicSection3 .dynamic-input[required]');
+        let allValid3 = true;
+        reqFields3.forEach(input => {
+          // Solo validar si el campo está visible (no oculto por dependencia)
+          const wrapper = input.closest('[data-field-id]');
+          if (wrapper && wrapper.style.display === 'none') return;
+          if (input.value.trim() === '') allValid3 = false;
+        });
+        validationState.section3 = allValid3 && reqFields3.length >= 0;
+        // Si no hay campos required visibles en sec 3 pero hay tipo seleccionado, es válido
+        const visibleRequired3 = Array.from(reqFields3).filter(inp => {
+          const w = inp.closest('[data-field-id]');
+          return !w || w.style.display !== 'none';
+        });
+        if (visibleRequired3.length === 0 && dynamicType.value !== '') {
+          validationState.section3 = true;
         }
-        
-        validationState.section3 = organizer.value.trim() !== '' &&
-                                   phone.value.trim() !== '' &&
-                                   orgEmail.value.includes('@') &&
-                                   winners.value !== '' &&
-                                   announcement.value !== '' &&
-                                   prizeValid;
       } else {
-        // Cuando no hay tipo seleccionado
         validationState.section3 = false;
       }
+
+      // Sección 4 siempre válida (campos opcionales) a menos que tenga required
+      const reqFields4 = document.querySelectorAll('#dynamicSection4 .dynamic-input[required]');
+      let allValid4 = true;
+      reqFields4.forEach(input => {
+        const wrapper = input.closest('[data-field-id]');
+        if (wrapper && wrapper.style.display === 'none') return;
+        if (input.value.trim() === '') allValid4 = false;
+      });
+      validationState.section4 = allValid4;
 
       const completedSections = Object.values(validationState).filter(v => v).length;
       const progress = (completedSections / 4) * 100;
@@ -2739,33 +2611,19 @@
       updateSteps();
 
       const allValid = validationState.section1 && validationState.section2 && validationState.section3;
-const submitBtn = document.getElementById('btnSubmit');
-const submitHint = document.getElementById('submitHint');
-
-submitBtn.disabled = !allValid;
-
-let missing = [];
-if (!validationState.section1) missing.push('correo corporativo Rappi y tipo de campaña');
-if (!validationState.section2) missing.push('datos básicos: tienda, territorio y fechas');
-if (!validationState.section3) {
-  if (dynamicType.value === 'Cashback') {
-    missing.push('datos de cashback: % , tope y presupuesto');
-  } else if (dynamicType.value === 'Concurso Mayor Comprador') {
-    missing.push('datos de concurso: organizador, premio y anuncio');
-  } else {
-    missing.push('configuración del tipo de dinámica');
-  }
-}
-
-if (allValid) {
-  submitHint.textContent = '¡Listo! Haz clic para generar el documento';
-  submitHint.classList.add('text-green-600');
-  submitHint.classList.remove('text-gray-500', 'text-red-500');
-} else {
-  submitHint.textContent = 'Falta completar: ' + missing.join(' · ');
-  submitHint.classList.add('text-red-500');
-  submitHint.classList.remove('text-green-600', 'text-gray-500');
-}
+      const submitBtn = document.getElementById('btnSubmit');
+      const submitHint = document.getElementById('submitHint');
+      
+      submitBtn.disabled = !allValid;
+      if (allValid) {
+        submitHint.textContent = '¡Listo! Haz clic para generar el documento';
+        submitHint.classList.add('text-green-600');
+        submitHint.classList.remove('text-gray-500');
+      } else {
+        submitHint.textContent = 'Completa los campos requeridos';
+        submitHint.classList.add('text-gray-500');
+        submitHint.classList.remove('text-green-600');
+      }
     }
 
     function updateSteps() {
@@ -2788,21 +2646,15 @@ if (allValid) {
     }
 
     function toggleFormFields() {
+      // GOD MODE: La selección de tipo ahora se hace con selectCampaignType()
+      // Esta función se mantiene como puente de compatibilidad
       const type = document.getElementById('dynamicType').value;
-      const cashbackSection = document.getElementById('section-cashback');
-      const concursoSection = document.getElementById('section-concurso');
-      
-      if (type === 'Cashback') {
-        cashbackSection.classList.remove('hidden');
-        concursoSection.classList.add('hidden');
-      } else if (type === 'Concurso Mayor Comprador') {
-        cashbackSection.classList.add('hidden');
-        concursoSection.classList.remove('hidden');
+      if (type) {
+        selectCampaignType(type);
       } else {
-        cashbackSection.classList.add('hidden');
-        concursoSection.classList.add('hidden');
+        const sec3 = document.getElementById('section-dynamic-3');
+        if (sec3) sec3.classList.add('hidden');
       }
-      
       updateProgress();
     }
 
@@ -2838,9 +2690,14 @@ if (allValid) {
       if (select.value.includes('días')) {
         daysContainer.classList.remove('hidden');
         datesContainer.classList.add('hidden');
+        // Limpiamos las fechas si elije días
+        document.getElementById('redemptionStart').value = '';
+        document.getElementById('redemptionEnd').value = '';
       } else {
         daysContainer.classList.add('hidden');
         datesContainer.classList.remove('hidden');
+        // Limpiamos los días si elije fechas
+        document.getElementById('validityDays').value = '';
       }
     }
 
@@ -2860,54 +2717,44 @@ if (allValid) {
     }
 
     function fillTestValues() {
-  const today = new Date().toISOString().split('T')[0];
-  const type = document.getElementById('dynamicType').value || 'Cashback';
-
-  document.getElementById('userEmail').value = 'legal@rappi.com';
-  document.getElementById('dynamicType').value = type;
-  toggleFormFields();
-
-  document.getElementById('campaignName').value = 'Campaña Test ' + Math.floor(Math.random() * 1000);
-  document.getElementById('shopName').value = 'Hamburguesas El Corral';
-  document.getElementById('territory').value = 'Nacional';
-
-  document.getElementById('startDate').value = today;
-  document.getElementById('endDate').value = today;
-  document.getElementById('startTime').value = '12:00';
-  document.getElementById('endTime').value = '23:59';
-
-  const extraEmails = document.getElementById('extraEmails');
-  const userSegment = document.getElementById('userSegment');
-  const paymentMethods = document.getElementById('paymentMethods');
-  const maxOrders = document.getElementById('maxOrders');
-
-  if (extraEmails) extraEmails.value = '';
-  if (userSegment) userSegment.value = 'Todos los usuarios';
-  if (paymentMethods) paymentMethods.value = 'Todos excepto Efectivo';
-  if (maxOrders) maxOrders.value = '1';
-
-  if (type === 'Cashback') {
-    document.getElementById('cashbackPct').value = '20';
-    document.getElementById('cap').value = '20000';
-    document.getElementById('budget').value = '1000000';
-  } else {
-    document.getElementById('organizerLegalName').value = 'HAMBURGUESAS EL CORRAL S.A.S.';
-    document.getElementById('organizerPhone').value = '018000112233';
-    document.getElementById('organizerEmail').value = 'pqr@elcorral.com';
-    document.getElementById('numberOfWinners').value = '3';
-    document.getElementById('creditsAmount').value = '50000';
-
-    const nextWeek = new Date();
-    nextWeek.setDate(nextWeek.getDate() + 7);
-    document.getElementById('announcementDate').value = nextWeek.toISOString().split('T')[0];
-  }
-
-  saveDraft();
-  updateProgress();
-  updatePreview();
-
-  alert('✅ Datos de prueba cargados. Revisa y genera el documento.');
-}
+      const today = new Date().toISOString().split('T')[0];
+      const type = document.getElementById('dynamicType').value || 'Cashback';
+      
+      document.getElementById('userEmail').value = 'test@rappi.com';
+      document.getElementById('dynamicType').value = type;
+      toggleFormFields();
+      
+      document.getElementById('campaignName').value = 'Campaña Test ' + Math.floor(Math.random() * 1000);
+      document.getElementById('shopName').value = 'Hamburguesas El Corral';
+      document.getElementById('territory').value = 'Nacional';
+      
+      document.getElementById('startDate').value = today;
+      document.getElementById('endDate').value = today;
+      document.getElementById('startTime').value = '12:00';
+      document.getElementById('endTime').value = '23:59';
+      
+      if (type === 'Cashback') {
+        document.getElementById('cashbackPct').value = '20';
+        document.getElementById('cap').value = '20000';
+        document.getElementById('budget').value = '1000000';
+      } else {
+        document.getElementById('organizerLegalName').value = 'HAMBURGUESAS EL CORRAL S.A.S.';
+        document.getElementById('organizerPhone').value = '018000112233';
+        document.getElementById('organizerEmail').value = 'pqr@elcorral.com';
+        document.getElementById('numberOfWinners').value = '3';
+        document.getElementById('creditsAmount').value = '50000';
+        
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        document.getElementById('announcementDate').value = nextWeek.toISOString().split('T')[0];
+      }
+      
+      saveDraft();
+      updateProgress();
+      updatePreview();
+      
+      alert('✅ Datos de prueba cargados. Revisa y genera el documento.');
+    }
 
     function copyDocLink() {
       const link = document.getElementById('docLink').href;
@@ -2924,12 +2771,14 @@ if (allValid) {
         return;
       }
 
+      // Verificar Data Transfer Agreement si aplica
       const type = document.getElementById('dynamicType').value;
-      const prizeType = document.querySelector('input[name="prizeType"]:checked')?.value;
+      const prizeTypeEl = document.getElementById('prizeType');
+      const deliveryEl = document.getElementById('prizeDeliveryBy');
       
-      if (type === 'Concurso Mayor Comprador' && prizeType === 'physical') {
-        const confirmed = document.getElementById('dataTransferConfirmed').value;
-        if (confirmed !== 'true') {
+      if (type === 'Concurso Mayor Comprador' && prizeTypeEl && prizeTypeEl.value === 'physical' && deliveryEl && deliveryEl.value === 'organizer') {
+        // Si existe modal de Data Transfer, mostrarlo primero
+        if (typeof showDataTransferModal === 'function') {
           showDataTransferModal();
           return;
         }
@@ -2946,24 +2795,34 @@ if (allValid) {
       btn.disabled = true;
       loading.classList.remove('hidden');
       
-      const formDataObj = new FormData(form);
-const payload = {};
-formDataObj.forEach((value, key) => payload[key] = value);
-
-// Defaults defensivos para evitar errores del motor legacy
-payload.extraEmails = payload.extraEmails || '';
-payload.userSegment = payload.userSegment || 'Todos los usuarios';
-payload.paymentMethods = payload.paymentMethods || 'Todos excepto Efectivo';
-payload.maxOrders = payload.maxOrders || '1';
-payload.specialConditions = payload.specialConditions || '';
-
-if (payload.dynamicType === 'Concurso Mayor Comprador') {
-  payload.prizes = payload.prizeType === 'credits' 
-    ? `${payload.creditsAmount} Créditos Rappi`
-    : payload.physicalPrizeDescription;
-}
+      // GOD MODE: Construir payload desde campos estáticos + dinámicos
+      const payload = {};
       
-      // Llamar a Google Apps Script
+      // 1. Campos estáticos del form (secciones 1 y 2)
+      const formDataObj = new FormData(form);
+      formDataObj.forEach((value, key) => payload[key] = value);
+      
+      // 2. Campos dinámicos (secciones 3 y 4)
+      document.querySelectorAll('.dynamic-input').forEach(input => {
+        // Solo incluir si está visible
+        const wrapper = input.closest('[data-field-id]');
+        if (wrapper && wrapper.style.display === 'none') return;
+        const name = input.name || input.id;
+        if (name) payload[name] = input.value;
+      });
+      
+      // 3. Variables globales
+      payload.countryCode = currentCountry || 'CO';
+      payload.currencyCode = currentCurrency || 'COP';
+      payload.currencySymbol = currentCurrencySymbol || '$';
+      
+      // 4. Campos especiales de concurso (retrocompatibilidad)
+      if (payload.dynamicType === 'Concurso Mayor Comprador') {
+        payload.prizes = payload.prizeType === 'credits' 
+          ? `${payload.creditsAmount || ''} Créditos Rappi`
+          : payload.physicalPrizeDescription || '';
+      }
+      
       google.script.run
         .withSuccessHandler(response => {
           const res = JSON.parse(response);
@@ -3217,36 +3076,16 @@ if (payload.dynamicType === 'Concurso Mayor Comprador') {
       if (el) el.remove();
     }
     document.addEventListener('DOMContentLoaded', function() {
+      // Listeners estáticos (secciones 1 y 2)
       document.getElementById('userEmail').addEventListener('input', updateProgress);
-      document.getElementById('dynamicType').addEventListener('change', updateProgress);
       document.getElementById('shopName').addEventListener('input', updateProgress);
       document.getElementById('territory').addEventListener('input', updateProgress);
       document.getElementById('startDate').addEventListener('change', updateProgress);
       document.getElementById('endDate').addEventListener('change', updateProgress);
-      
-      const cashbackPct = document.getElementById('cashbackPct');
-      const cap = document.getElementById('cap');
-      const budget = document.getElementById('budget');
-      if (cashbackPct) cashbackPct.addEventListener('input', updateProgress);
-      if (cap) cap.addEventListener('input', updateProgress);
-      if (budget) budget.addEventListener('input', updateProgress);
-      
-      const organizerLegalName = document.getElementById('organizerLegalName');
-      const organizerPhone = document.getElementById('organizerPhone');
-      const organizerEmail = document.getElementById('organizerEmail');
-      const numberOfWinners = document.getElementById('numberOfWinners');
-      const creditsAmount = document.getElementById('creditsAmount');
-      const physicalPrizeDescription = document.getElementById('physicalPrizeDescription');
-      const announcementDate = document.getElementById('announcementDate');
 
-      if (organizerLegalName) organizerLegalName.addEventListener('input', updateProgress);
-      if (organizerPhone) organizerPhone.addEventListener('input', updateProgress);
-      if (organizerEmail) organizerEmail.addEventListener('input', updateProgress);
-      if (numberOfWinners) numberOfWinners.addEventListener('input', updateProgress);
-      if (creditsAmount) creditsAmount.addEventListener('input', updateProgress);
-      if (physicalPrizeDescription) physicalPrizeDescription.addEventListener('input', updateProgress);
-      if (announcementDate) announcementDate.addEventListener('change', updateProgress);
-      
+      // GOD MODE: Cargar tipos de campaña desde la BD
+      loadCampaignTypes();
+
       updateProgress();
     });
   </script>
@@ -4319,14 +4158,6 @@ function switchAdminTab(tab) {
 }
 
 // ============================================
-// ADMIN ACCESS BUTTON (check on page load)
-// ============================================
-function checkAdminAccess() {
-  const btn = document.getElementById('adminBtn');
-  if (btn) btn.style.display = 'flex';
-}
-
-// ============================================
 // TEMPLATES
 // ============================================
 function loadAdminTemplates() {
@@ -5187,12 +5018,24 @@ function twCallBackend(action, data) {
 function escapeHtml(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 // ============================================
-// ADMIN ACCESS BUTTON (check on page load)
-// ============================================
-function checkAdminAccess() {
-  const btn = document.getElementById('adminBtn');
-  if (btn) btn.style.display = 'flex';
-}
+    // ADMIN ACCESS BUTTON (Real Validation)
+    // ============================================
+    function checkAdminAccess() {
+      google.script.run
+        .withSuccessHandler(response => {
+          try {
+            const data = JSON.parse(response);
+            // Mostrar si el status es ok y el rol no es "none"
+            if (data.status === 'ok' && data.role && data.role !== 'none') {
+              const btn = document.getElementById('adminBtn');
+              if (btn) btn.style.display = 'flex';
+            }
+          } catch(e) {
+            console.error("Error parseando permisos de admin", e);
+          }
+        })
+        .adminGetCurrentUser();
+    }
 
 // ============================================
 // INIT
