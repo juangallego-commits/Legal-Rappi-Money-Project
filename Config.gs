@@ -67,3 +67,12 @@ const TW_CONFIG = {
     'URL_BASES': { label: 'URL de bases legales', type: 'url' },
   }
 };
+const BASE_FIELD_MAP = {
+  'NOMBRE_CAMPANA':  { canonical: 'campaignName', format_as: '' },
+  'FECHA_INICIO':    { canonical: 'startDate',    format_as: 'date_legal' },
+  'FECHA_FIN':       { canonical: 'endDate',      format_as: 'date_legal' },
+  'HORA_INICIO':     { canonical: 'startTime',    format_as: '' },
+  'HORA_FIN':        { canonical: 'endTime',      format_as: '' },
+  'TERRITORIO':      { canonical: 'territory',    format_as: '' },
+  'TIENDA_BASE':     { canonical: 'shopName',     format_as: '' },
+};
