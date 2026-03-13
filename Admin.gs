@@ -679,7 +679,8 @@ function createTemplateFromWizard(payload) {
           var i = fieldHeaders.indexOf(col);
           if (i >= 0) fieldRow[i] = val || '';
         };
-
+        var baseMapping = (typeof BASE_FIELD_MAP !== 'undefined') ? BASE_FIELD_MAP[m.placeholder] : null;
+        var isBaseField = !!baseMapping;
         setFieldVal('field_id', fieldId);
         setFieldVal('country_code', countryCode);
         setFieldVal('campaign_type', campaignType);
@@ -688,7 +689,10 @@ function createTemplateFromWizard(payload) {
         setFieldVal('field_type', fieldType);
         setFieldVal('icon', '');
         setFieldVal('required', isRequired);
-        setFieldVal('section', '3');
+        setFieldVal('section', isBaseField ? '0' : '3');
+        if (fieldHeaders.indexOf('canonical_field_id') >= 0) {
+        setFieldVal('canonical_field_id', isBaseField ? baseMapping.canonical : '');
+        }
         setFieldVal('options', '');
         setFieldVal('default_value', '');
         setFieldVal('tooltip', '');
@@ -698,8 +702,12 @@ function createTemplateFromWizard(payload) {
 
         // V3.1: Persistir format_as
         if (fieldHeaders.indexOf('format_as') >= 0) {
+        if (isBaseField && baseMapping.format_as) {
+          setFieldVal('format_as', baseMapping.format_as);
+        } else {
           setFieldVal('format_as', formatAs);
         }
+      }
 
         if (existingFieldIdx >= 0) {
           // UPSERT: Actualizar
