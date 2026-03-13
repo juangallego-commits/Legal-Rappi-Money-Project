@@ -76,9 +76,14 @@ function _generateSmartTemplate(template, payload, vars, submitterEmail) {
     var placeholder = field.placeholder; // Ej: "{{FECHA_INICIO}}"
     if (!placeholder) return;
 
-    // Buscar el valor en múltiples ubicaciones del payload
+    // V3.2: Si tiene canonical_field_id, buscar primero en el campo base del payload
     var value = '';
-    if (payload[fieldId] !== undefined && payload[fieldId] !== null) {
+    var canonicalId = (field.canonical_field_id || '').toString().trim();
+
+    if (canonicalId && payload[canonicalId] !== undefined && payload[canonicalId] !== '') {
+      // Señal principal: este placeholder corresponde a un campo base del formulario
+      value = String(payload[canonicalId]);
+    } else if (payload[fieldId] !== undefined && payload[fieldId] !== null) {
       value = String(payload[fieldId]);
     } else if (payload.dynamicFields && payload.dynamicFields[fieldId] !== undefined) {
       value = String(payload.dynamicFields[fieldId]);
@@ -639,7 +644,11 @@ function getFieldsForUserForm(campaignType, countryCode) {
     const filtered = all.filter(f => {
       const matchType = (f.campaign_type === 'ALL' || f.campaign_type === campaignType);
       const matchCountry = (f.country_code === 'ALL' || f.country_code === countryCode);
-      return matchType && matchCountry;
+      // V3.2: No enviar campos base (canonical) al frontend — ya se preguntan en el formulario estático
+      // canonical_field_id es la señal principal; section='0' es redundancia de seguridad
+      const canonicalVal = (f.canonical_field_id || '').toString().trim();
+      const isNotBaseField = (String(f.section) !== '0') && (canonicalVal === '');
+      return matchType && matchCountry && isNotBaseField;
     });
     // Ordenar por section y luego por order
     filtered.sort((a, b) => {
