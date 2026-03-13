@@ -1787,6 +1787,11 @@
           renderDynamicFields(fields);
           // Attachar listeners después de renderizar
           attachDynamicListeners();
+          // V3.2: Ocultar sección 3 si no quedaron campos visibles después del filtrado
+          var visibleFields = document.querySelectorAll('#dynamicSection3 .input-group');
+          if (visibleFields.length === 0) {
+            document.getElementById('section-dynamic-3').classList.add('hidden');
+          }
           updateProgress();
           updatePreview();
         })
@@ -1811,8 +1816,8 @@
       let currentGroup4 = '';
 
       fields.forEach(f => {
-        // Filtrar secciones 1 y 2 (se manejan estáticamente)
-        if (f.section === '1' || f.section === '2') return;
+        // V3.2: Filtrar secciones 0 (campos base/canónicos), 1 y 2 (estáticos)
+        if (f.section === '0' || f.section === '1' || f.section === '2') return;
 
         // Evaluar dependencias: si depends_on = "prizeType:credits", solo mostrar si prizeType=credits
         let dependsStyle = '';
