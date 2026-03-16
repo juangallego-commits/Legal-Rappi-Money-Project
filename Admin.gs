@@ -628,7 +628,9 @@ function createTemplateFromWizard(payload) {
       mappings.forEach(function(m, idx) {
         if (!m.confirmed) return;
 
-        var placeholderStr = '{{' + m.placeholder + '}}';
+        // V3.3: Limpiar antes de envolver (evita {{{{X}}}})
+        var rawPh = m.placeholder.replace(/^\{\{/, '').replace(/\}\}$/, '');
+        var placeholderStr = '{{' + rawPh + '}}';
 
         // Buscar si ya existe este field
         var existingFieldIdx = -1;
@@ -641,8 +643,9 @@ function createTemplateFromWizard(payload) {
           }
         }
 
-        // Generar field_id desde placeholder: FECHA_INICIO → fechaInicio
-        var fieldId = m.placeholder.toLowerCase().replace(/_([a-z])/g, function(match, letter) {
+        // V3.3: Limpiar placeholder antes de generar field_id (evita {{}} en el ID)
+        var cleanPh = m.placeholder.replace(/^\{\{/, '').replace(/\}\}$/, '');
+        var fieldId = cleanPh.toLowerCase().replace(/_([a-z])/g, function(match, letter) {
           return letter.toUpperCase();
         });
 
@@ -679,8 +682,12 @@ function createTemplateFromWizard(payload) {
           var i = fieldHeaders.indexOf(col);
           if (i >= 0) fieldRow[i] = val || '';
         };
-        var baseMapping = (typeof BASE_FIELD_MAP !== 'undefined') ? BASE_FIELD_MAP[m.placeholder] : null;
+        // V3.3: Limpiar placeholder para lookup correcto en BASE_FIELD_MAP
+        var cleanPhForMap = m.placeholder.replace(/^\{\{/, '').replace(/\}\}$/, '');
+        var baseMapping = (typeof BASE_FIELD_MAP !== 'undefined') ? BASE_FIELD_MAP[cleanPhForMap] : null;
         var isBaseField = !!baseMapping;
+        // V3.3: Detectar si es un campo legal auto-resuelto
+        var isLegalDefault = (typeof LEGAL_DEFAULTS_MAP !== 'undefined') ? !!LEGAL_DEFAULTS_MAP[cleanPhForMap] : false;
         setFieldVal('field_id', fieldId);
         setFieldVal('country_code', countryCode);
         setFieldVal('campaign_type', campaignType);
@@ -689,7 +696,7 @@ function createTemplateFromWizard(payload) {
         setFieldVal('field_type', fieldType);
         setFieldVal('icon', '');
         setFieldVal('required', isRequired);
-        setFieldVal('section', isBaseField ? '0' : '3');
+        setFieldVal('section', isBaseField ? '0' : (isLegalDefault ? 'L' : '3'));
         if (fieldHeaders.indexOf('canonical_field_id') >= 0) {
         setFieldVal('canonical_field_id', isBaseField ? baseMapping.canonical : '');
         }
