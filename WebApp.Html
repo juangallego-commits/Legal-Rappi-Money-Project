@@ -2243,83 +2243,6 @@
         '<p style="color:#6B7280;font-style:italic;margin-top:20px;">[Vista previa simplificada — El documento final incluye todas las cláusulas legales]</p>';
     }
 
-      const getValue = (id) => {
-        const el = document.getElementById(id);
-        return el ? el.value : '';
-      };
-
-      const placeholder = (text) => `<span class="preview-placeholder">${text}</span>`;
-
-      const campaignName = getValue('campaignName') || getValue('shopName') || placeholder('NOMBRE CAMPAÑA');
-      const territory = getValue('territory') || placeholder('TERRITORIO');
-      const startDate = getValue('startDate') ? formatDatePreview(getValue('startDate')) : placeholder('FECHA INICIO');
-      const endDate = getValue('endDate') ? formatDatePreview(getValue('endDate')) : placeholder('FECHA FIN');
-      const startTime = getValue('startTime') || '00:00';
-      const endTime = getValue('endTime') || '23:59';
-      const shop = getValue('shopName') || placeholder('TIENDA');
-
-      if (type === 'Cashback') {
-        const pct = getValue('cashbackPct') || placeholder('%');
-        const cap = getValue('cap') ? Number(getValue('cap')).toLocaleString('es-CO') : placeholder('TOPE');
-        const budget = getValue('budget') ? Number(getValue('budget')).toLocaleString('es-CO') : placeholder('PRESUPUESTO');
-
-        previewEl.innerHTML = `
-          <h1>TÉRMINOS Y CONDICIONES – CAMPAÑA "${String(campaignName).toUpperCase()}"</h1>
-          <p>Por medio del presente documento se dan a conocer los términos y condiciones de la campaña denominada "<strong>${campaignName}</strong>"...</p>
-          
-          <h2>I. Territorio:</h2>
-          <p>La Campaña será válida únicamente para las órdenes realizadas en <strong>${territory}</strong>.</p>
-          
-          <h2>II. Vigencia:</h2>
-          <p>Campaña válida desde las <strong>${startTime}</strong> del <strong>${startDate}</strong> hasta las <strong>${endTime}</strong> del <strong>${endDate}</strong> y/o hasta agotar existencias (${budget} créditos).</p>
-          
-          <h2>IV. Tienda Participante:</h2>
-          <p>Participará la tienda virtual <strong>"${shop}"</strong> al interior de la Plataforma Rappi.</p>
-          
-          <h2>VI. Beneficio:</h2>
-          <p>Los usuarios recibirán el <strong>${pct}%</strong> del valor de su compra en Créditos, con un tope máximo de <strong>${cap}</strong> Créditos por usuario.</p>
-          
-          <p style="color: #6B7280; font-style: italic; margin-top: 20px;">[Vista previa simplificada - El documento final incluirá todas las cláusulas legales]</p>
-        `;
-      } else {
-        const organizer = getValue('organizerLegalName') || placeholder('ORGANIZADOR');
-        const winners = getValue('numberOfWinners') || placeholder('#');
-        const criteria = getValue('winnerCriteria') || 'Mayor Venta ($)';
-        const announcement = getValue('announcementDate') ? formatDatePreview(getValue('announcementDate')) : placeholder('FECHA ANUNCIO');
-
-        const prizeType = document.querySelector('input[name="prizeType"]:checked')?.value || 'credits';
-        let prizeText = '';
-        if (prizeType === 'credits') {
-          const amount = getValue('creditsAmount') ? Number(getValue('creditsAmount')).toLocaleString('es-CO') : placeholder('MONTO');
-          prizeText = `<strong>${amount}</strong> Créditos de la App`;
-        } else {
-          prizeText = getValue('physicalPrizeDescription') || placeholder('DESCRIPCIÓN DEL PREMIO');
-        }
-
-        previewEl.innerHTML = `
-          <h1>TÉRMINOS Y CONDICIONES – ACTIVIDAD PROMOCIONAL "${String(campaignName).toUpperCase()}"</h1>
-          <p>Por medio del presente documento se dan a conocer las reglas de la actividad promocional denominada "<strong>${campaignName}</strong>"...</p>
-          
-          <h2>I. Organizador y Territorio:</h2>
-          <p>La presente Actividad es organizada por <strong>${organizer}</strong>. Válida en <strong>${territory}</strong>.</p>
-          
-          <h2>II. Vigencia:</h2>
-          <p>Desde las <strong>${startTime}</strong> del <strong>${startDate}</strong> hasta las <strong>${endTime}</strong> del <strong>${endDate}</strong>.</p>
-          
-          <h2>IV. Mecánica:</h2>
-          <p>Ganarán los <strong>${winners}</strong> usuarios con el <strong>${criteria === 'Mayor Venta ($)' ? 'mayor valor acumulado en compras' : 'mayor cantidad de órdenes'}</strong> en la tienda <strong>"${shop}"</strong>.</p>
-          
-          <h2>V. Premio:</h2>
-          <p>${prizeText}</p>
-          
-          <h2>VIII. Anuncio:</h2>
-          <p>Los ganadores serán anunciados el <strong>${announcement}</strong>.</p>
-          
-          <p style="color: #6B7280; font-style: italic; margin-top: 20px;">[Vista previa simplificada - El documento final incluirá todas las cláusulas legales]</p>
-        `;
-      }
-    }
-
     function formatDatePreview(dateStr) {
       if (!dateStr) return '';
       const date = new Date(dateStr + 'T12:00:00');
@@ -2787,13 +2710,6 @@
         updatePreview();
         alert('✅ Datos de prueba cargados para "' + (document.getElementById('dynamicType').value || 'tipo seleccionado') + '"');
       }, 500);
-    }
-      
-      saveDraft();
-      updateProgress();
-      updatePreview();
-      
-      alert('✅ Datos de prueba cargados. Revisa y genera el documento.');
     }
 
     function copyDocLink() {
