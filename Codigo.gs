@@ -40,7 +40,20 @@ function coreEngineV2(payload, submitterEmail) {
     
     if (template) {
       if (typeConfig && typeConfig.processing_mode === 'template_only') {
-        return _generateSmartTemplate(template, payload, vars, submitterEmail);
+        // V3.3: Smart Template con fallback a legacy si falla
+        try {
+          return _generateSmartTemplate(template, payload, vars, submitterEmail);
+        } catch (smartErr) {
+          Logger.log('⚠️ Smart Template falló, intentando legacy: ' + smartErr.message);
+          // Solo intentar legacy si el tipo tiene lógica legacy (Cashback o Concurso)
+          var campaignTypeName = vars['Tipo de Dinámica'] || campaignType;
+          if (campaignTypeName === 'Cashback' || campaignTypeName === 'Concurso Mayor Comprador') {
+            Logger.log('🔄 Fallback a _generateWithTemplate para: ' + campaignTypeName);
+            return _generateWithTemplate(template, vars, submitterEmail);
+          }
+          // Si no es legacy-compatible, propagar el error original
+          throw smartErr;
+        }
       } else {
         return _generateWithTemplate(template, vars, submitterEmail);
       }
@@ -99,7 +112,55 @@ function _generateSmartTemplate(template, payload, vars, submitterEmail) {
     var cleanKey = placeholder.replace(/^\{\{/, '').replace(/\}\}$/, '');
     placeholders['{{' + cleanKey + '}}'] = value;
   });
+  // ──── V3.3: RESOLVER CAMPOS DERIVADOS ────
+  // Estos son placeholders compuestos que se calculan del payload
+  // (ej: TOPE_LETRAS, TEXTO_PORCENTAJE, UMBRAL_NUM, etc.)
+  if (typeof DERIVED_FIELDS !== 'undefined') {
+    var derivedKeys = Object.keys(DERIVED_FIELDS);
+    for (var dk = 0; dk < derivedKeys.length; dk++) {
+      var dKey = derivedKeys[dk];
+      var phDerived = '{{' + dKey + '}}';
+      // V3.3: DERIVED_FIELDS siempre sobreescribe — es la fuente autoritativa
+      // para formato complejo (ej: "veinte por ciento (20%)" vs "20%")
+      {
+        try {
+          var derivedVal = DERIVED_FIELDS[dKey](payload);
+          if (derivedVal !== null && derivedVal !== undefined && derivedVal !== '') {
+            placeholders[phDerived] = String(derivedVal);
+          }
+        } catch(de) {
+          Logger.log('⚠️ Derived field ' + dKey + ': ' + de.message);
+        }
+      }
+    }
+  }
 
+  // ──── V3.3: RESOLVER LEGAL DEFAULTS ────
+  // Campos como jurisdicción, ley aplicable, se resuelven de Country_Settings
+  if (typeof LEGAL_DEFAULTS_MAP !== 'undefined') {
+    try {
+      var csSheet = _getSheet(COUNTRY_SETTINGS_SHEET);
+      if (csSheet) {
+        var csData = _sheetToObjects(csSheet);
+        var csRow = csData.find(function(c) { return c.country_code === countryCode; });
+        if (csRow) {
+          var legalKeys = Object.keys(LEGAL_DEFAULTS_MAP);
+          for (var lk = 0; lk < legalKeys.length; lk++) {
+            var lKey = legalKeys[lk];
+            var phLegal = '{{' + lKey + '}}';
+            if (!placeholders[phLegal] || placeholders[phLegal] === '') {
+              var colName = LEGAL_DEFAULTS_MAP[lKey].column;
+              if (csRow[colName]) {
+                placeholders[phLegal] = String(csRow[colName]);
+              }
+            }
+          }
+        }
+      }
+    } catch(le) {
+      Logger.log('⚠️ Legal defaults: ' + le.message);
+    }
+  }
   // 3. Nombre del documento
   var campaignName = payload.campaignName || vars['Nombre de Campaña (Opcional)'] || campaignType;
   var shopName = payload.shopName || vars['Tienda Participante'] || 'General';
@@ -647,7 +708,8 @@ function getFieldsForUserForm(campaignType, countryCode) {
       // V3.2: No enviar campos base (canonical) al frontend — ya se preguntan en el formulario estático
       // canonical_field_id es la señal principal; section='0' es redundancia de seguridad
       const canonicalVal = (f.canonical_field_id || '').toString().trim();
-      const isNotBaseField = (String(f.section) !== '0') && (canonicalVal === '');
+      // V3.3: Excluir campos base (section 0), legales auto-resueltos (section L), y canónicos
+      var isNotBaseField = (String(f.section) !== '0') && (String(f.section) !== 'L') && (canonicalVal === '');
       return matchType && matchCountry && isNotBaseField;
     });
     // Ordenar por section y luego por order
