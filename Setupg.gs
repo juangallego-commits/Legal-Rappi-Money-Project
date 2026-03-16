@@ -707,3 +707,420 @@ function seedMissingFields() {
   });
   Logger.log('✅ Se agregaron ' + added + ' campos nuevos a Template_Fields');
 }
+// =================================================================
+// V3.3 MIGRACIÓN — Script idempotente de limpieza y preparación
+// =================================================================
+// INSTRUCCIONES:
+// 1. Copiar TODA esta sección al final de Setup.gs
+// 2. Ejecutar migrateV33() desde el editor de Apps Script
+// 3. Se puede ejecutar múltiples veces sin riesgo (idempotente)
+// 4. Cada paso tiene log para verificar qué hizo
+// =================================================================
+
+function migrateV33() {
+  Logger.log('🚀 ════════════════════════════════════════');
+  Logger.log('🚀 MIGRACIÓN V3.3 — Inicio');
+  Logger.log('🚀 ════════════════════════════════════════');
+
+  _v33_step1_cleanCorruptFields();
+  _v33_step2_deactivateGhostTypes();
+  _v33_step3_setCanonicalFieldIds();
+  _v33_step4_upgradeCountrySettings();
+  _v33_step5_deleteJunkSheet();
+  _v33_step5b_ensureFormatAs();
+  _v33_step6_archiveLegacySheets();
+
+  Logger.log('');
+  Logger.log('🎉 ════════════════════════════════════════');
+  Logger.log('🎉 MIGRACIÓN V3.3 — Completa');
+  Logger.log('🎉 ════════════════════════════════════════');
+  Logger.log('');
+  Logger.log('👉 SIGUIENTE: Aplicar edits quirúrgicos a Admin.gs, Config.gs, Codigo.gs');
+  Logger.log('👉 LUEGO: Deploy test → probar Cashback en /dev');
+}
+
+// ─── PASO 1: Eliminar filas corruptas de Template_Fields ───
+// Criterio: field_id que empiece con "FIELD_CO_" o con "{{"
+// Son datos de importaciones fallidas del Wizard.
+// Idempotente: si no hay filas que coincidan, no hace nada.
+function _v33_step1_cleanCorruptFields() {
+  Logger.log('');
+  Logger.log('📋 PASO 1: Limpiar Template_Fields (filas corruptas)');
+
+  var sheet = _getSheet(FIELDS_SHEET_NAME);
+  if (!sheet) { Logger.log('⚠️ Template_Fields no existe. Saltando.'); return; }
+
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var fieldIdCol = headers.indexOf('field_id');
+  if (fieldIdCol < 0) { Logger.log('⚠️ Columna field_id no encontrada. Saltando.'); return; }
+
+  // Recorrer de abajo hacia arriba para no desplazar índices al borrar
+  var deleted = 0;
+  for (var i = data.length - 1; i >= 1; i--) {
+    var fid = String(data[i][fieldIdCol] || '');
+    var isCorrupt = false;
+
+    // Criterio 1: field_id empieza con "FIELD_CO_" (bug de importación temprana)
+    if (fid.indexOf('FIELD_CO_') === 0) isCorrupt = true;
+
+    // Criterio 2: field_id empieza con "{{" SOLO si pertenece a tipo de prueba conocido
+    if (fid.indexOf('{{') === 0) {
+      var rowCampaignType = String(data[i][headers.indexOf('campaign_type')] || '');
+      var knownTestTypes = ['travel prueba', 'Concurso de Millas Lifemiles Prueba'];
+      if (knownTestTypes.indexOf(rowCampaignType) >= 0) {
+        isCorrupt = true;
+      } else {
+        Logger.log('  ⚠️ Fila ' + (i+1) + ': field_id con {{ pero tipo "' + rowCampaignType + '" — se conserva por seguridad');
+      }
+    }
+
+    if (isCorrupt) {
+      Logger.log('  🗑️ Eliminando fila ' + (i + 1) + ': field_id="' + fid + '"');
+      sheet.deleteRow(i + 1);
+      deleted++;
+    }
+  }
+
+  Logger.log('  ✅ Filas eliminadas: ' + deleted);
+  if (deleted === 0) Logger.log('  ℹ️ No había filas corruptas (ya estaba limpio)');
+}
+
+// ─── PASO 2: Desactivar Campaign_Types fantasma ───
+// Criterio: tipos con status='active' que NO tienen un template activo en Template_Registry.
+// Excepción: Cashback y Concurso Mayor Comprador siempre se mantienen (son legacy).
+// Idempotente: si ya están inactivos, no hace nada.
+function _v33_step2_deactivateGhostTypes() {
+  Logger.log('');
+  Logger.log('👻 PASO 2: Desactivar Campaign_Types fantasma');
+
+  var ctSheet = _getSheet(CAMPAIGN_TYPES_SHEET);
+  if (!ctSheet) { Logger.log('⚠️ Campaign_Types no existe. Saltando.'); return; }
+
+  var regSheet = _getSheet(REGISTRY_SHEET_NAME);
+  if (!regSheet) { Logger.log('⚠️ Template_Registry no existe. Saltando.'); return; }
+
+  // Obtener tipos con template activo
+  var regData = _sheetToObjects(regSheet);
+  var typesWithActiveTemplate = {};
+  regData.forEach(function(r) {
+    if (r.status === 'active') typesWithActiveTemplate[r.campaign_type] = true;
+  });
+
+  // Tipos legacy protegidos (no desactivar aunque no tengan template — usan motor hardcodeado)
+  var protectedLegacy = { 'Cashback': true, 'Concurso Mayor Comprador': true };
+
+  var ctData = ctSheet.getDataRange().getValues();
+  var ctHeaders = ctData[0];
+  var nameCol = ctHeaders.indexOf('type_name');
+  var statusCol = ctHeaders.indexOf('status');
+  var modeCol = ctHeaders.indexOf('processing_mode');
+
+  var deactivated = 0;
+  for (var i = 1; i < ctData.length; i++) {
+    var name = String(ctData[i][nameCol] || '');
+    var status = String(ctData[i][statusCol] || '');
+    var mode = String(ctData[i][modeCol] || '');
+
+    if (status === 'active' && !protectedLegacy[name] && !typesWithActiveTemplate[name]) {
+      ctSheet.getRange(i + 1, statusCol + 1).setValue('inactive');
+      Logger.log('  👻 Desactivado: "' + name + '" (mode=' + mode + ', sin template activo)');
+      deactivated++;
+    }
+  }
+
+  Logger.log('  ✅ Tipos desactivados: ' + deactivated);
+  if (deactivated === 0) Logger.log('  ℹ️ No había fantasmas (todo OK)');
+}
+
+// ─── PASO 3: Agregar canonical_field_id a campos base ───
+// Cruza con BASE_FIELD_MAP para marcar los 7 campos base con su canonical.
+// También cambia section a '0' para que no se rendericen como dinámicos.
+// Idempotente: si ya tienen canonical, no los toca.
+function _v33_step3_setCanonicalFieldIds() {
+  Logger.log('');
+  Logger.log('🔗 PASO 3: Agregar canonical_field_id a campos base');
+
+  var sheet = _getSheet(FIELDS_SHEET_NAME);
+  if (!sheet) { Logger.log('⚠️ Template_Fields no existe. Saltando.'); return; }
+
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+
+  var fieldIdCol = headers.indexOf('field_id');
+  var sectionCol = headers.indexOf('section');
+  var canonCol = headers.indexOf('canonical_field_id');
+  var phCol = headers.indexOf('placeholder');
+
+  if (canonCol < 0) {
+    // Crear la columna si no existe
+    var nextCol = sheet.getLastColumn() + 1;
+    sheet.getRange(1, nextCol).setValue('canonical_field_id');
+    sheet.getRange(1, nextCol).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
+    canonCol = nextCol - 1; // 0-indexed para headers
+    Logger.log('  + Columna canonical_field_id creada');
+  }
+
+  // Mapeo inverso: field_id → placeholder key en BASE_FIELD_MAP
+  // BASE_FIELD_MAP tiene: 'NOMBRE_CAMPANA': { canonical: 'campaignName' }
+  // Necesitamos: campaignName → campaignName (canonical)
+  if (typeof BASE_FIELD_MAP === 'undefined') {
+    Logger.log('⚠️ BASE_FIELD_MAP no definido. Saltando.');
+    return;
+  }
+
+  // Construir mapeo field_id → canonical
+  var fieldToCanonical = {};
+  var keys = Object.keys(BASE_FIELD_MAP);
+  for (var k = 0; k < keys.length; k++) {
+    var entry = BASE_FIELD_MAP[keys[k]];
+    fieldToCanonical[entry.canonical] = entry.canonical;
+  }
+
+  var updated = 0;
+  for (var i = 1; i < data.length; i++) {
+    var fid = String(data[i][fieldIdCol] || '');
+    var currentCanon = String(data[i][canonCol] || '').trim();
+
+    if (fieldToCanonical[fid] && !currentCanon) {
+      // Marcar con canonical
+      sheet.getRange(i + 1, canonCol + 1).setValue(fieldToCanonical[fid]);
+      // Cambiar section a 0
+      if (sectionCol >= 0) sheet.getRange(i + 1, sectionCol + 1).setValue('0');
+      Logger.log('  🔗 ' + fid + ' → canonical=' + fieldToCanonical[fid] + ', section=0');
+      updated++;
+    }
+  }
+
+  Logger.log('  ✅ Campos actualizados: ' + updated);
+  if (updated === 0) Logger.log('  ℹ️ Ya tenían canonical (idempotente)');
+}
+
+// ─── PASO 4: Agregar columnas de Legal Defaults a Country_Settings ───
+// Agrega: jurisdiction_text, applicable_law, legal_url
+// Llena Colombia con valores concretos. Los demás países quedan vacíos.
+// Idempotente: si las columnas ya existen, no las duplica.
+function _v33_step4_upgradeCountrySettings() {
+  Logger.log('');
+  Logger.log('🌎 PASO 4: Agregar columnas legales a Country_Settings');
+
+  var sheet = _getSheet(COUNTRY_SETTINGS_SHEET);
+  if (!sheet) { Logger.log('⚠️ Country_Settings no existe. Saltando.'); return; }
+
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+  var newCols = [
+    { name: 'jurisdiction_text', coValue: 'la justicia ordinaria de la República de Colombia' },
+    { name: 'applicable_law', coValue: 'las leyes de la República de Colombia' },
+    { name: 'legal_url', coValue: 'https://legal.rappi.com/colombia/terminos-y-condiciones-de-uso-de-plataforma-rappi-2/' }
+  ];
+
+  // Encontrar fila de Colombia
+  var data = sheet.getDataRange().getValues();
+  var ccCol = headers.indexOf('country_code');
+  var coRow = -1;
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][ccCol]) === 'CO') { coRow = i + 1; break; }
+  }
+
+  newCols.forEach(function(col) {
+    if (headers.indexOf(col.name) >= 0) {
+      Logger.log('  ℹ️ Columna "' + col.name + '" ya existe');
+      // Verificar si Colombia tiene valor
+      var existingCol = headers.indexOf(col.name) + 1;
+      if (coRow > 0) {
+        var currentVal = sheet.getRange(coRow, existingCol).getValue();
+        if (!currentVal) {
+          sheet.getRange(coRow, existingCol).setValue(col.coValue);
+          Logger.log('    → Llenado valor de Colombia');
+        }
+      }
+      return;
+    }
+
+    // Crear columna
+    var nextCol = sheet.getLastColumn() + 1;
+    sheet.getRange(1, nextCol).setValue(col.name);
+    sheet.getRange(1, nextCol).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
+    Logger.log('  + Columna "' + col.name + '" creada');
+
+    // Llenar Colombia
+    if (coRow > 0) {
+      sheet.getRange(coRow, nextCol).setValue(col.coValue);
+      Logger.log('    → Colombia: "' + col.coValue.substring(0, 40) + '..."');
+    }
+  });
+
+  Logger.log('  ✅ Country_Settings actualizada');
+}
+
+// ─── PASO 5: Eliminar hoja "Hoja 1" (basura) ───
+// Solo timestamps de debug sin valor. Idempotente: si no existe, no hace nada.
+function _v33_step5_deleteJunkSheet() {
+  Logger.log('');
+  Logger.log('🗑️ PASO 5: Eliminar "Hoja 1" (datos de debug)');
+
+  var ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+  var junk = ss.getSheetByName('Hoja 1');
+  if (junk) {
+    ss.deleteSheet(junk);
+    Logger.log('  ✅ "Hoja 1" eliminada');
+  } else {
+    Logger.log('  ℹ️ "Hoja 1" no existe (ya eliminada o nunca existió)');
+  }
+}
+
+// ─── PASO 6: Archivar hojas legacy (renombrar, no eliminar) ───
+// Idempotente: si ya tienen prefijo _LEGACY_, no las toca.
+function _v33_step6_archiveLegacySheets() {
+  Logger.log('');
+  Logger.log('📦 PASO 6: Archivar hojas legacy');
+
+  var ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+
+  var toArchive = [
+    { current: 'Respuestas Web V2', archived: '_LEGACY_Respuestas_Web_V2' },
+    { current: 'Respuestas de formulario 1', archived: '_LEGACY_Formulario_Original' }
+  ];
+
+  toArchive.forEach(function(item) {
+    // Verificar si ya tiene el nombre archivado
+    var alreadyArchived = ss.getSheetByName(item.archived);
+    if (alreadyArchived) {
+      Logger.log('  ℹ️ "' + item.archived + '" ya existe (idempotente)');
+      return;
+    }
+
+    var sheet = ss.getSheetByName(item.current);
+    if (sheet) {
+      sheet.setName(item.archived);
+      // Ocultar la hoja (no eliminar — preservar datos históricos)
+      sheet.hideSheet();
+      Logger.log('  📦 "' + item.current + '" → "' + item.archived + '" (oculta)');
+    } else {
+      Logger.log('  ℹ️ "' + item.current + '" no encontrada');
+    }
+  });
+
+  Logger.log('  ✅ Archivado completo');
+}
+// ─── PASO 5b: Asegurar format_as en campos que lo necesitan ───
+// Idempotente: solo setea si está vacío.
+function _v33_step5b_ensureFormatAs() {
+  Logger.log('');
+  Logger.log('🎨 PASO 5b: Asegurar format_as en campos base');
+
+  var sheet = _getSheet(FIELDS_SHEET_NAME);
+  if (!sheet) return;
+
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var fieldIdCol = headers.indexOf('field_id');
+  var formatCol = headers.indexOf('format_as');
+
+  if (formatCol < 0) {
+    Logger.log('  ⚠️ Columna format_as no existe. Saltando.');
+    return;
+  }
+
+  // Mapeo de field_ids que necesitan format_as específico
+  var requiredFormats = {
+    'startDate':        'date_legal',
+    'endDate':          'date_legal',
+    'announcementDate': 'date_legal',
+    'cashbackPct':      'percentage',
+    'cap':              'money',
+    'budget':           'money',
+    'numberOfWinners':  'number_words',
+    'maxOrders':        'number_words'
+  };
+
+  var updated = 0;
+  for (var i = 1; i < data.length; i++) {
+    var fid = String(data[i][fieldIdCol] || '');
+    var currentFormat = String(data[i][formatCol] || '').trim();
+    
+    if (requiredFormats[fid] && !currentFormat) {
+      sheet.getRange(i + 1, formatCol + 1).setValue(requiredFormats[fid]);
+      Logger.log('  🎨 ' + fid + ' → format_as=' + requiredFormats[fid]);
+      updated++;
+    }
+  }
+
+  Logger.log('  ✅ format_as actualizados: ' + updated);
+}
+// ─── FUNCIÓN DE VERIFICACIÓN POST-MIGRACIÓN ───
+// Ejecutar después de migrateV33() para confirmar estado limpio.
+function verifyV33() {
+  Logger.log('🔍 ════════════════════════════════════════');
+  Logger.log('🔍 VERIFICACIÓN V3.3');
+  Logger.log('🔍 ════════════════════════════════════════');
+
+  // 1. Template_Fields: contar filas y verificar que no hay corruptas
+  var tfSheet = _getSheet(FIELDS_SHEET_NAME);
+  if (tfSheet) {
+    var tfData = tfSheet.getDataRange().getValues();
+    var tfFieldIdCol = tfData[0].indexOf('field_id');
+    var corrupt = 0;
+    var withCanonical = 0;
+    var canonCol = tfData[0].indexOf('canonical_field_id');
+
+    for (var i = 1; i < tfData.length; i++) {
+      var fid = String(tfData[i][tfFieldIdCol] || '');
+      if (fid.indexOf('FIELD_CO_') === 0 || fid.indexOf('{{') === 0) corrupt++;
+      if (canonCol >= 0 && String(tfData[i][canonCol] || '').trim() !== '') withCanonical++;
+    }
+
+    Logger.log('📋 Template_Fields:');
+    Logger.log('   Total filas: ' + (tfData.length - 1));
+    Logger.log('   Corruptas: ' + corrupt + (corrupt === 0 ? ' ✅' : ' 🔴 LIMPIAR'));
+    Logger.log('   Con canonical_field_id: ' + withCanonical + '/7 esperados');
+  }
+
+  // 2. Campaign_Types: verificar fantasmas
+  var ctSheet = _getSheet(CAMPAIGN_TYPES_SHEET);
+  if (ctSheet) {
+    var ctData = _sheetToObjects(ctSheet);
+    var activeCount = 0;
+    var inactiveCount = 0;
+    ctData.forEach(function(t) {
+      if (t.status === 'active') activeCount++;
+      else inactiveCount++;
+    });
+    Logger.log('');
+    Logger.log('🎯 Campaign_Types:');
+    Logger.log('   Activos: ' + activeCount);
+    Logger.log('   Inactivos: ' + inactiveCount);
+    ctData.forEach(function(t) {
+      Logger.log('   → ' + t.type_name + ' [' + t.status + '] mode=' + t.processing_mode);
+    });
+  }
+
+  // 3. Country_Settings: verificar columnas legales
+  var csSheet = _getSheet(COUNTRY_SETTINGS_SHEET);
+  if (csSheet) {
+    var csHeaders = csSheet.getRange(1, 1, 1, csSheet.getLastColumn()).getValues()[0];
+    var hasJurisdiction = csHeaders.indexOf('jurisdiction_text') >= 0;
+    var hasLaw = csHeaders.indexOf('applicable_law') >= 0;
+    var hasUrl = csHeaders.indexOf('legal_url') >= 0;
+    Logger.log('');
+    Logger.log('🌎 Country_Settings:');
+    Logger.log('   jurisdiction_text: ' + (hasJurisdiction ? '✅' : '❌ FALTA'));
+    Logger.log('   applicable_law: ' + (hasLaw ? '✅' : '❌ FALTA'));
+    Logger.log('   legal_url: ' + (hasUrl ? '✅' : '❌ FALTA'));
+  }
+
+  // 4. Template_Registry: status
+  var regSheet = _getSheet(REGISTRY_SHEET_NAME);
+  if (regSheet) {
+    var regData = _sheetToObjects(regSheet);
+    Logger.log('');
+    Logger.log('📄 Template_Registry:');
+    regData.forEach(function(r) {
+      Logger.log('   → ' + r.country_code + '/' + r.campaign_type + ' [' + r.status + ']');
+    });
+  }
+
+  Logger.log('');
+  Logger.log('🔍 Verificación completa');
+}
