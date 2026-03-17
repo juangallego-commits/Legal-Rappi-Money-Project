@@ -232,13 +232,27 @@ const DERIVED_FIELDS = {
     return 'Se aclara que los Créditos otorgados podrán ser redimidos únicamente en ' + refTienda + ' donde se originó el Beneficio' + suffix;
   },
 
-  // --- Texto de territorio (Colombia-specific por ahora) ---
+  // --- Texto de territorio (multi-país V3.4) ---
   'TEXTO_TERRITORIO': function(p) {
     var raw = p.territory || 'Nacional';
     var territorios = raw.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
 
+    // Resolver nombre legal del país desde Country_Settings
+    var paisLegal = 'la República de Colombia'; // fallback
+    try {
+      var csSheet = _getSheet(COUNTRY_SETTINGS_SHEET);
+      if (csSheet) {
+        var csData = _sheetToObjects(csSheet);
+        var cc = p.countryCode || 'CO';
+        var csRow = csData.find(function(c) { return c.country_code === cc; });
+        if (csRow && csRow.legal_country) {
+          paisLegal = csRow.legal_country;
+        }
+      }
+    } catch(e) { /* fallback a Colombia */ }
+
     if (territorios.indexOf('Nacional') >= 0 || territorios.indexOf('nacional') >= 0) {
-      return 'el territorio nacional de la República de Colombia';
+      return 'el territorio nacional de ' + paisLegal;
     }
 
     // Formatear lista
@@ -263,7 +277,7 @@ const DERIVED_FIELDS = {
     } else {
       prefix = (territorios.length > 1) ? 'las ciudades de' : 'la ciudad de';
     }
-    return prefix + ' ' + listaStr + ', dentro de la República de Colombia';
+    return prefix + ' ' + listaStr + ', dentro de ' + paisLegal;
   },
 
   // --- Fechas formateadas ---
@@ -397,12 +411,22 @@ function _derivedFormatTime(timeStr) {
 // El KAM nunca ve estos campos como preguntas.
 // =================================================================
 const LEGAL_DEFAULTS_MAP = {
-  'JURISDICCION':       { column: 'jurisdiction_text' },
-  'LEY_APLICABLE':      { column: 'applicable_law' },
-  'ENTIDAD_VIGILANCIA': { column: 'legal_entity' },
-  'MONEDA_TEXTO':       { column: 'currency_name' },
-  'PAIS_LEGAL':         { column: 'legal_country' },
-  'URL_BASES':          { column: 'legal_url' }
+  'JURISDICCION':              { column: 'jurisdiction_text' },
+  'LEY_APLICABLE':             { column: 'applicable_law' },
+  'ENTIDAD_VIGILANCIA':        { column: 'legal_entity' },
+  'MONEDA_TEXTO':              { column: 'currency_name' },
+  'PAIS_LEGAL':                { column: 'legal_country' },
+  'URL_BASES':                 { column: 'legal_url' },
+  // V3.4: Nuevos campos para modelo global de T&C
+  'ENTIDAD_LEGAL':             { column: 'entidad_legal_nombre' },
+  'ID_FISCAL':                 { column: 'id_fiscal' },
+  'DOMICILIO_LEGAL':           { column: 'domicilio_legal' },
+  'URL_PRIVACIDAD':            { column: 'url_privacidad' },
+  'URL_TC_CREDITOS':           { column: 'url_tc_creditos' },
+  'URL_TC_PLATAFORMA':         { column: 'url_tc_plataforma' },
+  'AUTORIDAD_DATOS':           { column: 'autoridad_datos' },
+  'NOMBRE_POLITICA_PRIVACIDAD': { column: 'nombre_politica_privacidad' },
+  'EDAD_MINIMA':               { column: 'edad_minima' }
 };
 const BASE_FIELD_MAP = {
   'NOMBRE_CAMPANA':  { canonical: 'campaignName', format_as: '' },
