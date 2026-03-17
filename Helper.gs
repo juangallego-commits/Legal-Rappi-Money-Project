@@ -1,1277 +1,1157 @@
 // =================================================================
-// SETUP FUNCTIONS — Ejecutar UNA sola vez cada una
+// RAPPIMIND - PANEL DE ADMINISTRACIÓN Y WORKFLOWS
 // =================================================================
 
-// ---- MASTER: Corre esto y se hace todo ----
-function setupTemplateEngine() {
-  Logger.log('🚀 === SETUP TEMPLATE ENGINE ===');
-  
-  // Paso 1: Crear template Cashback
-  const cashbackDocId = seedCashbackTemplate();
-  Logger.log('✅ Template Cashback creado: ' + cashbackDocId);
-  
-  // Paso 2: Crear template Concurso
-  const concursoDocId = seedConcursoTemplate();
-  Logger.log('✅ Template Concurso creado: ' + concursoDocId);
-  
-  // Paso 3: Registrar en Template_Registry
-  _seedRegistry(cashbackDocId, concursoDocId);
-  Logger.log('✅ Registry creado');
-  
-  // Paso 4: Crear campos en Template_Fields
-  seedColombiaFields();
-  Logger.log('✅ Campos creados');
-  
-  Logger.log('🎉 === SETUP COMPLETO ===');
-  Logger.log('📋 Cashback Doc ID: ' + cashbackDocId);
-  Logger.log('📋 Concurso Doc ID: ' + concursoDocId);
-  Logger.log('');
-  Logger.log('👉 SIGUIENTE PASO: Cambia 2 líneas en processWebPayload');
-  Logger.log('   ANTES:  const v67Map = mapWebToEngine(payload);');
-  Logger.log('           const result = coreEngine(v67Map, payload.userEmail);');
-  Logger.log('   DESPUÉS: const result = coreEngineV2(payload, payload.userEmail);');
-  
-  return { cashbackDocId, concursoDocId };
-}
-
-// ---- CASHBACK TEMPLATE ----
-function seedCashbackTemplate() {
-  const doc = DocumentApp.create('Template_CO_Cashback');
-  const body = doc.getBody();
-  
-  // TÍTULO
-  const titulo = body.appendParagraph('TÉRMINOS Y CONDICIONES – CAMPAÑA "{{NOMBRE_CAMPANA_UPPER}}"');
-  titulo.setBold(true).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-  body.appendParagraph('');
-  
-  // INTRODUCCIÓN
-  appendRichParagraph(body, [
-    'Por medio del presente documento se dan a conocer los términos y condiciones de la campaña denominada "',
-    {text: '{{NOMBRE_CAMPANA_LOWER}}', bold: true},
-    '" (en adelante la "Campaña"). La participación en la Campaña constituye la aceptación total e incondicional de los presentes Términos y Condiciones, los cuales resultan definitivos y vinculantes para los Usuarios/Consumidores participantes, que cumplan con los requisitos aquí dispuestos.'
-  ]);
-  
-  // I. TERRITORIO
-  appendRichSection(body, 'I. Territorio: ', [
-    'La Campaña será válida únicamente para las órdenes realizadas dentro de las zonas de cobertura de {{REF_TIENDA}} en la Plataforma Rappi, en ',
-    {text: '{{TEXTO_TERRITORIO}}', bold: true}, '.'
-  ]);
-  
-  // II. VIGENCIA
-  appendRichSection(body, 'II. Vigencia: ', [
-    'Campaña válida desde las ', {text: '{{HORA_INICIO}}', bold: true},
-    ' del ', {text: '{{FECHA_INICIO}}', bold: true},
-    ' hasta las ', {text: '{{HORA_FIN}}', bold: true},
-    ' del ', {text: '{{FECHA_FIN}}', bold: true},
-    ' y/o hasta agotar existencias, lo que primero ocurra. Para efectos de la Campaña, se ha establecido un valor total máximo de ',
-    {text: '{{PRESUPUESTO_LETRAS}}', bold: true}, ' (', {text: '{{PRESUPUESTO_NUM}}', bold: true},
-    ') de Créditos a ser entregados como Cashback a los Usuarios/Consumidores que participen en la Campaña ("Existencias"). Por consiguiente, el agotamiento de las Existencias con anterioridad al final de la Vigencia indicada implicará la terminación de la Campaña.'
-  ]);
-  
-  // III. TIPO DE USUARIOS
-  appendRichSection(body, 'III. Tipo de Usuarios Participantes: ', ['{{TEXTO_SEGMENTO}}']);
-  
-  // IV. TIENDA PARTICIPANTE
-  appendRichSection(body, '{{TITULO_TIENDA}}', [
-    'Participarán todas las tiendas virtuales de ', {text: '{{TIENDA_DISPLAY}}', bold: true},
-    '{{DEFINICION_TIENDA}}al interior de la Plataforma Rappi ubicadas dentro del Territorio.'
-  ]);
-  
-  // V. PRODUCTOS PARTICIPANTES
-  appendRichSection(body, 'V. Productos Participantes: ', [
-    'Participarán todos los productos que hacen parte del catálogo de {{REF_TIENDA}} al interior de la Plataforma Rappi.'
-  ]);
-  
-  // VI. BENEFICIO
-  const pBeneficio = body.appendParagraph('');
-  pBeneficio.appendText('VI. Beneficio: ').setBold(true);
-  appendRichTextToParagraph(pBeneficio, [
-    'Los Usuarios/Consumidores Participantes que durante la Vigencia de la Campaña compren cualquiera de los Productos Participantes de {{REF_TIENDA}} recibirán en Créditos el ',
-    {text: '{{TEXTO_PORCENTAJE}}', bold: true},
-    ' del valor de dichos Productos Participantes (en adelante el "Cashback"). Dichos Créditos serán cargados a su cuenta al interior de la Plataforma Rappi. Se aclara que el monto máximo del Cashback que se otorgará en Créditos es de ',
-    {text: '{{TOPE_LETRAS}}', bold: true}, ' (', {text: '{{TOPE_NUM}}', bold: true}, ')',
-    ' Créditos. Por lo tanto, en caso de que el Usuario/Consumidor realice una compra en {{REF_TIENDA}} por un valor superior a los ',
-    {text: '{{UMBRAL_LETRAS}}', bold: true}, ' pesos M/Cte ($', {text: '{{UMBRAL_NUM}}', bold: true},
-    '), recibirá un monto máximo en Créditos de ',
-    {text: '{{TOPE_LETRAS}}', bold: true}, ' (', {text: '{{TOPE_NUM}}', bold: true}, ').',
-    ' Los Créditos serán cargados a la cuenta de los Usuarios/Consumidores Participantes ',
-    {text: '{{TEXTO_CARGA}}', bold: true},
-    '. Los Créditos {{TEXTO_VIGENCIA_CREDITOS}}, entendiéndose que si el Usuario/Consumidor no hace uso de ellos dentro del término estipulado los perderá, sin poder hacer uso de ellos posteriormente.'
-  ]);
-  pBeneficio.setAlignment(DocumentApp.HorizontalAlignment.JUSTIFY);
-  
-  // VII. CONDICIONES Y RESTRICCIONES
-  appendRichSection(body, 'VII. Condiciones y Restricciones: ', [
-    'Podrán participar gratuitamente todas las personas naturales que sean Usuarios/Consumidores de la Plataforma Rappi que se encuentren en el Territorio y que cumplan las siguientes condiciones:'
-  ]);
-  
-  const restricciones = [
-    'Campaña válida únicamente para órdenes realizadas a través de {{REF_TIENDA}}, al interior de la Plataforma Rappi. Se aclara que no serán tenidas en cuenta las órdenes que se realicen a través de cualquier otra tienda y/o sección de la Plataforma Rappi.',
-    'La presente Campaña se encuentra sujeta a los horarios de operación de los puntos de venta de {{REF_TIENDA}}, que ofrecen y exhiben sus productos al interior de la Plataforma Rappi.',
-    'Los descuentos de los productos y/o servicios objeto de la Campaña no son intercambiables ni transferibles.',
-    'Campaña válida para todas las órdenes que cumplan las condiciones y restricciones establecidas en los presentes Términos y Condiciones.',
-    'Campaña válida durante la Vigencia y/o hasta agotar existencias, lo que primero ocurra.',
-    'El Beneficio obtenido en virtud de la presente Campaña no es acumulable con otras promociones exhibidas en la Plataforma Rappi.'
-  ];
-  restricciones.forEach(r => appendRichListItem(body, r));
-  
-  appendRichListItem(body, ['Máximo ', {text: '{{LIMITE_ORDENES}}', bold: true}, ' {{TEXTO_ORDENES}} por Usuario/Consumidor.']);
-  
-  appendRichListItem(body, ['Se aclara que el monto máximo de Créditos a recibir por el Usuario/Consumidor Participante es de ',
-    {text: '{{TOPE_LETRAS}}', bold: true}, ' (', {text: '{{TOPE_NUM}}', bold: true},
-    '), de acuerdo con lo indicado en la sección VI (Beneficio) de los presentes Términos y Condiciones.']);
-  
-  appendRichListItem(body, 'En caso de cancelación total o parcial de la orden, el Usuario/Consumidor Participante no tendrá derecho al Beneficio.');
-  appendRichListItem(body, '{{TEXTO_LUGAR_REDENCION}}');
-  appendRichListItem(body, 'Se aclara que los Créditos no tienen algún valor monetario, ni constituyen un medio de pago, instrumento crediticio o financiero y la finalidad de su redención no es recibir una cantidad de dinero en efectivo.');
-  appendRichListItem(body, 'Se aclara que los Créditos no pueden ser utilizados en las secciones denominadas "Cajero ATM" y "RappiFavor" de la Plataforma Rappi, ni tampoco pueden ser utilizados para pagar el valor del costo de envío, la tarifa de servicio de un pedido realizado a través de la Plataforma Rappi y/o la propina otorgada de forma voluntaria a los repartidores independientes.');
-  
-  // VIII. MEDIO DE PAGO
-  appendRichSection(body, 'VIII. Medio de Pago: ', ['{{TEXTO_METODO_PAGO}}']);
-  
-  // IX. MODIFICACIONES
-  appendRichSection(body, 'IX. Modificaciones e Interpretación: ', [
-    'Rappi se reserva el derecho de cancelar órdenes si detecta un comportamiento irregular por parte del Usuario/Consumidor en la Plataforma Rappi. Rappi se reserva el derecho de rechazar y cancelar cualquier orden que, por sus características, Rappi determine que no aplica para el Beneficio de la presente Campaña, sin previo aviso al Usuario/Consumidor.'
-  ]);
-  
-  // X. DECLARACIÓN
-  appendRichSection(body, 'X. Declaración: ', [
-    'El Usuario/Consumidor reconoce y acepta que quien exhibe, ofrece, promociona y comercializa los productos adquiridos a través de la Plataforma Rappi {{DECLARACION_TIENDA}}. Rappi no comercializa productos puesto que es solo una plataforma tecnológica de contacto.'
-  ]);
-  
-  appendRichParagraph(body, [
-    'Se aclara que los presentes Términos y Condiciones se encuentran sujetos a los Términos y Condiciones de Uso de la Plataforma Rappi, los cuales se encuentran en la siguiente dirección electrónica: https://legal.rappi.com.co/colombia/terminos-y-condiciones-de-uso-de-plataforma-rappi-2/.'
-  ]);
-  
-  // XI. JURISDICCIÓN
-  appendRichSection(body, 'XI. Jurisdicción y Solución de conflictos: ', [
-    'Los presentes Términos y Condiciones se regirán por las leyes de Colombia. Toda controversia surgida en razón de la Campaña o de los presentes Términos y Condiciones intentará ser resuelta por arreglo directo de las partes y/o a través de la conciliación como mecanismo alternativo de solución de conflictos. Si lo anterior no fuere posible, la controversia se someterá a la justicia ordinaria.'
-  ]);
-  
-  doc.saveAndClose();
-  Logger.log('📄 Template Cashback creado: ' + doc.getId());
-  return doc.getId();
-}
-
-// ---- CONCURSO TEMPLATE ----
-function seedConcursoTemplate() {
-  const doc = DocumentApp.create('Template_CO_Concurso');
-  const body = doc.getBody();
-  
-  // TÍTULO
-  const titulo = body.appendParagraph('TÉRMINOS Y CONDICIONES – ACTIVIDAD PROMOCIONAL "{{NOMBRE_CAMPANA_UPPER}}"');
-  titulo.setBold(true).setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-  body.appendParagraph('');
-  
-  // INTRODUCCIÓN
-  appendRichParagraph(body, [
-    'Por medio del presente documento se dan a conocer los términos y condiciones de la actividad promocional denominada "',
-    {text: '{{NOMBRE_CAMPANA}}', bold: true},
-    '" (en adelante la "Actividad Promocional"). La sola participación en esta actividad implica el conocimiento y aceptación total e incondicional de estos Términos y Condiciones, no pudiendo alegar el participante el desconocimiento de estos.'
-  ]);
-  
-  // I. ORGANIZADOR Y TERRITORIO
-  appendRichSection(body, 'I. Organizador y Territorio: ', [
-    'La presente Actividad Promocional es organizada y financiada exclusivamente por ',
-    {text: '{{ORGANIZADOR}}', bold: true},
-    ' (en adelante el "Organizador"), quien es el responsable de la entrega del beneficio. RAPPI S.A.S. actúa únicamente como plataforma de contacto y medio de difusión. La Actividad Promocional será válida únicamente para pedidos realizados a través de la Plataforma Rappi en las zonas de cobertura habilitadas en ',
-    {text: '{{TEXTO_TERRITORIO}}', bold: true},
-    ' (en adelante el "Territorio").'
-  ]);
-  
-  // II. VIGENCIA
-  appendRichSection(body, 'II. Vigencia: ', [
-    'La Actividad Promocional estará vigente desde las ',
-    {text: '{{HORA_INICIO}}', bold: true}, ' del ', {text: '{{FECHA_INICIO}}', bold: true},
-    ' hasta las ', {text: '{{HORA_FIN}}', bold: true}, ' del ', {text: '{{FECHA_FIN}}', bold: true},
-    ' (en adelante, la "Vigencia"). Los pedidos realizados fuera de este periodo no serán tenidos en cuenta.'
-  ]);
-  
-  // III. PARTICIPANTES
-  appendRichSection(body, 'III. Participantes: ', ['{{TEXTO_SEGMENTO}} Adicionalmente, para participar se debe:']);
-  appendRichListItem(body, '(i) Ser mayor de edad y residir en el Territorio.');
-  appendRichListItem(body, '(ii) Tener una cuenta activa y vigente en la Plataforma Rappi.');
-  appendRichListItem(body, '(iii) Realizar compras de los Productos Participantes durante la Vigencia, cumpliendo con la mecánica descrita.');
-  
-  // IV. TIENDA Y PRODUCTOS
-  appendRichSection(body, 'IV. Tienda y Productos Participantes: ', [
-    'Participará la tienda virtual ', {text: '"{{TIENDA_BASE}}"', bold: true},
-    ' (en adelante la "Tienda Participante") al interior de la Plataforma Rappi, ubicada dentro del Territorio. Participarán ',
-    {text: '{{PRODUCTOS_PARTICIPANTES}}', bold: true}, ' disponibles en las secciones/verticales de ',
-    {text: '{{VERTICALES}}', bold: true}, ' (en adelante, los "Productos Participantes").'
-  ]);
-  
-  // V. MECÁNICA
-  appendRichSection(body, 'V. Mecánica de la Actividad Promocional: ', [
-    'La presente actividad es un concurso de destreza comercial. Serán seleccionados como ',
-    {text: '{{PLURAL_GANADORES}}', bold: true}, ' los ',
-    {text: '{{NUM_GANADORES_LETRAS}} ({{NUM_GANADORES}})', bold: true},
-    ' Usuarios/Consumidores que, durante la Vigencia, registren el ',
-    {text: '{{CRITERIO_GANADOR}}', bold: true},
-    ' de Productos Participantes en la Tienda Participante.'
-  ]);
-  
-  appendRichParagraph(body, ['Condiciones de participación:']);
-  appendRichListItem(body, 'Solo se tendrán en cuenta órdenes finalizadas y entregadas. No suman órdenes canceladas, devueltas o con contracargo.');
-  appendRichListItem(body, 'Compra Mínima por orden: {{MINIMO_COMPRA_TEXTO}}');
-  appendRichListItem(body, 'No se tendrán en cuenta pagos realizados parcialmente con RappiCréditos, ni órdenes manipuladas fraudulentamente.');
-  
-  // VI. DESEMPATE
-  appendRichSection(body, 'VI. Criterios de Desempate: ', [
-    'En caso de presentarse un empate entre dos o más participantes, se definirá el ganador aplicando los siguientes criterios en estricto orden:'
-  ]);
-  appendRichListItem(body, '{{DESEMPATE_1}}');
-  appendRichListItem(body, 'Si persiste el empate, ganará el Usuario/Consumidor que haya alcanzado la cifra registrada primero en el tiempo, según los registros del sistema de la Plataforma Rappi (criterio cronológico).');
-  
-  // VII. PREMIO
-  appendRichSection(body, 'VII. Premio: ', [
-    'Se entregarán ', {text: '{{NUM_GANADORES_LETRAS}} ({{NUM_GANADORES}})', bold: true}, ' premios consistentes en:'
-  ]);
-  appendRichListItem(body, {text: '{{LISTA_PREMIOS}}', bold: true});
-  
-  // Bloque créditos (se limpia si es premio físico)
-  appendRichParagraph(body, [
-    'Los Créditos serán cargados a la cuenta del ganador dentro de los ',
-    {text: '{{DIAS_CARGA_LETRAS}} ({{DIAS_CARGA_NUM}})', bold: true},
-    ' días hábiles siguientes a la confirmación del ganador. Los Créditos tendrán una vigencia de ',
-    {text: '{{VIGENCIA_CREDITOS_LETRAS}} ({{VIGENCIA_CREDITOS_NUM}})', bold: true},
-    ' días calendario contados a partir de su carga.'
-  ]);
-  
-  appendRichParagraph(body, [
-    'Se aclara que los Créditos otorgados podrán ser utilizados/redimidos ',
-    {text: '{{LUGAR_REDENCION_PREMIO}}', bold: true}, ', únicamente dentro del Territorio.'
-  ]);
-  
-  appendRichParagraph(body, [
-    'Se aclara que los Créditos no tienen algún valor monetario, ni constituyen un medio de pago, instrumento crediticio o financiero. Los Créditos no pueden ser utilizados en las secciones denominadas "Cajero ATM" y "RappiFavor" de la Plataforma Rappi, ni para pagar el costo de envío, tarifa de servicio o propina.'
-  ]);
-  
-  // VIII. CONDICIONES
-  appendRichSection(body, 'VIII. Condiciones y Restricciones: ', [
-    'Podrán participar gratuitamente todas las personas naturales que sean Usuarios/Consumidores de la Plataforma Rappi que se encuentren en el Territorio y que cumplan las siguientes condiciones:'
-  ]);
-  
-  appendRichListItem(body, 'Actividad válida únicamente para órdenes realizadas a través de la Tienda Participante, al interior de la Plataforma Rappi. Se aclara que no serán tenidas en cuenta las órdenes que se realicen a través de cualquier otra tienda y/o sección de la Plataforma Rappi.');
-  appendRichListItem(body, 'La presente Actividad Promocional se encuentra sujeta a los horarios de operación de los puntos de venta de la Tienda Participante.');
-  appendRichListItem(body, 'Actividad válida para todas las órdenes que cumplan las condiciones y restricciones establecidas en los presentes Términos y Condiciones.');
-  appendRichListItem(body, 'Actividad válida durante la Vigencia.');
-  appendRichListItem(body, 'El Beneficio obtenido en virtud de la presente Actividad Promocional no es acumulable con otras promociones exhibidas en la Plataforma Rappi.');
-  appendRichListItem(body, 'En caso de cancelación total o parcial de la orden, dicha orden no sumará al acumulado del Usuario/Consumidor.');
-  
-  // IX. MEDIO DE PAGO
-  appendRichSection(body, 'IX. Medio de Pago: ', ['{{TEXTO_METODO_PAGO}}']);
-  
-  // X. ANUNCIO
-  appendRichSection(body, 'X. Anuncio y Entrega de Premios: ', [
-    'Los ganadores serán anunciados el día ', {text: '{{FECHA_ANUNCIO}}', bold: true},
-    ' a través de los canales oficiales definidos por el Organizador (con el apoyo de difusión de la Plataforma Rappi, de ser requerido).'
-  ]);
-  appendRichListItem(body, 'La gestión, logística, costos de envío y entrega efectiva de los premios correrán por cuenta y responsabilidad exclusiva de {{RESPONSABLE_ENTREGA}}.');
-  appendRichListItem(body, 'El ganador tendrá un plazo máximo de cinco (5) días hábiles para responder al contacto. Si no responde en dicho plazo, se entenderá que renuncia al premio y se procederá a contactar al siguiente participante en el ranking.');
-  
-  // XI. EXCLUSIONES
-  appendRichSection(body, 'XI. Exclusiones y Fraude: ', [
-    'El Organizador y Rappi se reservan el derecho de excluir a cualquier participante y cancelar la entrega del premio si detectan:'
-  ]);
-  appendRichListItem(body, '(i) Compras inusuales, autocompras, fraude, o uso de cuentas múltiples.');
-  appendRichListItem(body, '(ii) Pagos disputados o contracargos.');
-  appendRichListItem(body, '(iii) Violación a los Términos y Condiciones generales de la Plataforma Rappi.');
-  appendRichListItem(body, '(iv) Cualquier comportamiento irregular que atente contra la naturaleza de la Actividad Promocional.');
-  
-  // XII. DECLARACIÓN
-  appendRichSection(body, 'XII. Declaración sobre el Rol de Rappi: ', [
-    'El Usuario/Consumidor reconoce y acepta que quien exhibe, ofrece, promociona y comercializa los productos adquiridos a través de la Plataforma Rappi es la Tienda Participante (Aliado Comercial). Rappi no comercializa productos, ya que es una plataforma de contacto. Rappi actúa únicamente como medio de difusión y comunicación de material publicitario para la realización de la Actividad Promocional.'
-  ]);
-  
-  // XIII. LIMITACIÓN
-  appendRichSection(body, 'XIII. Limitación de Responsabilidad: ', [
-    'La actividad se brinda como un medio de esparcimiento y ocio para el público en general. El Organizador y/o Rappi no asumen responsabilidad por ninguna consecuencia que resulte directa o indirectamente de cualquier acción o falta de acción que el participante emprenda.'
-  ]);
-  
-  // XIV. DATOS
-  appendRichSection(body, 'XIV. Tratamiento de Datos Personales: ', [
-    'El participante autoriza el tratamiento de sus datos personales para fines de la actividad. Si la entrega del premio requiere de un tercero (el Organizador), Rappi transferirá los datos de contacto necesarios bajo un acuerdo de transmisión de datos seguro, conforme a la Ley 1581 de 2012.'
-  ]);
-  
-  // XV. CONTACTO
-  appendRichSection(body, 'XV. Contacto y Atención de PQR: ', [
-    'Cualquier duda o inquietud sobre los alcances e interpretación de los presentes Términos y Condiciones, podrá ser consultada a través de los siguientes canales de contacto del Organizador:'
-  ]);
-  appendRichListItem(body, ['Teléfono de Atención: ', {text: '{{TELEFONO_CONTACTO}}', bold: true}]);
-  appendRichListItem(body, ['Correo electrónico: ', {text: '{{EMAIL_CONTACTO}}', bold: true}]);
-  appendRichParagraph(body, ['Para dudas relacionadas con el funcionamiento de la Plataforma Rappi, el Usuario podrá contactar al Centro de Ayuda de Rappi a través de la aplicación.']);
-  
-  // XVI. MODIFICACIONES
-  appendRichSection(body, 'XVI. Modificaciones: ', [
-    'El Organizador se reserva el derecho de modificar los presentes Términos y Condiciones, así como suspender o cancelar la Actividad Promocional por motivos de fuerza mayor o caso fortuito, informando previamente a los usuarios/consumidores y sin perjuicio de los derechos adquiridos de los participantes.'
-  ]);
-  
-  // XVII. JURISDICCIÓN
-  appendRichSection(body, 'XVII. Jurisdicción y Solución de Conflictos: ', [
-    'Los presentes Términos y Condiciones se regirán por las leyes de Colombia. Toda controversia surgida en razón de la Actividad Promocional o de los presentes Términos y Condiciones intentará ser resuelta por arreglo directo de las partes y/o a través de la conciliación como mecanismo alternativo de solución de conflictos. Si lo anterior no fuere posible, la controversia se someterá a la justicia ordinaria.'
-  ]);
-  
-  appendRichParagraph(body, [
-    'Se aclara que los presentes Términos y Condiciones se encuentran sujetos a los Términos y Condiciones de Uso de la Plataforma Rappi, disponibles en: https://legal.rappi.com/colombia/terminos-y-condiciones-de-uso-de-plataforma-rappi-2/.'
-  ]);
-  
-  doc.saveAndClose();
-  Logger.log('📄 Template Concurso creado: ' + doc.getId());
-  return doc.getId();
-}
-
-// ---- SEED REGISTRY ----
-function _seedRegistry(cashbackDocId, concursoDocId) {
-  const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
-  let sheet = ss.getSheetByName(REGISTRY_SHEET_NAME);
-  
-  if (!sheet) {
-    sheet = ss.insertSheet(REGISTRY_SHEET_NAME);
-    const headers = ['country_code', 'country_name', 'campaign_type', 'template_doc_id', 'version', 'status', 'currency_code', 'currency_symbol', 'legal_owner', 'last_updated', 'notes'];
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.getRange(1, 1, 1, headers.length).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
-    sheet.setFrozenRows(1);
-  }
-  
-  const today = new Date().toISOString().split('T')[0];
-  
-  sheet.appendRow(['CO', 'Colombia', 'Cashback', cashbackDocId, '1.0', 'active', 'COP', '$', 'juan.gallego@rappi.com', today, 'Template base generado automáticamente']);
-  sheet.appendRow(['CO', 'Colombia', 'Concurso Mayor Comprador', concursoDocId, '1.0', 'active', 'COP', '$', 'juan.gallego@rappi.com', today, 'Template base generado automáticamente']);
-}
-
-// ---- SEED FIELDS ----
-function seedColombiaFields() {
-  const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
-  let sheet = ss.getSheetByName(FIELDS_SHEET_NAME);
-  
-  if (!sheet) {
-    sheet = ss.insertSheet(FIELDS_SHEET_NAME);
-    const headers = ['field_id', 'country_code', 'campaign_type', 'placeholder', 'label_es', 'field_type', 'icon', 'required', 'section', 'validation_rule', 'options', 'default_value', 'tooltip', 'depends_on', 'order', 'group'];
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.getRange(1, 1, 1, headers.length).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
-    sheet.setFrozenRows(1);
-  }
-  
-  if (sheet.getLastRow() > 1) {
-    Logger.log('⚠️ Template_Fields ya tiene datos. Saltando seed.');
-    return;
-  }
-  
-  const fields = [
-    ['userEmail', 'ALL', 'ALL', '', 'Email corporativo', 'email', 'fa-envelope', 'TRUE', '1', '', '', '', '', '', '1', 'Info Básica'],
-    ['dynamicType', 'ALL', 'ALL', '', 'Tipo de campaña', 'select', 'fa-layer-group', 'TRUE', '1', '', 'Cashback|Concurso Mayor Comprador', '', '', '', '2', 'Info Básica'],
-    ['campaignName', 'ALL', 'ALL', '{{NOMBRE_CAMPANA}}', 'Nombre campaña', 'text', 'fa-tag', 'FALSE', '1', '', '', '', 'Se genera automático si vacío', '', '3', 'Info Básica'],
-    ['shopName', 'ALL', 'ALL', '{{TIENDA_BASE}}', 'Nombre tienda', 'text', 'fa-shop', 'TRUE', '2', '', '', '', '', '', '1', 'Aliado'],
-    ['territory', 'ALL', 'ALL', '{{TEXTO_TERRITORIO}}', 'Territorio', 'text', 'fa-map-location-dot', 'TRUE', '2', '', '', '', '', '', '2', 'Aliado'],
-    ['startDate', 'ALL', 'ALL', '{{FECHA_INICIO}}', 'Fecha inicio', 'date', 'fa-calendar', 'TRUE', '2', '', '', '', '', '', '3', 'Vigencia'],
-    ['endDate', 'ALL', 'ALL', '{{FECHA_FIN}}', 'Fecha fin', 'date', 'fa-calendar-check', 'TRUE', '2', '', '', '', '', '', '4', 'Vigencia'],
-    ['cashbackPct', 'ALL', 'Cashback', '{{TEXTO_PORCENTAJE}}', '% Cashback', 'number', 'fa-percent', 'TRUE', '3', 'min:1,max:100', '', '', '', '', '1', 'Cashback'],
-    ['cap', 'ALL', 'Cashback', '{{TOPE_NUM}}', 'Tope máximo', 'number', 'fa-ban', 'TRUE', '3', '', '', '', '', '', '2', 'Cashback'],
-    ['budget', 'ALL', 'Cashback', '{{PRESUPUESTO_NUM}}', 'Presupuesto', 'number', 'fa-sack-dollar', 'TRUE', '3', '', '', '', '', '', '3', 'Cashback'],
-    ['redemptionPlace', 'ALL', 'Cashback', '{{TEXTO_LUGAR_REDENCION}}', 'Lugar redención', 'select', 'fa-location-crosshairs', 'FALSE', '3', '', 'Brand Credits|Restaurantes|Créditos Generales', '', '', '', '4', 'Cashback'],
-    ['organizerLegalName', 'ALL', 'Concurso Mayor Comprador', '{{ORGANIZADOR}}', 'Razón social', 'text', 'fa-briefcase', 'TRUE', '3', '', '', '', '', '', '1', 'Organizador'],
-    ['organizerPhone', 'ALL', 'Concurso Mayor Comprador', '{{TELEFONO_CONTACTO}}', 'Teléfono', 'text', 'fa-phone', 'TRUE', '3', '', '', '', '', '', '2', 'Organizador'],
-    ['organizerEmail', 'ALL', 'Concurso Mayor Comprador', '{{EMAIL_CONTACTO}}', 'Email PQR', 'email', 'fa-envelope', 'TRUE', '3', '', '', '', '', '', '3', 'Organizador'],
-    ['numberOfWinners', 'ALL', 'Concurso Mayor Comprador', '{{NUM_GANADORES}}', '# Ganadores', 'number', 'fa-users', 'TRUE', '3', '', '', '1', '', '', '4', 'Mecánica'],
-    ['winnerCriteria', 'ALL', 'Concurso Mayor Comprador', '{{CRITERIO_GANADOR}}', 'Criterio ganador', 'select', 'fa-filter', 'TRUE', '3', '', 'Mayor Venta ($)|Más Órdenes (#)', '', '', '', '5', 'Mecánica'],
-    ['announcementDate', 'ALL', 'Concurso Mayor Comprador', '{{FECHA_ANUNCIO}}', 'Fecha anuncio', 'date', 'fa-bullhorn', 'TRUE', '3', '', '', '', '', '', '6', 'Mecánica'],
-    ['paymentMethods', 'ALL', 'ALL', '{{TEXTO_METODO_PAGO}}', 'Métodos de pago', 'select', 'fa-credit-card', 'FALSE', '4', '', 'Todos excepto Efectivo|Todos|Únicamente RappiCard', 'Todos excepto Efectivo', '', '', '1', 'Restricciones'],
-    ['userSegment', 'ALL', 'ALL', '{{TEXTO_SEGMENTO}}', 'Segmento usuarios', 'select', 'fa-users', 'FALSE', '4', '', 'Todos los usuarios|Pro y Pro Black|Nuevos Usuarios|Reactivos', 'Todos los usuarios', '', '', '2', 'Restricciones'],
-    ['maxOrders', 'ALL', 'ALL', '{{LIMITE_ORDENES}}', 'Máx órdenes', 'text', 'fa-list-ol', 'FALSE', '4', '', '', '1', '', '', '3', 'Restricciones'],
-    ['specialConditions', 'ALL', 'ALL', '{{CONDICIONES_ESPECIALES}}', 'Condiciones especiales', 'textarea', 'fa-exclamation-circle', 'FALSE', '4', '', '', '', '', '', '5', 'Restricciones']
-  ];
-  
-  fields.forEach(f => sheet.appendRow(f));
-  Logger.log('✅ ' + fields.length + ' campos creados en Template_Fields');
-}
-
-// =================================================================
-// 3. CARPETAS ESTRUCTURADAS EN DRIVE
-// =================================================================
-function setupTemplateFolders() {
-  Logger.log('📁 Creando estructura de carpetas...');
-
-  // Crear carpeta raíz
-  const root = _getOrCreateDriveFolder(null, TEMPLATES_ROOT_NAME);
-  Logger.log('📁 Raíz: ' + root.getName() + ' (' + root.getId() + ')');
-
-  const countries = [
-    { code: 'CO', name: 'Colombia' },
-    { code: 'MX', name: 'México' },
-    { code: 'CR', name: 'Costa Rica' },
-    { code: 'BR', name: 'Brasil' },
-    { code: 'AR', name: 'Argentina' },
-    { code: 'UY', name: 'Uruguay' },
-    { code: 'CL', name: 'Chile' },
-    { code: 'EC', name: 'Ecuador' }
-  ];
-
-  const types = ['Cashback', 'Concurso'];
-
-  countries.forEach(country => {
-    const countryFolder = _getOrCreateDriveFolder(root, `${country.code}_${country.name}`);
-    types.forEach(type => {
-      _getOrCreateDriveFolder(countryFolder, type);
-    });
-  });
-
-  // Carpetas especiales
-  _getOrCreateDriveFolder(root, '_Borradores');
-  _getOrCreateDriveFolder(root, '_Archivo');
-
-  Logger.log('✅ Estructura de carpetas creada');
-  Logger.log('📋 Folder ID raíz: ' + root.getId());
-
-  // Guardar ID de carpeta raíz en propiedades del script
-  PropertiesService.getScriptProperties().setProperty('TEMPLATES_FOLDER_ID', root.getId());
-
-  return root.getId();
-}
-
-// =================================================================
-// 6. SETUP ADMIN SYSTEM — EJECUTAR UNA VEZ
-// =================================================================
-function setupAdminSystem() {
-  Logger.log('🔐 ═══════════════════════════════════════');
-  Logger.log('🔐 RAPPIMIND ADMIN SYSTEM — SETUP');
-  Logger.log('🔐 ═══════════════════════════════════════');
-
-  // ──── PASO 1: Crear sheet de equipo ────
-  Logger.log('👥 Creando sheet de equipo...');
-  const teamSheet = _getOrCreateSheet(TEAM_SHEET_NAME,
-    ['email', 'name', 'role', 'added_by', 'added_date', 'status', 'notes']);
-
-  // Seed: Juan como owner
-  const callerEmail = Session.getActiveUser().getEmail();
-  const existingTeam = _sheetToObjects(teamSheet);
-  if (existingTeam.length === 0) {
-    teamSheet.appendRow([callerEmail, 'Juan (Owner)', 'owner', 'system', new Date().toISOString().split('T')[0], 'active', 'Setup inicial']);
-    Logger.log('✅ ' + callerEmail + ' agregado como owner');
-  }
-
-  // ──── PASO 2: Agregar columnas de aprobación al Registry ────
-  Logger.log('📋 Actualizando Registry con columnas de aprobación...');
-  _upgradeRegistryColumns();
-
-  // ──── PASO 3: Crear approval log ────
-  Logger.log('📝 Creando log de aprobaciones...');
-  _getOrCreateSheet(APPROVAL_LOG_SHEET,
-    ['timestamp', 'actor', 'action', 'details']);
-
-  // ──── PASO 4: Crear carpetas ────
-  Logger.log('📁 Creando estructura de carpetas...');
-  const rootId = setupTemplateFolders();
-
-  // ──── PASO 5: Mover templates existentes a carpetas ────
-  Logger.log('📦 Moviendo templates existentes...');
-  _moveExistingTemplatesToFolders();
-
-  Logger.log('');
-  Logger.log('🎉 ═══════════════════════════════════════');
-  Logger.log('🎉 ADMIN SYSTEM CONFIGURADO');
-  Logger.log('🎉 ═══════════════════════════════════════');
-  Logger.log('');
-  Logger.log('👤 Owner: ' + callerEmail);
-  Logger.log('📁 Carpeta raíz: ' + rootId);
-  Logger.log('');
-  Logger.log('👉 SIGUIENTE: Agrega miembros al equipo desde el Admin Panel');
-  Logger.log('   o manualmente en la hoja Admin_Team');
-}
-
-function _upgradeRegistryColumns() {
-  const sheet = _getSheet(REGISTRY_SHEET_NAME);
-  if (!sheet) return;
-
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const newCols = ['submitted_by', 'submitted_date', 'approved_by', 'approved_date', 'rejected_by'];
-
-  newCols.forEach(col => {
-    if (headers.indexOf(col) === -1) {
-      const nextCol = sheet.getLastColumn() + 1;
-      sheet.getRange(1, nextCol).setValue(col)
-        .setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
-      Logger.log('  + Columna: ' + col);
-    }
-  });
-}
-
-function _moveExistingTemplatesToFolders() {
+function adminGetCurrentUser() {
   try {
-    const registry = _getTemplateRegistry();
-    registry.forEach(tpl => {
-      if (tpl.template_doc_id) {
-        _moveTemplateToFolder(
-          tpl.template_doc_id,
-          tpl.country_code,
-          tpl.country_name || tpl.country_code,
-          tpl.campaign_type
-        );
-      }
-    });
+    const email = Session.getActiveUser().getEmail();
+    if (!email) return JSON.stringify({ status: 'error', message: 'No se pudo obtener el email. ¿Estás logueado con cuenta Rappi?' });
+
+    const team = _getTeamMembers();
+    const member = team.find(m => m.email.toLowerCase() === email.toLowerCase());
+
+    if (!member) {
+      return JSON.stringify({ status: 'unauthorized', email: email, message: 'No tienes acceso al Panel de Administración. Contacta a un Owner.' });
+    }
+
+    return JSON.stringify({ status: 'ok', email: email, role: member.role, name: member.name, permissions: _getPermissions(member.role) });
   } catch (e) {
-    Logger.log('⚠️ Error moviendo templates: ' + e.message);
+    return JSON.stringify({ status: 'error', message: e.message });
   }
 }
 
-function setupCampaignTypes() {
-  Logger.log('🎯 Creando catálogo de dinámicas...');
-  
-  const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
-  let sheet = ss.getSheetByName(CAMPAIGN_TYPES_SHEET);
-  
-  if (sheet) {
-    Logger.log('⚠️ Campaign_Types ya existe. Saltando.');
-    return;
-  }
-  
-  sheet = ss.insertSheet(CAMPAIGN_TYPES_SHEET);
-  const headers = ['type_id', 'type_name', 'description', 'parent_type', 'processing_mode', 'icon', 'color', 'status', 'countries', 'created_by', 'created_date'];
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  sheet.getRange(1, 1, 1, headers.length).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
-  sheet.setFrozenRows(1);
-  
-  const callerEmail = Session.getActiveUser().getEmail();
-  const today = new Date().toISOString().split('T')[0];
-  
-  // Sembrar tipos iniciales (legacy = usan el motor hardcodeado actual)
-  const types = [
-    ['cashback', 'Cashback', 'Créditos devueltos al usuario por compra en tienda participante', '', 'legacy', 'fa-coins', '#00D68F', 'active', 'ALL', callerEmail, today],
-    ['concurso', 'Concurso Mayor Comprador', 'Concurso donde ganan los usuarios que más compren (valor o cantidad)', '', 'legacy', 'fa-trophy', '#8B5CF6', 'active', 'ALL', callerEmail, today]
-  ];
-  
-  types.forEach(t => sheet.appendRow(t));
-  
-  Logger.log('✅ Campaign_Types creada con ' + types.length + ' tipos iniciales');
-  Logger.log('');
-  Logger.log('👉 Para agregar nuevos tipos, usa el Admin Panel > pestaña Dinámicas');
-  Logger.log('   o agrega filas directamente a la sheet Campaign_Types');
+function _getPermissions(role) {
+  return {
+    canViewAdmin:       ROLE_HIERARCHY[role] >= 1,  
+    canEditFields:      ROLE_HIERARCHY[role] >= 2,  
+    canCreateTemplates: ROLE_HIERARCHY[role] >= 2,  
+    canApproveTemplates:ROLE_HIERARCHY[role] >= 3,  
+    canActivateTemplates:ROLE_HIERARCHY[role] >= 3, 
+    canDeleteTemplates: ROLE_HIERARCHY[role] >= 3,  
+    canManageTeam:      ROLE_HIERARCHY[role] >= 4,  
+    canManageFolders:   ROLE_HIERARCHY[role] >= 3,  
+  };
 }
 
-function setupCountrySettings() {
-  Logger.log('🌎 Creando configuración de países...');
-  
-  const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
-  let sheet = ss.getSheetByName(COUNTRY_SETTINGS_SHEET);
-  
-  if (sheet) {
-    Logger.log('⚠️ Country_Settings ya existe. Saltando.');
-    return;
-  }
-  
-  sheet = ss.insertSheet(COUNTRY_SETTINGS_SHEET);
-  const headers = ['country_code', 'country_name', 'legal_country', 'currency_name', 'currency_code', 'currency_symbol', 'legal_entity', 'timezone'];
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  sheet.getRange(1, 1, 1, headers.length).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
-  sheet.setFrozenRows(1);
-  
-  const countries = [
-    ['CO', 'Colombia', 'la República de Colombia', 'pesos M/Cte.', 'COP', '$', 'la Superintendencia de Industria y Comercio (SIC)', 'America/Bogota'],
-    ['MX', 'México', 'los Estados Unidos Mexicanos', 'pesos MXN', 'MXN', '$', 'la Procuraduría Federal del Consumidor (PROFECO)', 'America/Mexico_City'],
-    ['PE', 'Perú', 'la República del Perú', 'soles', 'PEN', 'S/', 'el Instituto Nacional de Defensa de la Competencia y de la Protección de la Propiedad Intelectual (INDECOPI)', 'America/Lima'],
-    ['CL', 'Chile', 'la República de Chile', 'pesos CLP', 'CLP', '$', 'el Servicio Nacional del Consumidor (SERNAC)', 'America/Santiago'],
-    ['AR', 'Argentina', 'la República Argentina', 'pesos ARS', 'ARS', '$', 'la Dirección Nacional de Defensa del Consumidor', 'America/Buenos_Aires'],
-    ['EC', 'Ecuador', 'la República del Ecuador', 'dólares USD', 'USD', '$', 'la Defensoría del Pueblo', 'America/Guayaquil'],
-    ['UY', 'Uruguay', 'la República Oriental del Uruguay', 'pesos UYU', 'UYU', '$', 'el Área de Defensa del Consumidor', 'America/Montevideo'],
-    ['CR', 'Costa Rica', 'la República de Costa Rica', 'colones CRC', 'CRC', '₡', 'el Ministerio de Economía, Industria y Comercio (MEIC)', 'America/Costa_Rica'],
-    ['BR', 'Brasil', 'la República Federativa del Brasil', 'reais BRL', 'BRL', 'R$', 'el PROCON y la Secretaría Nacional del Consumidor (SENACON)', 'America/Sao_Paulo']
-  ];
-  
-  countries.forEach(c => sheet.appendRow(c));
-  
-  Logger.log('✅ Country_Settings creada con ' + countries.length + ' países');
+function adminGetTeam() {
+  try {
+    _requireRole('viewer');
+    return JSON.stringify({ status: 'ok', team: _getTeamMembers() });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
 }
 
-function upgradeTemplateFieldsFormatting() {
-  Logger.log('📋 Actualizando Template_Fields con columna format_as...');
-  
-  const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
-  const sheet = ss.getSheetByName(FIELDS_SHEET_NAME);
-  if (!sheet) {
-    Logger.log('⚠️ Template_Fields no existe aún. Se creará cuando se necesite.');
-    return;
-  }
-  
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  
-  if (headers.indexOf('format_as') === -1) {
-    const nextCol = sheet.getLastColumn() + 1;
-    sheet.getRange(1, nextCol).setValue('format_as');
-    sheet.getRange(1, nextCol).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
-    Logger.log('✅ Columna format_as agregada');
-    
-    // Actualizar campos existentes con format_as correcto
+function adminAddTeamMember(jsonStr) {
+  try {
+    _requireRole('owner');
+    const d = JSON.parse(jsonStr);
+    if (!d.email || !d.role || !d.name) return JSON.stringify({ status: 'error', message: 'Email, nombre y rol son requeridos' });
+    if (!d.email.toLowerCase().endsWith('@rappi.com')) return JSON.stringify({ status: 'error', message: 'Solo se permiten emails @rappi.com' });
+    if (!ROLE_HIERARCHY[d.role]) return JSON.stringify({ status: 'error', message: 'Rol inválido: ' + d.role });
+
+    const sheet = _getOrCreateSheet(TW_CONFIG.SHEET_TEAM, ['email', 'name', 'role', 'added_by', 'added_date', 'status', 'notes']);
+    if (_getTeamMembers().find(m => m.email.toLowerCase() === d.email.toLowerCase())) return JSON.stringify({ status: 'error', message: 'Este email ya está en el equipo' });
+
+    sheet.appendRow([d.email.toLowerCase(), d.name, d.role, Session.getActiveUser().getEmail(), new Date().toISOString().split('T')[0], 'active', d.notes || '']);
+    _shareFolderWithMember(d.email, d.role);
+    _logApprovalAction('team_add', `Agregó a ${d.name} (${d.email}) como ${d.role}`);
+    return JSON.stringify({ status: 'ok', message: `${d.name} agregado como ${d.role}` });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+}
+
+function adminUpdateTeamMember(jsonStr) {
+  try {
+    _requireRole('owner');
+    const d = JSON.parse(jsonStr);
+    const sheet = _getSheet(TW_CONFIG.SHEET_TEAM);
+    if (!sheet) return JSON.stringify({ status: 'error', message: 'Sheet de equipo no existe' });
+
     const data = sheet.getDataRange().getValues();
-    const fieldIdCol = headers.indexOf('field_id');
-    
-    // Mapeo de campos conocidos a su formato
-    const formatMap = {
-      'cashbackPct': 'percentage',
-      'cap': 'money',
-      'budget': 'money',
-      'startDate': 'date_legal',
-      'endDate': 'date_legal',
-      'announcementDate': 'date_legal',
-      'numberOfWinners': 'number_words',
-      'maxOrders': 'number_words'
-    };
-    
     for (let i = 1; i < data.length; i++) {
-      const fieldId = data[i][fieldIdCol];
-      if (formatMap[fieldId]) {
-        sheet.getRange(i + 1, nextCol).setValue(formatMap[fieldId]);
+      if (String(data[i][0]).toLowerCase() === d.email.toLowerCase()) {
+        if (d.role) sheet.getRange(i + 1, 3).setValue(d.role);
+        if (d.status) sheet.getRange(i + 1, 6).setValue(d.status);
+        _logApprovalAction('team_update', `Actualizó rol de ${d.email} a ${d.role || d.status}`);
+        return JSON.stringify({ status: 'ok' });
       }
     }
-    Logger.log('✅ Formatos asignados a campos conocidos');
-  } else {
-    Logger.log('ℹ️ Columna format_as ya existe');
-  }
+    return JSON.stringify({ status: 'error', message: 'Miembro no encontrado' });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
 }
 
-function upgradeRegistryVertical() {
-  Logger.log('📋 Actualizando Template_Registry con columna vertical...');
-  
-  const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
-  const sheet = ss.getSheetByName(REGISTRY_SHEET_NAME);
-  if (!sheet) {
-    Logger.log('⚠️ Template_Registry no existe.');
-    return;
-  }
-  
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  
-  if (headers.indexOf('vertical') === -1) {
-    const nextCol = sheet.getLastColumn() + 1;
-    sheet.getRange(1, nextCol).setValue('vertical');
-    sheet.getRange(1, nextCol).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
-    Logger.log('✅ Columna vertical agregada al Registry');
+function adminRemoveTeamMember(email) {
+  try {
+    _requireRole('owner');
+    if (email.toLowerCase() === Session.getActiveUser().getEmail().toLowerCase()) return JSON.stringify({ status: 'error', message: 'No puedes eliminarte a ti mismo' });
+
+    const sheet = _getSheet(TW_CONFIG.SHEET_TEAM);
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).toLowerCase() === email.toLowerCase()) {
+        sheet.deleteRow(i + 1);
+        _logApprovalAction('team_remove', `Eliminó a ${email} del equipo`);
+        return JSON.stringify({ status: 'ok' });
+      }
+    }
+    return JSON.stringify({ status: 'error', message: 'No encontrado' });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+}
+
+function _getTeamMembers() {
+  const sheet = _getSheet(TW_CONFIG.SHEET_TEAM);
+  if (!sheet) return [];
+  return _sheetToObjects(sheet).filter(m => m.status === 'active');
+}
+
+function adminGetFolderStructure() {
+  try {
+    _requireRole('viewer');
+    const rootId = PropertiesService.getScriptProperties().getProperty('TEMPLATES_FOLDER_ID');
+    if (!rootId) return JSON.stringify({ status: 'ok', folders: [], rootUrl: null });
+
+    const root = DriveApp.getFolderById(rootId);
+    const folders = [];
+    const countryFolders = root.getFolders();
     
-    // Setear 'ALL' en todos los templates existentes
-    const lastRow = sheet.getLastRow();
-    if (lastRow > 1) {
-      for (let i = 2; i <= lastRow; i++) {
-        sheet.getRange(i, nextCol).setValue('ALL');
+    while (countryFolders.hasNext()) {
+      const cf = countryFolders.next();
+      const subFolders = [];
+      const subs = cf.getFolders();
+      while (subs.hasNext()) {
+        const sf = subs.next();
+        const files = [];
+        const fileIter = sf.getFiles();
+        while (fileIter.hasNext()) {
+          const f = fileIter.next();
+          files.push({ name: f.getName(), id: f.getId(), url: f.getUrl() });
+        }
+        subFolders.push({ name: sf.getName(), id: sf.getId(), files: files });
       }
-      Logger.log('✅ Templates existentes marcados como vertical: ALL');
+      folders.push({ name: cf.getName(), id: cf.getId(), subFolders: subFolders });
     }
-  } else {
-    Logger.log('ℹ️ Columna vertical ya existe');
-  }
-}
-function seedMissingFields() {
-  const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
-  const sheet = ss.getSheetByName(FIELDS_SHEET_NAME);
-  if (!sheet) { Logger.log('❌ Template_Fields no existe. Ejecuta setupCompleto primero.'); return; }
-
-  // Leer field_ids existentes para no duplicar
-  const existing = sheet.getDataRange().getValues();
-  const existingIds = existing.slice(1).map(r => r[0]);
-
-  const newFields = [
-    // Sección 2 — Campos faltantes
-    ['startTime', 'ALL', 'ALL', '', 'Hora inicio', 'time', 'fa-clock', 'FALSE', '2', '', '', '12:00', '', '', '5', 'Vigencia'],
-    ['endTime', 'ALL', 'ALL', '', 'Hora fin', 'time', 'fa-clock', 'FALSE', '2', '', '', '23:59', '', '', '6', 'Vigencia'],
-
-    // Sección 3 — Cashback avanzado
-    ['loadType', 'ALL', 'Cashback', '', 'Momento de carga', 'select', 'fa-clock', 'FALSE', '3', '', 'Inmediatamente (Al finalizar la orden)|Al día siguiente|Fecha específica', 'Inmediatamente (Al finalizar la orden)', '', '', '5', 'Cashback Avanzado'],
-    ['loadDate', 'ALL', 'Cashback', '', 'Fecha de carga', 'date', 'fa-calendar-day', 'FALSE', '3', '', '', '', '', 'loadType:Fecha específica', '6', 'Cashback Avanzado'],
-    ['validityType', 'ALL', 'Cashback', '', 'Vigencia de créditos', 'select', 'fa-hourglass', 'FALSE', '3', '', 'Por días calendario (Duración)|Por fechas específicas (Rango)', 'Por días calendario (Duración)', '', '', '7', 'Cashback Avanzado'],
-    ['validityDays', 'ALL', 'Cashback', '', 'Días de vigencia', 'number', 'fa-hashtag', 'FALSE', '3', '', '', '30', '', 'validityType:Por días calendario (Duración)', '8', 'Cashback Avanzado'],
-    ['redemptionStart', 'ALL', 'Cashback', '', 'Inicio redención', 'date', 'fa-calendar', 'FALSE', '3', '', '', '', '', 'validityType:Por fechas específicas (Rango)', '9', 'Cashback Avanzado'],
-    ['redemptionEnd', 'ALL', 'Cashback', '', 'Fin redención', 'date', 'fa-calendar-check', 'FALSE', '3', '', '', '', '', 'validityType:Por fechas específicas (Rango)', '10', 'Cashback Avanzado'],
-
-    // Sección 3 — Concurso (faltantes)
-    ['verticals', 'ALL', 'Concurso Mayor Comprador', '{{VERTICALES}}', 'Secciones participantes', 'text', 'fa-layer-group', 'FALSE', '3', '', '', 'Restaurantes', '', '', '7', 'Mecánica'],
-    ['participatingProducts', 'ALL', 'Concurso Mayor Comprador', '{{PRODUCTOS_PARTICIPANTES}}', 'Productos participantes', 'text', 'fa-box-open', 'FALSE', '3', '', '', '', '', '', '8', 'Mecánica'],
-    ['prizeType', 'ALL', 'Concurso Mayor Comprador', '', 'Tipo de premio', 'select', 'fa-gift', 'TRUE', '3', '', 'credits|physical', 'credits', '', '', '9', 'Premio'],
-    ['creditsAmount', 'ALL', 'Concurso Mayor Comprador', '', 'Monto créditos premio', 'number', 'fa-coins', 'FALSE', '3', '', '', '', '', 'prizeType:credits', '10', 'Premio'],
-    ['creditLoadDays', 'ALL', 'Concurso Mayor Comprador', '', 'Días para carga premio', 'number', 'fa-clock', 'FALSE', '3', '', '', '5', '', 'prizeType:credits', '11', 'Premio'],
-    ['creditsValidityDays', 'ALL', 'Concurso Mayor Comprador', '', 'Vigencia créditos premio', 'number', 'fa-hourglass-half', 'FALSE', '3', '', '', '30', '', 'prizeType:credits', '12', 'Premio'],
-    ['creditsRedemptionPlace', 'ALL', 'Concurso Mayor Comprador', '', 'Lugar redención premio', 'select', 'fa-location-dot', 'FALSE', '3', '', 'Únicamente en la Tienda Participante|En cualquier tienda de Restaurantes|En cualquier sección de la Plataforma', 'Únicamente en la Tienda Participante', '', 'prizeType:credits', '13', 'Premio'],
-    ['physicalPrizeDescription', 'ALL', 'Concurso Mayor Comprador', '', 'Descripción premio físico', 'textarea', 'fa-gift', 'FALSE', '3', '', '', '', '', 'prizeType:physical', '14', 'Premio'],
-    ['prizeDeliveryBy', 'ALL', 'Concurso Mayor Comprador', '', 'Quién entrega premio', 'select', 'fa-truck', 'FALSE', '3', '', 'rappi|organizer', 'rappi', '', 'prizeType:physical', '15', 'Premio'],
-    ['minParticipation', 'ALL', 'Concurso Mayor Comprador', '', 'Mínimo compra participar', 'text', 'fa-dollar-sign', 'FALSE', '3', '', '', '', '', '', '16', 'Mecánica'],
-
-    // Sección 4 — Faltantes
-    ['minPurchase', 'ALL', 'Cashback', '', 'Mínimo de compra', 'number', 'fa-basket-shopping', 'FALSE', '4', '', '', '', '', '', '0', 'Restricciones'],
-    ['extraEmails', 'ALL', 'ALL', '', 'Emails CC', 'text', 'fa-paper-plane', 'FALSE', '4', '', '', '', 'Separados por coma', '', '4', 'Restricciones'],
-    ['specialConditions', 'ALL', 'ALL', '{{CONDICIONES_ESPECIALES}}', 'Condiciones Especiales', 'select', 'fa-exclamation-circle', 'FALSE', '4', '', 'Sin condiciones especiales|Aplica únicamente para consumo en el local (Dine-in)|Aplica únicamente para órdenes con envío a domicilio|Campaña válida únicamente para las primeras 100 órdenes del día|No aplica para combos ni promociones, únicamente productos a precio regular', '', 'Texto legal extra', '', '1', 'Restricciones'],
-  ];
-
-  let added = 0;
-  newFields.forEach(f => {
-    if (!existingIds.includes(f[0])) {
-      sheet.appendRow(f);
-      added++;
-    }
-  });
-  Logger.log('✅ Se agregaron ' + added + ' campos nuevos a Template_Fields');
-}
-// =================================================================
-// V3.3 MIGRACIÓN — Script idempotente de limpieza y preparación
-// =================================================================
-// INSTRUCCIONES:
-// 1. Copiar TODA esta sección al final de Setup.gs
-// 2. Ejecutar migrateV33() desde el editor de Apps Script
-// 3. Se puede ejecutar múltiples veces sin riesgo (idempotente)
-// 4. Cada paso tiene log para verificar qué hizo
-// =================================================================
-
-function migrateV33() {
-  Logger.log('🚀 ════════════════════════════════════════');
-  Logger.log('🚀 MIGRACIÓN V3.3 — Inicio');
-  Logger.log('🚀 ════════════════════════════════════════');
-
-  _v33_step1_cleanCorruptFields();
-  _v33_step2_deactivateGhostTypes();
-  _v33_step3_setCanonicalFieldIds();
-  _v33_step4_upgradeCountrySettings();
-  _v33_step5_deleteJunkSheet();
-  _v33_step5b_ensureFormatAs();
-  _v33_step6_archiveLegacySheets();
-
-  Logger.log('');
-  Logger.log('🎉 ════════════════════════════════════════');
-  Logger.log('🎉 MIGRACIÓN V3.3 — Completa');
-  Logger.log('🎉 ════════════════════════════════════════');
-  Logger.log('');
-  Logger.log('👉 SIGUIENTE: Aplicar edits quirúrgicos a Admin.gs, Config.gs, Codigo.gs');
-  Logger.log('👉 LUEGO: Deploy test → probar Cashback en /dev');
+    return JSON.stringify({ status: 'ok', rootId: rootId, rootUrl: root.getUrl(), folders: folders });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
 }
 
-// ─── PASO 1: Eliminar filas corruptas de Template_Fields ───
-// Criterio: field_id que empiece con "FIELD_CO_" o con "{{"
-// Son datos de importaciones fallidas del Wizard.
-// Idempotente: si no hay filas que coincidan, no hace nada.
-function _v33_step1_cleanCorruptFields() {
-  Logger.log('');
-  Logger.log('📋 PASO 1: Limpiar Template_Fields (filas corruptas)');
+function adminToggleTemplate(index, newStatus) {
+  try {
+    var sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var statusCol = headers.indexOf('status') + 1;
+    var updatedCol = headers.indexOf('last_updated') + 1;
 
-  var sheet = _getSheet(FIELDS_SHEET_NAME);
-  if (!sheet) { Logger.log('⚠️ Template_Fields no existe. Saltando.'); return; }
+    sheet.getRange(index + 2, statusCol).setValue(newStatus);
+    if (updatedCol > 0) sheet.getRange(index + 2, updatedCol).setValue(new Date().toISOString().split('T')[0]);
 
-  var data = sheet.getDataRange().getValues();
-  var headers = data[0];
-  var fieldIdCol = headers.indexOf('field_id');
-  if (fieldIdCol < 0) { Logger.log('⚠️ Columna field_id no encontrada. Saltando.'); return; }
-
-  // Recorrer de abajo hacia arriba para no desplazar índices al borrar
-  var deleted = 0;
-  for (var i = data.length - 1; i >= 1; i--) {
-    var fid = String(data[i][fieldIdCol] || '');
-    var isCorrupt = false;
-
-    // Criterio 1: field_id empieza con "FIELD_CO_" (bug de importación temprana)
-    if (fid.indexOf('FIELD_CO_') === 0) isCorrupt = true;
-
-    // Criterio 2: field_id empieza con "{{" SOLO si pertenece a tipo de prueba conocido
-    if (fid.indexOf('{{') === 0) {
-      var rowCampaignType = String(data[i][headers.indexOf('campaign_type')] || '');
-      var knownTestTypes = ['travel prueba', 'Concurso de Millas Lifemiles Prueba'];
-      if (knownTestTypes.indexOf(rowCampaignType) >= 0) {
-        isCorrupt = true;
-      } else {
-        Logger.log('  ⚠️ Fila ' + (i+1) + ': field_id con {{ pero tipo "' + rowCampaignType + '" — se conserva por seguridad');
-      }
+    // V3.1: Si estamos ACTIVANDO, asegurar que el Campaign_Type también esté active
+    if (newStatus === 'active') {
+      try {
+        var row = sheet.getRange(index + 2, 1, 1, headers.length).getValues()[0];
+        var campaignType = row[headers.indexOf('campaign_type')];
+        _ensureCampaignTypeActive(campaignType);
+      } catch(e) { Logger.log('⚠️ Auto-activate Campaign_Type: ' + e.message); }
     }
 
-    if (isCorrupt) {
-      Logger.log('  🗑️ Eliminando fila ' + (i + 1) + ': field_id="' + fid + '"');
-      sheet.deleteRow(i + 1);
-      deleted++;
-    }
-  }
-
-  Logger.log('  ✅ Filas eliminadas: ' + deleted);
-  if (deleted === 0) Logger.log('  ℹ️ No había filas corruptas (ya estaba limpio)');
+    return JSON.stringify({ status: 'ok' });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
 }
 
-// ─── PASO 2: Desactivar Campaign_Types fantasma ───
-// Criterio: tipos con status='active' que NO tienen un template activo en Template_Registry.
-// Excepción: Cashback y Concurso Mayor Comprador siempre se mantienen (son legacy).
-// Idempotente: si ya están inactivos, no hace nada.
-function _v33_step2_deactivateGhostTypes() {
-  Logger.log('');
-  Logger.log('👻 PASO 2: Desactivar Campaign_Types fantasma');
-
+// V3.1: También activar Campaign_Type cuando se aprueba con activación
+// (No necesita función nueva: adminApproveTemplate ya llama adminToggleTemplate indirectamente
+//  o setea status = 'active'. Agregamos el hook aquí.)
+function _ensureCampaignTypeActive(campaignType) {
   var ctSheet = _getSheet(CAMPAIGN_TYPES_SHEET);
-  if (!ctSheet) { Logger.log('⚠️ Campaign_Types no existe. Saltando.'); return; }
-
-  var regSheet = _getSheet(REGISTRY_SHEET_NAME);
-  if (!regSheet) { Logger.log('⚠️ Template_Registry no existe. Saltando.'); return; }
-
-  // Obtener tipos con template activo
-  var regData = _sheetToObjects(regSheet);
-  var typesWithActiveTemplate = {};
-  regData.forEach(function(r) {
-    if (r.status === 'active') typesWithActiveTemplate[r.campaign_type] = true;
-  });
-
-  // Tipos legacy protegidos (no desactivar aunque no tengan template — usan motor hardcodeado)
-  var protectedLegacy = { 'Cashback': true, 'Concurso Mayor Comprador': true };
-
+  if (!ctSheet) return;
   var ctData = ctSheet.getDataRange().getValues();
   var ctHeaders = ctData[0];
   var nameCol = ctHeaders.indexOf('type_name');
   var statusCol = ctHeaders.indexOf('status');
-  var modeCol = ctHeaders.indexOf('processing_mode');
 
-  var deactivated = 0;
   for (var i = 1; i < ctData.length; i++) {
-    var name = String(ctData[i][nameCol] || '');
-    var status = String(ctData[i][statusCol] || '');
-    var mode = String(ctData[i][modeCol] || '');
+    if (String(ctData[i][nameCol]) === campaignType && String(ctData[i][statusCol]) !== 'active') {
+      ctSheet.getRange(i + 1, statusCol + 1).setValue('active');
+      Logger.log('✅ Campaign_Type "' + campaignType + '" auto-activado al activar template');
+      break;
+    }
+  }
+}
 
-    if (status === 'active' && !protectedLegacy[name] && !typesWithActiveTemplate[name]) {
-      ctSheet.getRange(i + 1, statusCol + 1).setValue('inactive');
-      Logger.log('  👻 Desactivado: "' + name + '" (mode=' + mode + ', sin template activo)');
-      deactivated++;
+function adminDeleteTemplate(index) {
+  try {
+    const sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
+    sheet.deleteRow(index + 2);
+    return JSON.stringify({ status: 'ok' });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+}
+
+function adminSaveTemplate(jsonStr, editIndex) {
+  try {
+    const callerRole = _requireRole('editor');
+    const d = JSON.parse(jsonStr);
+    let sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
+    const callerEmail = Session.getActiveUser().getEmail();
+    
+    let initialStatus = ROLE_HIERARCHY[callerRole.role] >= ROLE_HIERARCHY['admin'] ? (d.status || 'active') : 'draft';
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const row = new Array(headers.length).fill('');
+    const setValue = (colName, value) => { const idx = headers.indexOf(colName); if (idx >= 0) row[idx] = value || ''; };
+
+    setValue('country_code', d.country_code); setValue('country_name', d.country_name);
+    setValue('campaign_type', d.campaign_type); setValue('template_doc_id', d.template_doc_id);
+    setValue('version', d.version || '1.0'); setValue('status', initialStatus);
+    setValue('currency_code', d.currency_code || 'COP'); setValue('currency_symbol', d.currency_symbol || '$');
+    setValue('legal_owner', d.legal_owner || callerEmail); setValue('last_updated', new Date().toISOString().split('T')[0]);
+    setValue('notes', d.notes || ''); setValue('submitted_by', callerEmail);
+
+    if (editIndex >= 0) sheet.getRange(editIndex + 2, 1, 1, row.length).setValues([row]);
+    else sheet.appendRow(row);
+
+    _moveTemplateToFolder(d.template_doc_id, d.country_code, d.country_name, d.campaign_type);
+    _logApprovalAction(editIndex >= 0 ? 'template_edit' : 'template_create', `${d.country_code}/${d.campaign_type} por ${callerEmail} [${initialStatus}]`);
+    return JSON.stringify({ status: 'ok', message: initialStatus === 'draft' ? 'Guardado como borrador' : 'Guardado como ' + initialStatus, initialStatus });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+}
+
+function adminSubmitForReview(index) {
+  try {
+    _requireRole('editor');
+    const sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
+    const email = Session.getActiveUser().getEmail();
+    sheet.getRange(index + 2, sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].indexOf('status') + 1).setValue('pending_review');
+    _logApprovalAction('submit_review', `Template #${index} enviado a revisión por ${email}`);
+    _notifyAdmins(index, 'pending_review', email);
+    return JSON.stringify({ status: 'ok', message: 'Enviado a revisión' });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+}
+
+function adminApproveTemplate(index, activateNow) {
+  try {
+    _requireRole('admin');
+    const sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
+    const email = Session.getActiveUser().getEmail();
+    const newStatus = activateNow ? 'active' : 'approved';
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+    sheet.getRange(index + 2, headers.indexOf('status') + 1).setValue(newStatus);
+    _logApprovalAction('approve', `Template #${index} aprobado por ${email} [${newStatus}]`);
+
+    if (activateNow) {
+      try {
+        var row = sheet.getRange(index + 2, 1, 1, headers.length).getValues()[0];
+        var campaignType = row[headers.indexOf('campaign_type')];
+        _ensureCampaignTypeActive(campaignType);
+      } catch (e) {
+        Logger.log('⚠️ Auto-activate Campaign_Type en approve: ' + e.message);
+      }
+    }
+
+    return JSON.stringify({ status: 'ok', message: 'Template aprobado' });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
+
+function adminRejectTemplate(index, reason) {
+  try {
+    _requireRole('admin');
+    const sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
+    sheet.getRange(index + 2, sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].indexOf('status') + 1).setValue('rejected');
+    _logApprovalAction('reject', `Template #${index} rechazado: ${reason}`);
+    return JSON.stringify({ status: 'ok', message: 'Template rechazado' });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+}
+
+// --- OTROS GETTERS DEL ADMIN ---
+function adminGetApprovalLog() {
+  try {
+    _requireRole('viewer');
+    const sheet = _getSheet('Approval_Log');
+    if (!sheet) return JSON.stringify({ status: 'ok', logs: [] });
+    const data = sheet.getDataRange().getValues();
+    const logs = [];
+    for (let i = data.length - 1; i >= Math.max(1, data.length - 100); i--) {
+      logs.push({ timestamp: data[i][0] ? new Date(data[i][0]).toLocaleString('es-CO') : '-', actor: data[i][1] || '-', action: data[i][2] || '-', details: data[i][3] || '' });
+    }
+    return JSON.stringify({ status: 'ok', logs: logs });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+}
+
+function adminGetTemplates() {
+  try {
+    _requireRole('viewer');
+    const sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
+    return JSON.stringify({ status: 'ok', templates: sheet ? _sheetToObjects(sheet) : [] });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+}
+
+function adminGetLogs() {
+  try {
+    _requireRole('viewer');
+    const sheet = _getSheet('Respuestas_Audit_V2');
+    if (!sheet) return JSON.stringify({ status: 'ok', logs: [] });
+    const data = sheet.getDataRange().getValues();
+    const logs = [];
+    for (let i = data.length - 1; i >= Math.max(1, data.length - 50); i--) {
+      logs.push({ timestamp: data[i][0] ? new Date(data[i][0]).toLocaleString('es-CO') : '-', email: data[i][1] || '-', docUrl: data[i][2] || '', type: data[i][3] || '-', country: data[i][4] || 'CO', shop: data[i][5] || '-' });
+    }
+    return JSON.stringify({ status: 'ok', logs: logs });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+}
+
+function adminGetFields() {
+  try {
+    _requireRole('viewer');
+    return JSON.stringify({ status: 'ok', fields: _sheetToObjects(_getSheet(TW_CONFIG.SHEET_FIELDS) || []) });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+}
+
+function adminGetCampaignTypes() {
+  try {
+    _requireRole('viewer');
+    return JSON.stringify({ status: 'ok', types: _sheetToObjects(_getSheet('Campaign_Types') || []) });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+}
+
+function adminGetCountrySettings() {
+  try {
+    _requireRole('viewer');
+    return JSON.stringify({ status: 'ok', settings: _sheetToObjects(_getSheet('Country_Settings') || []) });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+}
+
+// --- HERRAMIENTAS INTERNAS ADMIN ---
+function _requireRole(minRole) {
+  const email = Session.getActiveUser().getEmail();
+  const member = _getTeamMembers().find(m => m.email.toLowerCase() === email.toLowerCase());
+  if (!member || ROLE_HIERARCHY[member.role] < ROLE_HIERARCHY[minRole]) throw new Error(`Permiso insuficiente.`);
+  return member;
+}
+
+function _logApprovalAction(action, details) {
+  try {
+    _getOrCreateSheet('Approval_Log', ['timestamp', 'actor', 'action', 'details']).appendRow([new Date(), Session.getActiveUser().getEmail(), action, details]);
+  } catch (e) {}
+}
+
+function _notifyAdmins(templateIndex, status, submitterEmail) {
+  // Simplificado para ahorrar espacio
+  Logger.log(`Notificación enviada a Admins: Template ${templateIndex} en estado ${status}`);
+}
+
+function getUserRole(email) {
+  if (!email) return 'none';
+  if (TW_CONFIG.ADMIN_EMAILS.includes(email)) return 'owner';
+  try {
+    const data = _getSheet(TW_CONFIG.SHEET_TEAM).getDataRange().getValues();
+    const headers = data[0];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][headers.indexOf('email')] === email) return data[i][headers.indexOf('role')] || 'viewer';
+    }
+  } catch (e) {}
+  return 'none';
+}
+
+function _getOrCreateDriveFolder(parent, name) {
+  let iter = parent ? parent.getFoldersByName(name) : DriveApp.getFoldersByName(name);
+  if (iter.hasNext()) return iter.next();
+  return parent ? parent.createFolder(name) : DriveApp.createFolder(name);
+}
+
+function _shareFolderWithMember(email, role) {
+  try {
+    const folderId = PropertiesService.getScriptProperties().getProperty('TEMPLATES_FOLDER_ID');
+    if (!folderId) return;
+    const folder = DriveApp.getFolderById(folderId);
+    role === 'viewer' ? folder.addViewer(email) : folder.addEditor(email);
+  } catch (e) {}
+}
+
+function _moveTemplateToFolder(docId, countryCode, countryName, campaignType) {
+  try {
+    const rootId = PropertiesService.getScriptProperties().getProperty('TEMPLATES_FOLDER_ID');
+    if (!rootId) return;
+    const root = DriveApp.getFolderById(rootId);
+    const typeFolder = _getOrCreateDriveFolder(_getOrCreateDriveFolder(root, `${countryCode}_${countryName}`), campaignType.includes('Concurso') ? 'Concurso' : campaignType);
+    const file = DriveApp.getFileById(docId);
+    typeFolder.addFile(file);
+    const parents = file.getParents();
+    while (parents.hasNext()) {
+      const p = parents.next();
+      if (p.getId() !== typeFolder.getId()) p.removeFile(file);
+    }
+  } catch (e) {}
+}
+
+// --- GEMINI Y SMART TEMPLATES WIZARD ---
+function analyzeTextForPlaceholders(payload) {
+  try {
+    Logger.log('🧠 V3.4 analyzeText: país=' + payload.countryCode + ', tipo=' + payload.campaignType + ', textLen=' + (payload.text || '').length);
+
+    var prompt = buildAnalysisPrompt(payload.text, payload.countryCode, payload.campaignType);
+    Logger.log('🧠 Prompt generado: ' + prompt.length + ' caracteres');
+
+    var rawResult = callGeminiForAnalysis(prompt);
+    Logger.log('🧠 Gemini respondió: ' + JSON.stringify(rawResult).substring(0, 500));
+
+    // V3.4: Normalizar detecciones ANTES de enviar al frontend
+    if (rawResult && rawResult.detections && Array.isArray(rawResult.detections)) {
+      rawResult.detections = _normalizeDetections(rawResult.detections, payload.countryCode, payload.campaignType);
+      Logger.log('✅ V3.4: ' + rawResult.detections.length + ' detecciones normalizadas');
+    }
+
+    return buildResponse(true, 'Análisis completado', rawResult);
+  } catch (e) {
+    Logger.log('❌ analyzeTextForPlaceholders ERROR: ' + e.message + '\n' + e.stack);
+    return buildResponse(false, 'Error al analizar: ' + e.message);
+  }
+}
+
+function buildAnalysisPrompt(text, countryCode, campaignType) {
+  // V3.4: Prompt exhaustivo que obliga a Gemini a mapear a placeholders conocidos
+  var catalog = '';
+
+  // 1. BASE_FIELD_MAP (section=0 — formulario estático, NUNCA preguntar de nuevo)
+  catalog += '\n## CAMPOS BASE (el sistema YA los pregunta en el formulario principal):\n';
+  if (typeof BASE_FIELD_MAP !== 'undefined') {
+    var baseKeys = Object.keys(BASE_FIELD_MAP);
+    for (var b = 0; b < baseKeys.length; b++) {
+      catalog += '- {{' + baseKeys[b] + '}} → campo: ' + BASE_FIELD_MAP[baseKeys[b]].canonical + '\n';
     }
   }
 
-  Logger.log('  ✅ Tipos desactivados: ' + deactivated);
-  if (deactivated === 0) Logger.log('  ℹ️ No había fantasmas (todo OK)');
-}
-
-// ─── PASO 3: Agregar canonical_field_id a campos base ───
-// Cruza con BASE_FIELD_MAP para marcar los 7 campos base con su canonical.
-// También cambia section a '0' para que no se rendericen como dinámicos.
-// Idempotente: si ya tienen canonical, no los toca.
-function _v33_step3_setCanonicalFieldIds() {
-  Logger.log('');
-  Logger.log('🔗 PASO 3: Agregar canonical_field_id a campos base');
-
-  var sheet = _getSheet(FIELDS_SHEET_NAME);
-  if (!sheet) { Logger.log('⚠️ Template_Fields no existe. Saltando.'); return; }
-
-  var data = sheet.getDataRange().getValues();
-  var headers = data[0];
-
-  var fieldIdCol = headers.indexOf('field_id');
-  var sectionCol = headers.indexOf('section');
-  var canonCol = headers.indexOf('canonical_field_id');
-  var phCol = headers.indexOf('placeholder');
-
-  if (canonCol < 0) {
-    // Crear la columna si no existe
-    var nextCol = sheet.getLastColumn() + 1;
-    sheet.getRange(1, nextCol).setValue('canonical_field_id');
-    sheet.getRange(1, nextCol).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
-    canonCol = nextCol - 1; // 0-indexed para headers
-    Logger.log('  + Columna canonical_field_id creada');
-  }
-
-  // Mapeo inverso: field_id → placeholder key en BASE_FIELD_MAP
-  // BASE_FIELD_MAP tiene: 'NOMBRE_CAMPANA': { canonical: 'campaignName' }
-  // Necesitamos: campaignName → campaignName (canonical)
-  if (typeof BASE_FIELD_MAP === 'undefined') {
-    Logger.log('⚠️ BASE_FIELD_MAP no definido. Saltando.');
-    return;
-  }
-
-  // Construir mapeo field_id → canonical
-  var fieldToCanonical = {};
-  var keys = Object.keys(BASE_FIELD_MAP);
-  for (var k = 0; k < keys.length; k++) {
-    var entry = BASE_FIELD_MAP[keys[k]];
-    fieldToCanonical[entry.canonical] = entry.canonical;
-  }
-
-  var updated = 0;
-  for (var i = 1; i < data.length; i++) {
-    var fid = String(data[i][fieldIdCol] || '');
-    var currentCanon = String(data[i][canonCol] || '').trim();
-
-    if (fieldToCanonical[fid] && !currentCanon) {
-      // Marcar con canonical
-      sheet.getRange(i + 1, canonCol + 1).setValue(fieldToCanonical[fid]);
-      // Cambiar section a 0
-      if (sectionCol >= 0) sheet.getRange(i + 1, sectionCol + 1).setValue('0');
-      Logger.log('  🔗 ' + fid + ' → canonical=' + fieldToCanonical[fid] + ', section=0');
-      updated++;
+  // 2. DERIVED_FIELDS (calculados automáticamente del payload — NO crear nuevos)
+  catalog += '\n## CAMPOS DERIVADOS (el sistema los calcula automáticamente, usar estos EXACTOS):\n';
+  if (typeof DERIVED_FIELDS !== 'undefined') {
+    var derivedKeys = Object.keys(DERIVED_FIELDS);
+    for (var d = 0; d < derivedKeys.length; d++) {
+      catalog += '- {{' + derivedKeys[d] + '}}\n';
     }
   }
 
-  Logger.log('  ✅ Campos actualizados: ' + updated);
-  if (updated === 0) Logger.log('  ℹ️ Ya tenían canonical (idempotente)');
-}
-
-// ─── PASO 4: Agregar columnas de Legal Defaults a Country_Settings ───
-// Agrega: jurisdiction_text, applicable_law, legal_url
-// Llena Colombia con valores concretos. Los demás países quedan vacíos.
-// Idempotente: si las columnas ya existen, no las duplica.
-function _v33_step4_upgradeCountrySettings() {
-  Logger.log('');
-  Logger.log('🌎 PASO 4: Agregar columnas legales a Country_Settings');
-
-  var sheet = _getSheet(COUNTRY_SETTINGS_SHEET);
-  if (!sheet) { Logger.log('⚠️ Country_Settings no existe. Saltando.'); return; }
-
-  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-
-  var newCols = [
-    { name: 'jurisdiction_text', coValue: 'la justicia ordinaria de la República de Colombia' },
-    { name: 'applicable_law', coValue: 'las leyes de la República de Colombia' },
-    { name: 'legal_url', coValue: 'https://legal.rappi.com/colombia/terminos-y-condiciones-de-uso-de-plataforma-rappi-2/' }
-  ];
-
-  // Encontrar fila de Colombia
-  var data = sheet.getDataRange().getValues();
-  var ccCol = headers.indexOf('country_code');
-  var coRow = -1;
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][ccCol]) === 'CO') { coRow = i + 1; break; }
+  // 3. LEGAL_DEFAULTS_MAP (section=L — se resuelven del país, NUNCA preguntar)
+  catalog += '\n## CAMPOS LEGALES (se resuelven automáticamente por país, NUNCA pedir al usuario):\n';
+  if (typeof LEGAL_DEFAULTS_MAP !== 'undefined') {
+    var legalKeys = Object.keys(LEGAL_DEFAULTS_MAP);
+    for (var l = 0; l < legalKeys.length; l++) {
+      catalog += '- {{' + legalKeys[l] + '}} → columna: ' + LEGAL_DEFAULTS_MAP[legalKeys[l]].column + '\n';
+    }
   }
 
-  newCols.forEach(function(col) {
-    if (headers.indexOf(col.name) >= 0) {
-      Logger.log('  ℹ️ Columna "' + col.name + '" ya existe');
-      // Verificar si Colombia tiene valor
-      var existingCol = headers.indexOf(col.name) + 1;
-      if (coRow > 0) {
-        var currentVal = sheet.getRange(coRow, existingCol).getValue();
-        if (!currentVal) {
-          sheet.getRange(coRow, existingCol).setValue(col.coValue);
-          Logger.log('    → Llenado valor de Colombia');
+  // 4. KNOWN_PLACEHOLDERS (específicos de campaña)
+  catalog += '\n## CAMPOS ESPECÍFICOS DE CAMPAÑA (solo si no está arriba):\n';
+  var knownEntries = Object.entries(TW_CONFIG.KNOWN_PLACEHOLDERS);
+  for (var k = 0; k < knownEntries.length; k++) {
+    catalog += '- {{' + knownEntries[k][0] + '}}: ' + knownEntries[k][1].label + ' (' + knownEntries[k][1].type + ')\n';
+  }
+
+  var prompt = 'Eres un asistente legal experto en Términos y Condiciones de campañas de marketing en Latinoamérica.\n\n';
+  prompt += 'TAREA: Analiza el siguiente documento de T&C para ' + countryCode + ' (tipo de campaña: ' + (campaignType || 'general') + '). ';
+  prompt += 'Identifica TODOS los valores que son variables (cambian entre campañas) y DEBEN ser reemplazados por placeholders.\n\n';
+  prompt += '═══════════════════════════════════════\n';
+  prompt += 'CATÁLOGO COMPLETO DE PLACEHOLDERS CONOCIDOS:\n';
+  prompt += catalog;
+  prompt += '\n═══════════════════════════════════════\n\n';
+  prompt += 'REGLAS OBLIGATORIAS (violarlas es un error grave):\n\n';
+  prompt += '1. MAPEAR PRIMERO: Antes de crear CUALQUIER placeholder nuevo, busca en el catálogo anterior. Si existe uno que coincide semánticamente, ÚSALO con su nombre exacto.\n\n';
+  prompt += '2. NUNCA CREAR PLACEHOLDERS LITERALES: Si el texto dice "Nacional", NO crees {{Nacional}}. Mapea a {{TEXTO_TERRITORIO}}. Si dice "24 de marzo de 2026", NO crees {{24 de marzo de 2026}}. Mapea a {{FECHA_INICIO}} o {{FECHA_FIN}}.\n\n';
+  prompt += '3. NUNCA CREAR PLACEHOLDERS PARA CAMPOS LEGALES: Textos como "Superintendencia de Industria y Comercio", "Ley 1480 de 2011", "Tribunales de Bogotá" son cláusulas legales fijas. Mapea a {{JURISDICCION}}, {{LEY_APLICABLE}}, {{ENTIDAD_VIGILANCIA}}, {{PAIS_LEGAL}}, {{URL_BASES}} o {{MONEDA_TEXTO}}.\n\n';
+  prompt += '4. NUNCA CREAR PLACEHOLDERS PARA VALORES COMPUESTOS QUE YA EXISTEN: "veinte por ciento (20%)" → {{TEXTO_PORCENTAJE}}. "cincuenta mil (50.000)" → {{TOPE_LETRAS}} o {{PRESUPUESTO_LETRAS}}. El sistema calcula estos automáticamente.\n\n';
+  prompt += '5. FORMATO OBLIGATORIO: Todos los placeholders deben ser MAYUSCULAS_CON_UNDERSCORES. Ejemplo: NOMBRE_CAMPANA, no nombreCampaña ni Nombre-Campaña.\n\n';
+  prompt += '6. SIN DUPLICADOS: Cada placeholder aparece UNA SOLA VEZ en las detecciones, incluso si el valor aparece múltiples veces en el texto. Usa el campo "occurrences" para indicar cuántas veces aparece.\n\n';
+  prompt += '7. SOLO CREAR NUEVOS para conceptos que genuinamente NO existen en el catálogo (ej: una mecánica muy particular de una campaña específica).\n\n';
+  prompt += '8. CONFIANZA:\n';
+  prompt += '   - HIGH = mapeó a un placeholder del catálogo\n';
+  prompt += '   - MEDIUM = placeholder nuevo pero el patrón es claro\n';
+  prompt += '   - LOW = incierto, requiere revisión humana\n\n';
+  prompt += 'FORMATO DE RESPUESTA — Responde SOLO con este JSON, sin texto adicional, sin markdown:\n';
+  prompt += '{"detections":[{"original_text":"texto EXACTO del documento","suggested_placeholder":"NOMBRE_PLACEHOLDER","label":"Descripción corta en español","confidence":"HIGH"}]}\n\n';
+  prompt += 'DOCUMENTO A ANALIZAR:\n═══════════════════════════════════════\n';
+  prompt += text.substring(0, 15000);
+
+  return prompt;
+}
+
+function callGeminiForAnalysis(prompt) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  if (!apiKey) {
+    throw new Error('No existe GEMINI_API_KEY en Script Properties.');
+  }
+
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
+
+  const response = UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.1 }
+    }),
+    muteHttpExceptions: true
+  });
+
+  const status = response.getResponseCode();
+  const raw = response.getContentText();
+
+  Logger.log('Gemini status: ' + status);
+  Logger.log('Gemini raw response: ' + raw);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    throw new Error('Gemini devolvió JSON inválido: ' + raw);
+  }
+
+  if (status < 200 || status >= 300) {
+    const apiMessage =
+      parsed &&
+      parsed.error &&
+      parsed.error.message
+        ? parsed.error.message
+        : raw;
+
+    throw new Error('Gemini HTTP ' + status + ': ' + apiMessage);
+  }
+
+  const text =
+    parsed &&
+    parsed.candidates &&
+    parsed.candidates[0] &&
+    parsed.candidates[0].content &&
+    parsed.candidates[0].content.parts &&
+    parsed.candidates[0].content.parts[0] &&
+    parsed.candidates[0].content.parts[0].text;
+
+  if (!text) {
+    throw new Error('Gemini no devolvió candidates válidos: ' + raw);
+  }
+
+  const cleaned = text
+    .replace(/```json\s*/g, '')
+    .replace(/```\s*/g, '')
+    .trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    throw new Error('La respuesta de Gemini no era JSON parseable: ' + cleaned);
+  }
+}
+// ---INICIO COPIAR---
+// =================================================================
+// WIZARD PASO 4: Crear template desde el Wizard (V3.1)
+// =================================================================
+function createTemplateFromWizard(payload) {
+  try {
+    // ─── 1. VALIDAR PAYLOAD ───
+    var originalText = payload.originalText;
+    var sourceDocId   = payload.sourceDocId || null;   // V3.1: Doc fuente
+    var sourceDocTitle = payload.sourceDocTitle || null;
+    var mappings      = payload.mappings || [];
+    var metadata      = payload.metadata || {};
+    var userEmail     = payload.userEmail || '';
+
+    var countryCode   = metadata.countryCode;
+    var campaignType  = (metadata.campaignType || '').trim();
+    var version       = metadata.version || '1.0';
+    var notes         = metadata.notes || '';
+
+    if (!countryCode || !campaignType || (!originalText && !sourceDocId)) {
+      return buildResponse(false, 'Faltan datos requeridos (país, tipo de campaña, o texto/doc fuente).');
+    }
+
+    // ─── 2. CREAR/COPIAR EL GOOGLE DOC ───
+    var docTitle = 'Template_' + countryCode + '_' + campaignType.replace(/\s+/g, '_') + '_v' + version;
+    var doc, docId;
+
+    if (sourceDocId) {
+      // RUTA A: Copia del Doc fuente (preserva formato, tablas, listas, negritas)
+      var copiedFile = DriveApp.getFileById(sourceDocId).makeCopy(docTitle);
+      docId = copiedFile.getId();
+      doc = DocumentApp.openById(docId);
+      var body = doc.getBody();
+
+      // Aplicar los reemplazos de texto original → placeholder
+      mappings.forEach(function(m) {
+        if (m.confirmed && m.original_text && m.placeholder) {
+          var escaped = m.original_text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          body.replaceText(escaped, '{{' + m.placeholder + '}}');
+        }
+      });
+
+      doc.saveAndClose();
+
+    } else {
+      // RUTA B: Fallback — crear desde texto pegado
+      var processedText = originalText;
+      mappings.forEach(function(m) {
+        if (m.confirmed && m.original_text && m.placeholder) {
+          var escaped = m.original_text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          processedText = processedText.replace(new RegExp(escaped, 'g'), '{{' + m.placeholder + '}}');
+        }
+      });
+
+      doc = DocumentApp.create(docTitle);
+      var body = doc.getBody();
+      if (body.getNumChildren() > 0) body.clear();
+
+      var lines = processedText.split('\n');
+      lines.forEach(function(line, idx) {
+        var para = body.appendParagraph(line);
+        if (idx === 0 && line.trim().length > 0) {
+          para.setBold(true);
+          para.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+        }
+      });
+
+      doc.saveAndClose();
+      docId = doc.getId();
+    }
+
+    // ─── 3. MOVER A CARPETA CORRECTA EN DRIVE ───
+    var countryFolderName = TW_CONFIG.COUNTRY_FOLDERS[countryCode] || countryCode;
+    _moveTemplateToFolder(docId, countryCode, countryFolderName, campaignType);
+
+    // ─── 4. DETERMINAR ROL Y STATUS ───
+    var callerRole = 'editor';
+    try {
+      var roleInfo = _requireRole('editor');
+      callerRole = roleInfo.role;
+    } catch(e) { /* si falla, continuar como editor */ }
+
+    // V3.1: Editor → draft (alineado con flujo manual), Admin/Owner → active
+    var isAdminOrAbove = ROLE_HIERARCHY[callerRole] >= ROLE_HIERARCHY['admin'];
+    var initialStatus = isAdminOrAbove ? 'active' : 'draft';
+
+    // ─── 5. UPSERT EN Template_Registry ───
+    // Llave compuesta: country_code + campaign_type + version
+    var registrySheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
+    if (!registrySheet) {
+      return buildResponse(false, 'Sheet Template_Registry no encontrada. Ejecuta el setup primero.');
+    }
+
+    var regHeaders = registrySheet.getRange(1, 1, 1, registrySheet.getLastColumn()).getValues()[0];
+    var regData = registrySheet.getDataRange().getValues();
+    var existingRegIdx = -1; // -1 = no existe, hay que crear
+
+    // Buscar fila existente por llave compuesta
+    var ccCol = regHeaders.indexOf('country_code');
+    var ctCol = regHeaders.indexOf('campaign_type');
+    var verCol = regHeaders.indexOf('version');
+    for (var ri = 1; ri < regData.length; ri++) {
+      if (String(regData[ri][ccCol]) === countryCode &&
+          String(regData[ri][ctCol]) === campaignType &&
+          String(regData[ri][verCol]) === version) {
+        existingRegIdx = ri; // índice 1-based en la data (0-based en sheet = ri+1)
+        break;
+      }
+    }
+
+    var regRow = new Array(regHeaders.length).fill('');
+    var setRegVal = function(col, val) {
+      var idx = regHeaders.indexOf(col);
+      if (idx >= 0) regRow[idx] = val || '';
+    };
+
+    // Obtener moneda del país
+    var currencyCode = 'COP', currencySymbol = '$';
+    try {
+      var countrySheet = _getSheet(COUNTRY_SETTINGS_SHEET);
+      if (countrySheet) {
+        var countries = _sheetToObjects(countrySheet);
+        var cc = countries.find(function(c) { return c.country_code === countryCode; });
+        if (cc) { currencyCode = cc.currency_code || currencyCode; currencySymbol = cc.currency_symbol || currencySymbol; }
+      }
+    } catch(e) {}
+
+    setRegVal('country_code', countryCode);
+    setRegVal('country_name', countryFolderName.replace(countryCode + '_', ''));
+    setRegVal('campaign_type', campaignType);
+    setRegVal('template_doc_id', docId);
+    setRegVal('version', version);
+    setRegVal('status', initialStatus);
+    setRegVal('currency_code', currencyCode);
+    setRegVal('currency_symbol', currencySymbol);
+    setRegVal('legal_owner', userEmail);
+    setRegVal('last_updated', new Date().toISOString().split('T')[0]);
+    setRegVal('notes', notes);
+    setRegVal('submitted_by', userEmail);
+    setRegVal('vertical', 'ALL');
+
+    if (existingRegIdx >= 0) {
+      // UPSERT: Actualizar fila existente
+      registrySheet.getRange(existingRegIdx + 1, 1, 1, regRow.length).setValues([regRow]);
+      Logger.log('♻️ Registry UPSERT: actualizada fila ' + (existingRegIdx + 1));
+    } else {
+      // INSERT: Nueva fila
+      registrySheet.appendRow(regRow);
+      Logger.log('➕ Registry INSERT: nueva fila para ' + countryCode + '/' + campaignType);
+    }
+
+    // ─── 6. UPSERT EN Template_Fields ───
+    // Llave compuesta: country_code + campaign_type + placeholder
+    var fieldsSheet = _getSheet(TW_CONFIG.SHEET_FIELDS);
+    var fieldsCreated = 0;
+
+    if (fieldsSheet && mappings.length > 0) {
+      var fieldHeaders = fieldsSheet.getRange(1, 1, 1, fieldsSheet.getLastColumn()).getValues()[0];
+      var fieldData = fieldsSheet.getDataRange().getValues();
+
+      // Índices de columnas para búsqueda
+      var fCcCol = fieldHeaders.indexOf('country_code');
+      var fCtCol = fieldHeaders.indexOf('campaign_type');
+      var fPhCol = fieldHeaders.indexOf('placeholder');
+
+      mappings.forEach(function(m, idx) {
+        if (!m.confirmed) return;
+
+        // V3.4: Limpiar y normalizar formato UPPER_CASE
+        var rawPh = m.placeholder.replace(/^\{\{/, '').replace(/\}\}$/, '');
+        rawPh = rawPh.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+        var placeholderStr = '{{' + rawPh + '}}';
+
+        // Buscar si ya existe este field
+        var existingFieldIdx = -1;
+        for (var fi = 1; fi < fieldData.length; fi++) {
+          if (String(fieldData[fi][fCcCol]) === countryCode &&
+              String(fieldData[fi][fCtCol]) === campaignType &&
+              String(fieldData[fi][fPhCol]) === placeholderStr) {
+            existingFieldIdx = fi;
+            break;
+          }
+        }
+
+        // V3.3: Limpiar placeholder antes de generar field_id (evita {{}} en el ID)
+        var cleanPh = m.placeholder.replace(/^\{\{/, '').replace(/\}\}$/, '');
+        var fieldId = cleanPh.toLowerCase().replace(/_([a-z])/g, function(match, letter) {
+          return letter.toUpperCase();
+        });
+
+        // V3.1: Inferir field_type y format_as desde KNOWN_PLACEHOLDERS
+        var knownConfig = TW_CONFIG.KNOWN_PLACEHOLDERS[m.placeholder];
+        var fieldType = 'text';
+        var formatAs = '';
+
+        if (knownConfig) {
+          fieldType = knownConfig.type || 'text';
+          // Inferir format_as según el tipo conocido
+          if (knownConfig.type === 'date') formatAs = 'date_legal';
+          else if (knownConfig.type === 'number') {
+            var labelLower = (m.label || '').toLowerCase();
+            if (labelLower.indexOf('tope') >= 0 || labelLower.indexOf('valor') >= 0 ||
+                labelLower.indexOf('monto') >= 0 || labelLower.indexOf('premio') >= 0 ||
+                labelLower.indexOf('presupuesto') >= 0) {
+              formatAs = 'money';
+            } else if (labelLower.indexOf('ganador') >= 0 || labelLower.indexOf('orden') >= 0 ||
+                       labelLower.indexOf('número') >= 0 || labelLower.indexOf('top') >= 0) {
+              formatAs = 'number_words';
+            } else if (labelLower.indexOf('porcentaje') >= 0 || labelLower.indexOf('%') >= 0 ||
+                       labelLower.indexOf('cashback') >= 0) {
+              formatAs = 'percentage';
+            }
+          }
+        }
+
+        // V3.1: required basado en confidence del mapping
+        var isRequired = (m.confidence === 'HIGH') ? 'TRUE' : 'FALSE';
+
+        var fieldRow = new Array(fieldHeaders.length).fill('');
+        var setFieldVal = function(col, val) {
+          var i = fieldHeaders.indexOf(col);
+          if (i >= 0) fieldRow[i] = val || '';
+        };
+        // V3.4: Safety net — normalizar placeholder antes del lookup
+        var cleanPhForMap = m.placeholder.replace(/^\{\{/, '').replace(/\}\}$/, '');
+        cleanPhForMap = cleanPhForMap.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+
+        var baseMapping = (typeof BASE_FIELD_MAP !== 'undefined') ? BASE_FIELD_MAP[cleanPhForMap] : null;
+        var isBaseField = !!baseMapping;
+        // V3.3: Detectar si es un campo legal auto-resuelto
+        var isLegalDefault = (typeof LEGAL_DEFAULTS_MAP !== 'undefined') ? !!LEGAL_DEFAULTS_MAP[cleanPhForMap] : false;
+        // V3.4: Detectar si es un campo derivado (calculado automáticamente)
+        var isDerivedField = (typeof DERIVED_FIELDS !== 'undefined') ? !!DERIVED_FIELDS[cleanPhForMap] : false;
+        setFieldVal('field_id', fieldId);
+        setFieldVal('country_code', countryCode);
+        setFieldVal('campaign_type', campaignType);
+        setFieldVal('placeholder', placeholderStr);
+        setFieldVal('label_es', m.label || m.placeholder);
+        setFieldVal('field_type', fieldType);
+        setFieldVal('icon', '');
+        setFieldVal('required', isRequired);
+        // V3.4: Campos derivados también van a section=0 (el KAM NO los ve)
+        setFieldVal('section', isBaseField ? '0' : (isLegalDefault ? 'L' : (isDerivedField ? '0' : '3')));
+        if (fieldHeaders.indexOf('canonical_field_id') >= 0) {
+          if (isBaseField) {
+            setFieldVal('canonical_field_id', baseMapping.canonical);
+          } else if (isDerivedField) {
+            // V3.4: Marcar derivados con prefijo para que getFieldsForUserForm los excluya
+            setFieldVal('canonical_field_id', 'derived:' + cleanPhForMap);
+          } else {
+            setFieldVal('canonical_field_id', '');
+          }
+        }
+        setFieldVal('options', '');
+        setFieldVal('default_value', '');
+        setFieldVal('tooltip', '');
+        setFieldVal('depends_on', '');
+        setFieldVal('order', String(idx + 1));
+        setFieldVal('group', 'Wizard Import');
+
+        // V3.1: Persistir format_as
+        if (fieldHeaders.indexOf('format_as') >= 0) {
+        if (isBaseField && baseMapping.format_as) {
+          setFieldVal('format_as', baseMapping.format_as);
+        } else {
+          setFieldVal('format_as', formatAs);
         }
       }
-      return;
+
+        if (existingFieldIdx >= 0) {
+          // UPSERT: Actualizar
+          fieldsSheet.getRange(existingFieldIdx + 1, 1, 1, fieldRow.length).setValues([fieldRow]);
+        } else {
+          // INSERT: Nueva fila
+          fieldsSheet.appendRow(fieldRow);
+          // Actualizar fieldData para que el siguiente mapping no duplique
+          fieldData.push(fieldRow);
+        }
+        fieldsCreated++;
+      });
     }
 
-    // Crear columna
-    var nextCol = sheet.getLastColumn() + 1;
-    sheet.getRange(1, nextCol).setValue(col.name);
-    sheet.getRange(1, nextCol).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
-    Logger.log('  + Columna "' + col.name + '" creada');
+    // ─── 7. UPSERT EN Campaign_Types ───
+    // Llave: type_name
+    // V3.1: Si el template es draft, el Campaign_Type también debe ser draft
+    try {
+      var ctSheet = _getSheet(CAMPAIGN_TYPES_SHEET);
+      if (ctSheet) {
+        var ctData = _sheetToObjects(ctSheet);
+        var existingType = ctData.find(function(t) { return t.type_name === campaignType; });
 
-    // Llenar Colombia
-    if (coRow > 0) {
-      sheet.getRange(coRow, nextCol).setValue(col.coValue);
-      Logger.log('    → Colombia: "' + col.coValue.substring(0, 40) + '..."');
+        if (!existingType) {
+          // Nuevo tipo: crearlo con el MISMO status que el template
+          var ctHeaders = ctSheet.getRange(1, 1, 1, ctSheet.getLastColumn()).getValues()[0];
+          var ctRow = new Array(ctHeaders.length).fill('');
+          var setCtVal = function(col, val) {
+            var i = ctHeaders.indexOf(col);
+            if (i >= 0) ctRow[i] = val || '';
+          };
+
+          var typeId = campaignType.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+
+          setCtVal('type_id', typeId);
+          setCtVal('type_name', campaignType);
+          setCtVal('description', 'Creado desde el Template Wizard');
+          setCtVal('parent_type', '');
+          setCtVal('processing_mode', 'template_only');
+          setCtVal('icon', 'fa-file-lines');
+          setCtVal('color', '#3B82F6');
+          // V3.1 CLAVE: Mismo status que el template → no exponer al comercial prematuramente
+          setCtVal('status', initialStatus);
+          setCtVal('countries', countryCode);
+          setCtVal('created_by', userEmail);
+          setCtVal('created_date', new Date().toISOString().split('T')[0]);
+
+          ctSheet.appendRow(ctRow);
+          Logger.log('🆕 Campaign_Type creado: ' + campaignType + ' [' + initialStatus + ']');
+        }
+        // Si ya existe, no lo tocamos (el Admin puede gestionarlo desde Dinámicas)
+      }
+    } catch(e) {
+      Logger.log('⚠️ Campaign_Types check/create error: ' + e.message);
     }
-  });
 
-  Logger.log('  ✅ Country_Settings actualizada');
-}
+    // ─── 8. LOG DE AUDITORÍA ───
+    _logApprovalAction('wizard_create',
+      countryCode + '/' + campaignType + ' v' + version +
+      (sourceDocId ? ' (copia de Doc)' : ' (texto pegado)') +
+      ' por ' + userEmail + ' [' + initialStatus + ']');
 
-// ─── PASO 5: Eliminar hoja "Hoja 1" (basura) ───
-// Solo timestamps de debug sin valor. Idempotente: si no existe, no hace nada.
-function _v33_step5_deleteJunkSheet() {
-  Logger.log('');
-  Logger.log('🗑️ PASO 5: Eliminar "Hoja 1" (datos de debug)');
+    // ─── 9. RESPUESTA ───
+    var docUrl = 'https://docs.google.com/document/d/' + docId + '/edit';
+    var statusMsg = initialStatus === 'active'
+      ? 'Template creado y activado en producción.'
+      : 'Template creado como borrador. Envíalo a revisión desde la pestaña Templates.';
 
-  var ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
-  var junk = ss.getSheetByName('Hoja 1');
-  if (junk) {
-    ss.deleteSheet(junk);
-    Logger.log('  ✅ "Hoja 1" eliminada');
-  } else {
-    Logger.log('  ℹ️ "Hoja 1" no existe (ya eliminada o nunca existió)');
+    return buildResponse(true, statusMsg, {
+      docUrl: docUrl,
+      docId: docId,
+      status: initialStatus,
+      fieldsCreated: fieldsCreated,
+      sourcePreserved: !!sourceDocId
+    });
+
+  } catch (e) {
+    Logger.log('❌ createTemplateFromWizard error: ' + e.message + '\n' + e.stack);
+    return buildResponse(false, 'Error al crear template: ' + e.message);
   }
 }
+// =================================================================
+// V3.4: NORMALIZACIÓN DE DETECCIONES (Safety Net post-Gemini)
+// Corrige placeholders que Gemini pudo haber generado mal.
+// Se ejecuta DESPUÉS de Gemini y ANTES de mostrar al usuario.
+// =================================================================
+function _normalizeDetections(detections, countryCode, campaignType) {
+  if (!detections || !Array.isArray(detections)) return detections;
 
-// ─── PASO 6: Archivar hojas legacy (renombrar, no eliminar) ───
-// Idempotente: si ya tienen prefijo _LEGACY_, no las toca.
-function _v33_step6_archiveLegacySheets() {
-  Logger.log('');
-  Logger.log('📦 PASO 6: Archivar hojas legacy');
+  // ─── 1. CONSTRUIR CATÁLOGO COMPLETO DE PLACEHOLDERS CONOCIDOS ───
+  var knownMap = {}; // key → { tier: 'base'|'derived'|'legal'|'known', section: '0'|'L'|'3' }
 
-  var ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
+  if (typeof BASE_FIELD_MAP !== 'undefined') {
+    var bKeys = Object.keys(BASE_FIELD_MAP);
+    for (var i = 0; i < bKeys.length; i++) knownMap[bKeys[i]] = { tier: 'base', section: '0' };
+  }
+  if (typeof DERIVED_FIELDS !== 'undefined') {
+    var dKeys = Object.keys(DERIVED_FIELDS);
+    for (var i = 0; i < dKeys.length; i++) {
+      if (!knownMap[dKeys[i]]) knownMap[dKeys[i]] = { tier: 'derived', section: '0' };
+    }
+  }
+  if (typeof LEGAL_DEFAULTS_MAP !== 'undefined') {
+    var lKeys = Object.keys(LEGAL_DEFAULTS_MAP);
+    for (var i = 0; i < lKeys.length; i++) knownMap[lKeys[i]] = { tier: 'legal', section: 'L' };
+  }
+  var kpEntries = Object.keys(TW_CONFIG.KNOWN_PLACEHOLDERS);
+  for (var i = 0; i < kpEntries.length; i++) {
+    if (!knownMap[kpEntries[i]]) knownMap[kpEntries[i]] = { tier: 'known', section: '3' };
+  }
 
-  var toArchive = [
-    { current: 'Respuestas Web V2', archived: '_LEGACY_Respuestas_Web_V2' },
-    { current: 'Respuestas de formulario 1', archived: '_LEGACY_Formulario_Original' }
+  // ─── 2. DICCIONARIO DE SINÓNIMOS Y PATRONES ───
+  // Mapea patrones comunes a placeholder correcto
+  var SYNONYM_RULES = [
+    // --- Fechas ---
+    { test: function(orig, ph) { return /^\d{1,2}\s+de\s+\w+\s+de\s+\d{4}$/i.test(orig); },
+      resolve: function(orig, ph, idx, all) {
+        // Primera fecha → FECHA_INICIO, segunda → FECHA_FIN, tercera → FECHA_ANUNCIO
+        var dateDetections = all.filter(function(d) { return /^\d{1,2}\s+de\s+\w+\s+de\s+\d{4}$/i.test(d.original_text); });
+        var myPos = -1;
+        for (var i = 0; i < dateDetections.length; i++) {
+          if (dateDetections[i].original_text === orig) { myPos = i; break; }
+        }
+        if (myPos === 0) return 'FECHA_INICIO';
+        if (myPos === 1) return 'FECHA_FIN';
+        if (myPos === 2) return 'FECHA_ANUNCIO';
+        return 'FECHA_INICIO';
+      }
+    },
+    // --- Territorio ---
+    { test: function(orig, ph) {
+        return /^nacional$/i.test(orig) || /^nacional$/i.test(ph) ||
+               ph === 'Nacional' || ph === 'NACIONAL' ||
+               /territorio/i.test(ph) || /ciudad(es)?/i.test(ph);
+      },
+      resolve: function() { return 'TEXTO_TERRITORIO'; }
+    },
+    // --- Porcentajes ---
+    { test: function(orig, ph) {
+        return /\d+\s*%/.test(orig) || /por\s+ciento/i.test(orig) ||
+               /porcentaje/i.test(ph) || /cashback/i.test(ph);
+      },
+      resolve: function() { return 'TEXTO_PORCENTAJE'; }
+    },
+    // --- Montos en letras (tope) ---
+    { test: function(orig, ph) {
+        return (/tope/i.test(ph) || /tope/i.test(orig)) && (/letras/i.test(ph) || /\(\s*[\d.,]+\s*\)/i.test(orig));
+      },
+      resolve: function() { return 'TOPE_LETRAS'; }
+    },
+    // --- Montos numéricos (tope) ---
+    { test: function(orig, ph) {
+        return (/tope/i.test(ph) && /num/i.test(ph));
+      },
+      resolve: function() { return 'TOPE_NUM'; }
+    },
+    // --- Presupuesto ---
+    { test: function(orig, ph) {
+        return /presupuesto/i.test(ph) || /existencias/i.test(ph);
+      },
+      resolve: function(orig, ph) {
+        return /letras/i.test(ph) ? 'PRESUPUESTO_LETRAS' : 'PRESUPUESTO_NUM';
+      }
+    },
+    // --- Jurisdicción ---
+    { test: function(orig, ph) {
+        return /jurisdicci[oó]n/i.test(orig) || /jurisdicci[oó]n/i.test(ph) ||
+               /tribunales?\s+de/i.test(orig) || /juzgados?\s+de/i.test(orig);
+      },
+      resolve: function() { return 'JURISDICCION'; }
+    },
+    // --- Ley aplicable ---
+    { test: function(orig, ph) {
+        return /ley\s+(aplicable|\d+)/i.test(orig) || /ley\s+aplicable/i.test(ph) ||
+               /legislaci[oó]n/i.test(orig) || /c[oó]digo\s+civil/i.test(orig) ||
+               /estatuto\s+del\s+consumidor/i.test(orig);
+      },
+      resolve: function() { return 'LEY_APLICABLE'; }
+    },
+    // --- Entidad de vigilancia ---
+    { test: function(orig, ph) {
+        return /superintendencia/i.test(orig) || /entidad.*vigilancia/i.test(ph) ||
+               /sic\b/i.test(orig) || /protecci[oó]n.*consumidor/i.test(orig);
+      },
+      resolve: function() { return 'ENTIDAD_VIGILANCIA'; }
+    },
+    // --- Moneda ---
+    { test: function(orig, ph) {
+        return /moneda/i.test(ph) || /pesos?\s+(colombianos?|mexicanos?)/i.test(orig) ||
+               /moneda\s+legal/i.test(orig);
+      },
+      resolve: function() { return 'MONEDA_TEXTO'; }
+    },
+    // --- País legal ---
+    { test: function(orig, ph) {
+        return /pa[ií]s\s+legal/i.test(ph) || /rep[uú]blica\s+de/i.test(orig);
+      },
+      resolve: function() { return 'PAIS_LEGAL'; }
+    },
+    // --- URL bases ---
+    { test: function(orig, ph) {
+        return /url.*bases/i.test(ph) || /promos\.rappi\.com/i.test(orig) ||
+               /https?:\/\/.*rappi/i.test(orig);
+      },
+      resolve: function() { return 'URL_BASES'; }
+    },
+    // --- Nombre de campaña ---
+    { test: function(orig, ph) {
+        return ph === 'NOMBRE_CAMPANA' || /nombre.*campa[ñn]a/i.test(ph);
+      },
+      resolve: function() { return 'NOMBRE_CAMPANA'; }
+    },
+    // --- Tienda ---
+    { test: function(orig, ph) {
+        return /tienda.*participante/i.test(ph) || /aliado.*comercial/i.test(ph) ||
+               /marca.*aliada/i.test(ph);
+      },
+      resolve: function() { return 'TIENDA_BASE'; }
+    },
+    // --- Segmento ---
+    { test: function(orig, ph) {
+        return /segmento/i.test(ph) || /usuarios?\s+participantes/i.test(orig);
+      },
+      resolve: function() { return 'TEXTO_SEGMENTO'; }
+    },
+    // --- Método de pago ---
+    { test: function(orig, ph) {
+        return /m[eé]todo.*pago/i.test(ph) || /medios?\s+de\s+pago/i.test(orig);
+      },
+      resolve: function() { return 'TEXTO_METODO_PAGO'; }
+    },
+    // --- Lugar redención ---
+    { test: function(orig, ph) {
+        return /lugar.*redenci[oó]n/i.test(ph) || /redimir.*cr[eé]ditos/i.test(orig);
+      },
+      resolve: function() { return 'TEXTO_LUGAR_REDENCION'; }
+    },
+    // --- Vigencia créditos ---
+    { test: function(orig, ph) {
+        return /vigencia.*cr[eé]ditos/i.test(ph);
+      },
+      resolve: function() { return 'TEXTO_VIGENCIA_CREDITOS'; }
+    },
+    // --- Carga de créditos ---
+    { test: function(orig, ph) {
+        return /carga.*cr[eé]ditos/i.test(ph) || /momento.*carga/i.test(ph);
+      },
+      resolve: function() { return 'TEXTO_CARGA'; }
+    },
+    // --- Número de ganadores ---
+    { test: function(orig, ph) {
+        return /ganador(es)?/i.test(ph) && /n[uú]mero|cantidad|num/i.test(ph);
+      },
+      resolve: function() { return 'NUM_GANADORES'; }
+    },
+    // --- Criterio ganador ---
+    { test: function(orig, ph) {
+        return /criterio.*ganador/i.test(ph) || /mayor\s+(valor|cantidad)/i.test(orig);
+      },
+      resolve: function() { return 'CRITERIO_GANADOR'; }
+    },
+    // --- Organizador ---
+    { test: function(orig, ph) {
+        return /organizador/i.test(ph) || /raz[oó]n\s+social/i.test(ph);
+      },
+      resolve: function() { return 'ORGANIZADOR'; }
+    }
   ];
 
-  toArchive.forEach(function(item) {
-    // Verificar si ya tiene el nombre archivado
-    var alreadyArchived = ss.getSheetByName(item.archived);
-    if (alreadyArchived) {
-      Logger.log('  ℹ️ "' + item.archived + '" ya existe (idempotente)');
-      return;
-    }
+  // ─── 3. PROCESAR CADA DETECCIÓN ───
+  var seen = {}; // Para deduplicar
+  var normalized = [];
 
-    var sheet = ss.getSheetByName(item.current);
-    if (sheet) {
-      sheet.setName(item.archived);
-      // Ocultar la hoja (no eliminar — preservar datos históricos)
-      sheet.hideSheet();
-      Logger.log('  📦 "' + item.current + '" → "' + item.archived + '" (oculta)');
+  for (var idx = 0; idx < detections.length; idx++) {
+    var det = detections[idx];
+    var origText = det.original_text || '';
+    var rawPh = (det.suggested_placeholder || '').replace(/^\{\{/, '').replace(/\}\}$/, '');
+
+    // 3a. Si ya está en el catálogo conocido → perfecto, mantener
+    if (knownMap[rawPh]) {
+      det.suggested_placeholder = rawPh;
+      det._tier = knownMap[rawPh].tier;
+      det._section = knownMap[rawPh].section;
     } else {
-      Logger.log('  ℹ️ "' + item.current + '" no encontrada');
-    }
-  });
+      // 3b. Intentar resolver con sinónimos/patrones
+      var resolved = false;
+      for (var r = 0; r < SYNONYM_RULES.length; r++) {
+        if (SYNONYM_RULES[r].test(origText, rawPh)) {
+          var newPh = SYNONYM_RULES[r].resolve(origText, rawPh, idx, detections);
+          if (newPh && knownMap[newPh]) {
+            det.suggested_placeholder = newPh;
+            det._tier = knownMap[newPh].tier;
+            det._section = knownMap[newPh].section;
+            det.confidence = 'HIGH'; // Elevamos confianza porque lo reconocimos
+            resolved = true;
+            break;
+          }
+        }
+      }
 
-  Logger.log('  ✅ Archivado completo');
-}
-// ─── PASO 5b: Asegurar format_as en campos que lo necesitan ───
-// Idempotente: solo setea si está vacío.
-function _v33_step5b_ensureFormatAs() {
-  Logger.log('');
-  Logger.log('🎨 PASO 5b: Asegurar format_as en campos base');
-
-  var sheet = _getSheet(FIELDS_SHEET_NAME);
-  if (!sheet) return;
-
-  var data = sheet.getDataRange().getValues();
-  var headers = data[0];
-  var fieldIdCol = headers.indexOf('field_id');
-  var formatCol = headers.indexOf('format_as');
-
-  if (formatCol < 0) {
-    Logger.log('  ⚠️ Columna format_as no existe. Saltando.');
-    return;
-  }
-
-  // Mapeo de field_ids que necesitan format_as específico
-  var requiredFormats = {
-    'startDate':        'date_legal',
-    'endDate':          'date_legal',
-    'announcementDate': 'date_legal',
-    'cashbackPct':      'percentage',
-    'cap':              'money',
-    'budget':           'money',
-    'numberOfWinners':  'number_words',
-    'maxOrders':        'number_words'
-  };
-
-  var updated = 0;
-  for (var i = 1; i < data.length; i++) {
-    var fid = String(data[i][fieldIdCol] || '');
-    var currentFormat = String(data[i][formatCol] || '').trim();
-    
-    if (requiredFormats[fid] && !currentFormat) {
-      sheet.getRange(i + 1, formatCol + 1).setValue(requiredFormats[fid]);
-      Logger.log('  🎨 ' + fid + ' → format_as=' + requiredFormats[fid]);
-      updated++;
-    }
-  }
-
-  Logger.log('  ✅ format_as actualizados: ' + updated);
-}
-// ─── FUNCIÓN DE VERIFICACIÓN POST-MIGRACIÓN ───
-// Ejecutar después de migrateV33() para confirmar estado limpio.
-function verifyV33() {
-  Logger.log('🔍 ════════════════════════════════════════');
-  Logger.log('🔍 VERIFICACIÓN V3.3');
-  Logger.log('🔍 ════════════════════════════════════════');
-
-  // 1. Template_Fields: contar filas y verificar que no hay corruptas
-  var tfSheet = _getSheet(FIELDS_SHEET_NAME);
-  if (tfSheet) {
-    var tfData = tfSheet.getDataRange().getValues();
-    var tfFieldIdCol = tfData[0].indexOf('field_id');
-    var corrupt = 0;
-    var withCanonical = 0;
-    var canonCol = tfData[0].indexOf('canonical_field_id');
-
-    for (var i = 1; i < tfData.length; i++) {
-      var fid = String(tfData[i][tfFieldIdCol] || '');
-      if (fid.indexOf('FIELD_CO_') === 0 || fid.indexOf('{{') === 0) corrupt++;
-      if (canonCol >= 0 && String(tfData[i][canonCol] || '').trim() !== '') withCanonical++;
-    }
-
-    Logger.log('📋 Template_Fields:');
-    Logger.log('   Total filas: ' + (tfData.length - 1));
-    Logger.log('   Corruptas: ' + corrupt + (corrupt === 0 ? ' ✅' : ' 🔴 LIMPIAR'));
-    Logger.log('   Con canonical_field_id: ' + withCanonical + '/7 esperados');
-  }
-
-  // 2. Campaign_Types: verificar fantasmas
-  var ctSheet = _getSheet(CAMPAIGN_TYPES_SHEET);
-  if (ctSheet) {
-    var ctData = _sheetToObjects(ctSheet);
-    var activeCount = 0;
-    var inactiveCount = 0;
-    ctData.forEach(function(t) {
-      if (t.status === 'active') activeCount++;
-      else inactiveCount++;
-    });
-    Logger.log('');
-    Logger.log('🎯 Campaign_Types:');
-    Logger.log('   Activos: ' + activeCount);
-    Logger.log('   Inactivos: ' + inactiveCount);
-    ctData.forEach(function(t) {
-      Logger.log('   → ' + t.type_name + ' [' + t.status + '] mode=' + t.processing_mode);
-    });
-  }
-
-  // 3. Country_Settings: verificar columnas legales
-  var csSheet = _getSheet(COUNTRY_SETTINGS_SHEET);
-  if (csSheet) {
-    var csHeaders = csSheet.getRange(1, 1, 1, csSheet.getLastColumn()).getValues()[0];
-    var hasJurisdiction = csHeaders.indexOf('jurisdiction_text') >= 0;
-    var hasLaw = csHeaders.indexOf('applicable_law') >= 0;
-    var hasUrl = csHeaders.indexOf('legal_url') >= 0;
-    Logger.log('');
-    Logger.log('🌎 Country_Settings:');
-    Logger.log('   jurisdiction_text: ' + (hasJurisdiction ? '✅' : '❌ FALTA'));
-    Logger.log('   applicable_law: ' + (hasLaw ? '✅' : '❌ FALTA'));
-    Logger.log('   legal_url: ' + (hasUrl ? '✅' : '❌ FALTA'));
-  }
-
-  // 4. Template_Registry: status
-  var regSheet = _getSheet(REGISTRY_SHEET_NAME);
-  if (regSheet) {
-    var regData = _sheetToObjects(regSheet);
-    Logger.log('');
-    Logger.log('📄 Template_Registry:');
-    regData.forEach(function(r) {
-      Logger.log('   → ' + r.country_code + '/' + r.campaign_type + ' [' + r.status + ']');
-    });
-  }
-
-  Logger.log('');
-  Logger.log('🔍 Verificación completa');
-}
-function emergencyRestoreCashback() {
-  var doc = DocumentApp.create('Template_CO_Cashback_RESTORED');
-  var body = doc.getBody();
-  
-  var lines = [
-    {text: 'TÉRMINOS Y CONDICIONES – CAMPAÑA "{{NOMBRE_CAMPANA_UPPER}}"', bold: true, center: true},
-    {text: ''},
-    {text: 'Por medio del presente documento se dan a conocer los términos y condiciones de la campaña denominada "{{NOMBRE_CAMPANA}}" (en adelante la "Campaña"). La participación en la Campaña constituye la aceptación total e incondicional de los presentes Términos y Condiciones.'},
-    {text: ''},
-    {text: 'I. Territorio:', bold: true},
-    {text: 'La Campaña será válida únicamente para las órdenes realizadas dentro de las zonas de cobertura de {{REF_TIENDA}} en la Plataforma Rappi, en {{TEXTO_TERRITORIO}}.'},
-    {text: ''},
-    {text: 'II. Vigencia:', bold: true},
-    {text: 'Campaña válida desde las {{HORA_INICIO}} del {{FECHA_INICIO}} hasta las {{HORA_FIN}} del {{FECHA_FIN}} y/o hasta agotar existencias, lo que primero ocurra. Para efectos de la Campaña, se ha establecido un valor total máximo de {{PRESUPUESTO_LETRAS}} ({{PRESUPUESTO_NUM}}) de Créditos a ser entregados como Cashback a los Usuarios/Consumidores que participen en la Campaña ("Existencias").'},
-    {text: ''},
-    {text: 'III. Tipo de Usuarios Participantes:', bold: true},
-    {text: '{{TEXTO_SEGMENTO}}'},
-    {text: ''},
-    {text: 'IV. Tienda Participante:', bold: true},
-    {text: 'Participarán todas las tiendas virtuales de {{TIENDA_DISPLAY}} {{DEFINICION_TIENDA}} al interior de la Plataforma Rappi ubicadas dentro del Territorio.'},
-    {text: ''},
-    {text: 'V. Productos Participantes:', bold: true},
-    {text: 'Participarán todos los productos que hacen parte del catálogo de {{REF_TIENDA}} al interior de la Plataforma Rappi.'},
-    {text: ''},
-    {text: 'VI. Beneficio:', bold: true},
-    {text: 'Los Usuarios/Consumidores Participantes que durante la Vigencia de la Campaña compren cualquiera de los Productos Participantes de {{REF_TIENDA}} recibirán en Créditos el {{TEXTO_PORCENTAJE}} del valor de dichos Productos Participantes (en adelante el "Cashback"). Dichos Créditos serán cargados a su cuenta al interior de la Plataforma Rappi. Se aclara que el monto máximo del Cashback que se otorgará en Créditos es de {{TOPE_LETRAS}} ({{TOPE_NUM}}) Créditos. Por lo tanto, en caso de que el Usuario/Consumidor realice una compra en {{REF_TIENDA}} por un valor superior a los {{UMBRAL_LETRAS}} pesos M/Cte (${{UMBRAL_NUM}}), recibirá un monto máximo en Créditos de {{TOPE_LETRAS}} ({{TOPE_NUM}}). Los Créditos serán cargados a la cuenta de los Usuarios/Consumidores Participantes {{TEXTO_CARGA}}. Los Créditos {{TEXTO_VIGENCIA_CREDITOS}}, entendiéndose que si el Usuario/Consumidor no hace uso de ellos dentro del término estipulado los perderá, sin poder hacer uso de ellos posteriormente.'},
-    {text: ''},
-    {text: 'VII. Condiciones y Restricciones:', bold: true},
-    {text: 'Podrán participar gratuitamente todas las personas naturales que sean Usuarios/Consumidores de la Plataforma Rappi que se encuentren en el Territorio y que cumplan las siguientes condiciones:'},
-  ];
-  
-  var restrictions = [
-    'Campaña válida únicamente para órdenes realizadas a través de {{REF_TIENDA}}, al interior de la Plataforma Rappi.',
-    'La presente Campaña se encuentra sujeta a los horarios de operación de los puntos de venta de {{REF_TIENDA}}.',
-    'Los descuentos de los productos y/o servicios objeto de la Campaña no son intercambiables ni transferibles.',
-    'Campaña válida para todas las órdenes que cumplan las condiciones y restricciones establecidas en los presentes Términos y Condiciones.',
-    'Campaña válida durante la Vigencia y/o hasta agotar existencias, lo que primero ocurra.',
-    'El Beneficio obtenido en virtud de la presente Campaña no es acumulable con otras promociones exhibidas en la Plataforma Rappi.',
-    'Máximo {{LIMITE_ORDENES}} {{TEXTO_ORDENES}} por Usuario/Consumidor.',
-    'Se aclara que el monto máximo de Créditos a recibir por el Usuario/Consumidor Participante es de {{TOPE_LETRAS}} ({{TOPE_NUM}}), de acuerdo con lo indicado en la sección VI (Beneficio).',
-    'En caso de cancelación total o parcial de la orden, el Usuario/Consumidor Participante no tendrá derecho al Beneficio.',
-    '{{TEXTO_LUGAR_REDENCION}}',
-    'Se aclara que los Créditos no tienen algún valor monetario, ni constituyen un medio de pago, instrumento crediticio o financiero.',
-    'Se aclara que los Créditos no pueden ser utilizados en las secciones denominadas "Cajero ATM" y "RappiFavor" de la Plataforma Rappi, ni tampoco pueden ser utilizados para pagar el valor del costo de envío, la tarifa de servicio de un pedido o la propina.',
-    '{{CONDICIONES_ESPECIALES}}'
-  ];
-  
-  var closing = [
-    {text: ''},
-    {text: 'VIII. Medio de Pago:', bold: true},
-    {text: '{{TEXTO_METODO_PAGO}}'},
-    {text: ''},
-    {text: 'IX. Modificaciones e Interpretación:', bold: true},
-    {text: 'Rappi se reserva el derecho de cancelar órdenes si detecta un comportamiento irregular por parte del Usuario/Consumidor en la Plataforma Rappi. Rappi se reserva el derecho de rechazar y cancelar cualquier orden que, por sus características, Rappi determine que no aplica para el Beneficio de la presente Campaña, sin previo aviso al Usuario/Consumidor.'},
-    {text: ''},
-    {text: 'X. Declaración:', bold: true},
-    {text: 'El Usuario/Consumidor reconoce y acepta que quien exhibe, ofrece, promociona y comercializa los productos adquiridos a través de la Plataforma Rappi {{DECLARACION_TIENDA}}. Rappi no comercializa productos puesto que es solo una plataforma tecnológica de contacto.'},
-    {text: ''},
-    {text: 'Se aclara que los presentes Términos y Condiciones se encuentran sujetos a los Términos y Condiciones de Uso de la Plataforma Rappi, los cuales se encuentran en la siguiente dirección electrónica: https://legal.rappi.com.co/colombia/terminos-y-condiciones-de-uso-de-plataforma-rappi-2/.'},
-    {text: ''},
-    {text: 'XI. Jurisdicción y Solución de conflictos:', bold: true},
-    {text: 'Los presentes Términos y Condiciones se regirán por las leyes de Colombia. Toda controversia surgida en razón de la Campaña o de los presentes Términos y Condiciones intentará ser resuelta por arreglo directo de las partes y/o a través de la conciliación como mecanismo alternativo de solución de conflictos. Si lo anterior no fuere posible, la controversia se someterá a la justicia ordinaria.'}
-  ];
-  
-  // Escribir párrafos principales
-  lines.forEach(function(line) {
-    var para = body.appendParagraph(line.text);
-    if (line.bold) para.setBold(true);
-    if (line.center) para.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    if (!line.bold && !line.center && line.text.length > 0) para.setAlignment(DocumentApp.HorizontalAlignment.JUSTIFY);
-  });
-  
-  // Escribir restricciones como lista
-  restrictions.forEach(function(r) {
-    body.appendListItem(r).setGlyphType(DocumentApp.GlyphType.BULLET);
-  });
-  
-  // Escribir cierre
-  closing.forEach(function(line) {
-    var para = body.appendParagraph(line.text);
-    if (line.bold) para.setBold(true);
-    if (!line.bold && line.text.length > 0) para.setAlignment(DocumentApp.HorizontalAlignment.JUSTIFY);
-  });
-  
-  doc.saveAndClose();
-  
-  var docId = doc.getId();
-  Logger.log('✅ Template Cashback restaurado');
-  Logger.log('📋 Doc ID: ' + docId);
-  Logger.log('🔗 URL: https://docs.google.com/document/d/' + docId + '/edit');
-  Logger.log('');
-  Logger.log('👉 SIGUIENTE: Ve al Admin Panel → Templates → Nueva Plantilla');
-  Logger.log('   País: CO | Tipo: Cashback | Doc ID: ' + docId + ' | Status: Activo');
-  
-  return docId;
-}
-function registerGlobalTemplate() {
-  var sheet = _getSheet(REGISTRY_SHEET_NAME);
-  if (!sheet) { Logger.log('❌ Template_Registry no existe'); return; }
-  
-  // El Doc ID de tu template global v2 — REEMPLAZA CON EL TUYO
-  var GLOBAL_DOC_ID = '1tes5Vd8Ga7PCEaCpSl_PZ5gYtlQTX-os-VTQDQhvm1s';
-  
-  var countries = [
-    {code:'MX', name:'México', currency:'MXN', symbol:'$'},
-    {code:'PE', name:'Perú', currency:'PEN', symbol:'S/'},
-    {code:'CL', name:'Chile', currency:'CLP', symbol:'$'},
-    {code:'AR', name:'Argentina', currency:'ARS', symbol:'$'},
-    {code:'EC', name:'Ecuador', currency:'USD', symbol:'$'},
-    {code:'UY', name:'Uruguay', currency:'UYU', symbol:'$'},
-    {code:'CR', name:'Costa Rica', currency:'CRC', symbol:'₡'}
-  ];
-  
-  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  var today = new Date().toISOString().split('T')[0];
-  var email = Session.getActiveUser().getEmail();
-  
-  countries.forEach(function(c) {
-    // Verificar si ya existe
-    var data = sheet.getDataRange().getValues();
-    var exists = false;
-    for (var i = 1; i < data.length; i++) {
-      if (String(data[i][0]) === c.code && String(data[i][2]) === 'Cashback') {
-        exists = true; break;
+      // 3c. Si no se resolvió, normalizar el formato al menos
+      if (!resolved) {
+        rawPh = rawPh.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+        if (rawPh.length < 3) rawPh = 'CAMPO_' + (idx + 1); // Evitar placeholders vacíos
+        det.suggested_placeholder = rawPh;
+        det._tier = 'specific';
+        det._section = '3';
+        det.confidence = det.confidence || 'MEDIUM';
       }
     }
-    if (exists) { Logger.log('⏭️ ' + c.code + ' ya tiene Cashback registrado'); return; }
-    
-    var row = new Array(headers.length).fill('');
-    var set = function(col, val) { var idx = headers.indexOf(col); if (idx >= 0) row[idx] = val || ''; };
-    
-    set('country_code', c.code);
-    set('country_name', c.name);
-    set('campaign_type', 'Cashback');
-    set('template_doc_id', GLOBAL_DOC_ID);
-    set('version', '2.0');
-    set('status', 'active');
-    set('currency_code', c.currency);
-    set('currency_symbol', c.symbol);
-    set('legal_owner', email);
-    set('last_updated', today);
-    set('notes', 'Template global v2 — mismo Doc para todos los países');
-    set('submitted_by', email);
-    set('vertical', 'ALL');
-    
-    sheet.appendRow(row);
-    Logger.log('✅ ' + c.code + ' — ' + c.name + ' registrado');
-  });
-  
-  Logger.log('🎉 Registro completo');
+
+    // 3d. Deduplicar por placeholder final
+    if (!seen[det.suggested_placeholder]) {
+      seen[det.suggested_placeholder] = true;
+      normalized.push(det);
+    } else {
+      // Ya existe — incrementar occurrences del primero
+      for (var n = 0; n < normalized.length; n++) {
+        if (normalized[n].suggested_placeholder === det.suggested_placeholder) {
+          normalized[n].occurrences = (normalized[n].occurrences || 1) + 1;
+          break;
+        }
+      }
+    }
+  }
+
+  Logger.log('🔄 Normalización V3.4: ' + detections.length + ' detecciones → ' + normalized.length + ' únicas');
+  return normalized;
+}
+function fetchGoogleDocContent(payload) {
+  try {
+    const match = payload.docUrl.match(/\/d\/([a-zA-Z0-9_-]{25,})/);
+    if (!match) return buildResponse(false, 'URL inválida. Verifica que el link sea de Google Docs.');
+
+    const doc = DocumentApp.openById(match[1]);
+    const text = doc.getBody().getText();
+
+    var wordCount = text.trim().length > 0 ? text.trim().split(/\s+/).length : 0;
+    var charCount = text.length;
+
+    return buildResponse(true, 'OK', {
+      docId: match[1],
+      docTitle: doc.getName(),
+      text: text,
+      wordCount: wordCount,
+      charCount: charCount
+    });
+  } catch (e) {
+    return buildResponse(false, e.message);
+  }
 }
