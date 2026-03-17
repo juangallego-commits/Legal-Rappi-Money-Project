@@ -279,7 +279,7 @@
       border-color: #10B981;
     }
 
-    .hidden { display: none !important; }
+    .hidden { display: none; }
 
     /* Tooltip */
     .tooltip-wrapper { position: relative; display: inline-block; }
@@ -807,53 +807,60 @@
           <div class="text-xs text-green-600 mt-1 font-bold">✓ Activo</div>
         </div>
 
-        <!-- México - PRÓXIMAMENTE -->
-        <div class="country-card opacity-50 cursor-not-allowed" onclick="showComingSoon('México')">
+        <!-- México -->
+        <div class="country-card" onclick="selectCountry('MX', 'México', 'MXN', '$', '🇲🇽')">
           <span class="flag">🇲🇽</span>
           <div class="font-bold text-gray-900 text-sm">México</div>
-          <div class="text-xs text-amber-600 mt-1 font-bold">Próximamente</div>
+          <div class="text-xs text-green-600 mt-1 font-bold">✓ Activo</div>
         </div>
 
-        <!-- Costa Rica - PRÓXIMAMENTE -->
-        <div class="country-card opacity-50 cursor-not-allowed" onclick="showComingSoon('Costa Rica')">
+        <!-- Costa Rica -->
+        <div class="country-card" onclick="selectCountry('CR', 'Costa Rica', 'CRC', '₡', '🇨🇷')">
           <span class="flag">🇨🇷</span>
           <div class="font-bold text-gray-900 text-sm">Costa Rica</div>
-          <div class="text-xs text-amber-600 mt-1 font-bold">Próximamente</div>
+          <div class="text-xs text-green-600 mt-1 font-bold">✓ Activo</div>
         </div>
 
-        <!-- Brasil - PRÓXIMAMENTE -->
+        <!-- Brasil -->
         <div class="country-card opacity-50 cursor-not-allowed" onclick="showComingSoon('Brasil')">
           <span class="flag">🇧🇷</span>
           <div class="font-bold text-gray-900 text-sm">Brasil</div>
-          <div class="text-xs text-amber-600 mt-1 font-bold">Próximamente</div>
+          <div class="text-xs text-amber-600 mt-1 font-bold">Requiere template PT</div>
         </div>
 
-        <!-- Argentina - PRÓXIMAMENTE -->
-        <div class="country-card opacity-50 cursor-not-allowed" onclick="showComingSoon('Argentina')">
+        <!-- Argentina -->
+        <div class="country-card" onclick="selectCountry('AR', 'Argentina', 'ARS', '$', '🇦🇷')">
           <span class="flag">🇦🇷</span>
           <div class="font-bold text-gray-900 text-sm">Argentina</div>
-          <div class="text-xs text-amber-600 mt-1 font-bold">Próximamente</div>
+          <div class="text-xs text-green-600 mt-1 font-bold">✓ Activo</div>
         </div>
 
-        <!-- Uruguay - PRÓXIMAMENTE -->
-        <div class="country-card opacity-50 cursor-not-allowed" onclick="showComingSoon('Uruguay')">
+        <!-- Uruguay -->
+        <div class="country-card" onclick="selectCountry('UY', 'Uruguay', 'UYU', '$', '🇺🇾')">
           <span class="flag">🇺🇾</span>
           <div class="font-bold text-gray-900 text-sm">Uruguay</div>
-          <div class="text-xs text-amber-600 mt-1 font-bold">Próximamente</div>
+          <div class="text-xs text-green-600 mt-1 font-bold">✓ Activo</div>
         </div>
 
-        <!-- Chile - PRÓXIMAMENTE -->
-        <div class="country-card opacity-50 cursor-not-allowed" onclick="showComingSoon('Chile')">
+        <!-- Chile -->
+        <div class="country-card" onclick="selectCountry('CL', 'Chile', 'CLP', '$', '🇨🇱')">
           <span class="flag">🇨🇱</span>
           <div class="font-bold text-gray-900 text-sm">Chile</div>
-          <div class="text-xs text-amber-600 mt-1 font-bold">Próximamente</div>
+          <div class="text-xs text-green-600 mt-1 font-bold">✓ Activo</div>
         </div>
 
-        <!-- Ecuador - PRÓXIMAMENTE -->
-        <div class="country-card opacity-50 cursor-not-allowed" onclick="showComingSoon('Ecuador')">
+        <!-- Ecuador -->
+        <div class="country-card" onclick="selectCountry('EC', 'Ecuador', 'USD', '$', '🇪🇨')">
           <span class="flag">🇪🇨</span>
           <div class="font-bold text-gray-900 text-sm">Ecuador</div>
-          <div class="text-xs text-amber-600 mt-1 font-bold">Próximamente</div>
+          <div class="text-xs text-green-600 mt-1 font-bold">✓ Activo</div>
+        </div>
+
+        <!-- Perú -->
+        <div class="country-card" onclick="selectCountry('PE', 'Perú', 'PEN', 'S/', '🇵🇪')">
+          <span class="flag">🇵🇪</span>
+          <div class="font-bold text-gray-900 text-sm">Perú</div>
+          <div class="text-xs text-green-600 mt-1 font-bold">✓ Activo</div>
         </div>
       </div>
 
@@ -1658,7 +1665,8 @@
       'AR': { code: 'ARS', symbol: '$', decimals: 2, name: 'Peso Argentino' },
       'UY': { code: 'UYU', symbol: '$', decimals: 2, name: 'Peso Uruguayo' },
       'CL': { code: 'CLP', symbol: '$', decimals: 0, name: 'Peso Chileno' },
-      'EC': { code: 'USD', symbol: '$', decimals: 2, name: 'Dólar' }
+      'EC': { code: 'USD', symbol: '$', decimals: 2, name: 'Dólar' },
+      'PE': { code: 'PEN', symbol: 'S/', decimals: 2, name: 'Sol Peruano' }
     };
 
     const frequentShops = [
@@ -3264,8 +3272,13 @@
           <option value="ALL">🌎 Todos</option>
           <option value="CO">🇨🇴 Colombia</option>
           <option value="MX">🇲🇽 México</option>
+          <option value="PE">🇵🇪 Perú</option>
           <option value="CR">🇨🇷 Costa Rica</option>
           <option value="BR">🇧🇷 Brasil</option>
+          <option value="AR">🇦🇷 Argentina</option>
+          <option value="CL">🇨🇱 Chile</option>
+          <option value="EC">🇪🇨 Ecuador</option>
+          <option value="UY">🇺🇾 Uruguay</option>
         </select>
         <select id="filterFieldType" onchange="loadAdminFields()" class="adm-select text-xs">
           <option value="ALL">Todos los tipos</option>
@@ -3590,14 +3603,13 @@
         <h3 class="text-lg font-black text-gray-900 mb-1">Paso 1 — Carga tu modelo de T&C</h3>
         <p class="text-sm text-gray-500 mb-5">Pega el texto directamente o proporciona el link de un Google Doc existente.</p>
         <div class="flex gap-2 mb-5">
-          <button class="tw-source-tab active" id="tw-tab-text" onclick="twSelectSource('text')"><i class="fa-solid fa-align-left mr-2"></i>Pegar texto</button>
-          <button class="tw-source-tab" id="tw-tab-doc" onclick="twSelectSource('doc')"><i class="fa-brands fa-google-drive mr-2"></i>Link de Google Doc</button>
+          <button class="tw-source-tab active" id="tw-tab-doc" onclick="twSelectSource('doc')"><i class="fa-brands fa-google-drive mr-2"></i>Link de Google Doc</button>
         </div>
-        <div id="tw-input-text">
+        <div id="tw-input-text" class="hidden">
           <textarea id="tw-text-input" class="w-full border-2 border-gray-200 rounded-xl p-4 text-sm font-mono resize-y focus:border-rappi focus:ring-2 focus:ring-rappi/20 outline-none transition" rows="10" placeholder="Pega aquí el texto completo..."></textarea>
           <p id="tw-text-count" class="text-xs text-gray-400 mt-1 text-right">0 caracteres</p>
         </div>
-        <div id="tw-input-doc" class="hidden">
+        <div id="tw-input-doc">
           <div class="flex gap-3">
             <input id="tw-doc-url" type="url" class="flex-1 border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-rappi outline-none transition" placeholder="https://docs.google.com/document/d/.../edit" />
             <button onclick="twLoadFromDoc()" class="btn-primary text-white px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-down"></i>Cargar</button>
@@ -3612,7 +3624,7 @@
           <div>
             <label class="block text-xs font-bold text-gray-600 mb-1">País *</label>
             <select id="tw-country" class="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:border-rappi outline-none">
-              <option value="">Seleccionar...</option><option value="CO">🇨🇴 Colombia</option><option value="MX">🇲🇽 México</option><option value="CR">🇨🇷 Costa Rica</option><option value="BR">🇧🇷 Brasil</option>
+              <option value="">Seleccionar...</option><option value="CO">🇨🇴 Colombia</option><option value="MX">🇲🇽 México</option><option value="PE">🇵🇪 Perú</option><option value="CR">🇨🇷 Costa Rica</option><option value="BR">🇧🇷 Brasil</option><option value="AR">🇦🇷 Argentina</option><option value="CL">🇨🇱 Chile</option><option value="EC">🇪🇨 Ecuador</option><option value="UY">🇺🇾 Uruguay</option>
             </select>
           </div>
           <!-- ---INICIO COPIAR--- -->
@@ -3708,6 +3720,7 @@
             <option value="">Seleccionar...</option>
             <option value="CO">🇨🇴 Colombia</option>
             <option value="MX">🇲🇽 México</option>
+            <option value="PE">🇵🇪 Perú</option>
             <option value="CR">🇨🇷 Costa Rica</option>
             <option value="BR">🇧🇷 Brasil</option>
             <option value="AR">🇦🇷 Argentina</option>
@@ -3797,7 +3810,7 @@
       </div>
       <div><label class="adm-label">Etiqueta visible *</label><input type="text" id="fld_label" required class="adm-input" placeholder="Porcentaje del Cashback"></div>
       <div class="grid grid-cols-3 gap-3">
-        <div><label class="adm-label">País</label><select id="fld_country" class="adm-input"><option value="ALL">🌎 Todos</option><option value="CO">🇨🇴 CO</option><option value="MX">🇲🇽 MX</option><option value="CR">🇨🇷 CR</option><option value="BR">🇧🇷 BR</option></select></div>
+        <div><label class="adm-label">País</label><select id="fld_country" class="adm-input"><option value="ALL">🌎 Todos</option><option value="CO">🇨🇴 CO</option><option value="MX">🇲🇽 MX</option><option value="PE">🇵🇪 PE</option><option value="CR">🇨🇷 CR</option><option value="BR">🇧🇷 BR</option><option value="AR">🇦🇷 AR</option><option value="CL">🇨🇱 CL</option><option value="EC">🇪🇨 EC</option><option value="UY">🇺🇾 UY</option></select></div>
         <div><label class="adm-label">Tipo</label><select id="fld_type" class="adm-input"><option value="ALL">Todos</option><option value="Cashback">Cashback</option><option value="Concurso Mayor Comprador">Concurso</option></select></div>
         <div><label class="adm-label">Tipo Input</label><select id="fld_inputType" class="adm-input"><option value="text">Texto</option><option value="number">Número</option><option value="email">Email</option><option value="date">Fecha</option><option value="select">Select</option><option value="textarea">Textarea</option></select></div>
       </div>
@@ -4277,7 +4290,11 @@ function saveTemplate(event) {
     country_code: cc,
     country_name: COUNTRY_NAMES[cc] || cc,
     campaign_type: document.getElementById('tpl_type').value,
-    template_doc_id: document.getElementById('tpl_docId').value.trim(),
+    template_doc_id: (function() {
+      var raw = document.getElementById('tpl_docId').value.trim();
+      var match = raw.match(/\/d\/([a-zA-Z0-9_-]{25,})/);
+      return match ? match[1] : raw;
+    })(),
     version: document.getElementById('tpl_version').value || '1.0',
     currency_code: currCode,
     currency_symbol: CURRENCY_SYMBOLS[currCode] || '$',
@@ -4776,7 +4793,7 @@ function loadApprovalLogs() {
 // ============================================================
 // TEMPLATE WIZARD — Lógica JavaScript
 // ============================================================
-const TW = { step: 1, source: 'text', originalText: '', docId: null, docTitle: null, detections: [], mappings: [], metadata: {}, currentFilter: 'all' };
+const TW = { step: 1, source: 'doc', originalText: '', docId: null, docTitle: null, detections: [], mappings: [], metadata: {}, currentFilter: 'all' };
 
 function twSelectSource(source) {
   TW.source = source;
@@ -4814,21 +4831,95 @@ function twSetDocLoading(loading) {
 async function twRunAnalysis() {
   if (TW.source === 'text') TW.originalText = document.getElementById('tw-text-input').value.trim();
   if (!TW.originalText || TW.originalText.length < 50) return alert('El texto es muy corto.');
-  const country = document.getElementById('tw-country').value;
-  const type = document.getElementById('tw-campaign-type').value;
+  var country = document.getElementById('tw-country').value;
+  var type = document.getElementById('tw-campaign-type').value;
   if (!country || !type) return alert('Selecciona el país y tipo de campaña antes de analizar.');
   
   TW.metadata = { countryCode: country, campaignType: type, version: document.getElementById('tw-version').value || '1.0', notes: document.getElementById('tw-notes').value };
   twGoToStep(2);
   
+  // V3.4: Timer de espera para UX (Gemini puede tardar 2-5 minutos)
+  var waitTimer = setInterval(function() {
+    var statusEl = document.getElementById('tw-analyzing-status');
+    if (statusEl) {
+      var msgs = ['Identificando campos variables...', 'Mapeando a placeholders conocidos...', 'Clasificando por categoría...', 'Casi listo, normalizando resultados...'];
+      var idx = Math.floor((Date.now() / 15000) % msgs.length);
+      statusEl.textContent = msgs[idx];
+    }
+  }, 5000);
+
   try {
-    // FIX: Agregamos userEmail
-    const res = await twCallBackend('tw_analyzeText', { text: TW.originalText, countryCode: country, campaignType: type, userEmail: currentUser.email });
-    if (!res.success) throw new Error(res.message);
-    TW.detections = res.data;
-    TW.mappings = (res.data.detections || []).map((d, i) => ({ id: 'map_' + i, original_text: d.original_text, placeholder: d.suggested_placeholder, label: d.label || d.suggested_placeholder, confidence: d.confidence || 'MEDIUM', context: d.context || '', occurrences: d.occurrences || 1, confirmed: d.confidence === 'HIGH' }));
-    twGoToStep(3); twRenderMappings(); twUpdatePreview();
-  } catch (e) { alert('Error al analizar: ' + e.message); twGoToStep(1); }
+    var res = await twCallBackend('tw_analyzeText', { text: TW.originalText, countryCode: country, campaignType: type, userEmail: currentUser.email });
+    clearInterval(waitTimer);
+
+    // V3.4: Debug — descomentar si hay problemas
+    console.log('🧠 twRunAnalysis raw res:', JSON.stringify(res).substring(0, 1000));
+
+    // V3.4: Extraer detecciones de forma robusta (soporta múltiples estructuras de buildResponse)
+    var detections = [];
+    if (res && res.data && Array.isArray(res.data.detections)) {
+      // Estructura: {success:true, data:{detections:[...]}}
+      detections = res.data.detections;
+    } else if (res && res.data && Array.isArray(res.data)) {
+      // Estructura: {success:true, data:[...]}
+      detections = res.data;
+    } else if (res && Array.isArray(res.detections)) {
+      // Estructura: {detections:[...]} (sin wrapper)
+      detections = res.detections;
+    } else if (res && res.data && typeof res.data === 'string') {
+      // Estructura: data es string JSON
+      try { var parsed = JSON.parse(res.data); detections = parsed.detections || []; } catch(e) {}
+    }
+
+    console.log('🧠 Detecciones extraídas:', detections.length);
+
+    if (detections.length === 0) {
+      alert('⚠️ Gemini no detectó variables en este documento, o la respuesta llegó en un formato inesperado.\n\nRevisa la consola del navegador (F12) para más detalle.');
+      twGoToStep(1);
+      return;
+    }
+
+    TW.detections = detections;
+    TW.mappings = detections.map(function(d, i) {
+      return {
+        id: 'map_' + i,
+        original_text: d.original_text || '',
+        placeholder: d.suggested_placeholder || ('CAMPO_' + (i + 1)),
+        label: d.label || d.suggested_placeholder || '',
+        confidence: d.confidence || 'MEDIUM',
+        context: d.context || '',
+        occurrences: d.occurrences || 1,
+        confirmed: (d.confidence === 'HIGH')
+      };
+    });
+
+    console.log('🧠 Mappings creados:', TW.mappings.length, TW.mappings);
+
+    twGoToStep(3);
+    twRenderMappings();
+    twUpdatePreview();
+
+    // V3.4 FIX: Forzar visibilidad del paso 3 (nuclear)
+    setTimeout(function() {
+      var step3 = document.getElementById('tw-step-3');
+      if (step3) {
+        step3.classList.remove('hidden');
+        step3.style.display = 'block';
+        step3.style.opacity = '1';
+        var cards = step3.querySelectorAll('.tw-wizard-card');
+        for (var c = 0; c < cards.length; c++) {
+          cards[c].style.opacity = '1';
+          cards[c].style.transform = 'none';
+        }
+        console.log('🔧 Step 3 forzado visible. Tbody rows:', document.getElementById('tw-mappings-tbody')?.children?.length || 0);
+      }
+    }, 100);
+  } catch (e) {
+    clearInterval(waitTimer);
+    console.error('❌ twRunAnalysis error:', e);
+    alert('Error al analizar: ' + e.message);
+    twGoToStep(1);
+  }
 }
 
 function twRenderMappings() {
@@ -4891,16 +4982,44 @@ function twUpdatePreview() {
 }
 
 function twGoToStep(n) {
-  [1,2,3,4,'success'].forEach(s => document.getElementById('tw-step-' + s)?.classList.add('hidden'));
-  document.getElementById('tw-step-' + n)?.classList.remove('hidden');
+  // V3.4: Ocultar todos los pasos
+  [1,2,3,4,'success'].forEach(function(s) {
+    var el = document.getElementById('tw-step-' + s);
+    if (el) { el.style.display = 'none'; }
+  });
+
+  // V3.4: Mostrar el paso actual SIN animación (fix: height/width 0)
+  var targetStep = document.getElementById('tw-step-' + n);
+  if (targetStep) {
+    targetStep.style.display = 'block';
+    // Matar la animación que causa el colapso
+    var allCards = targetStep.querySelectorAll('.tw-fade-in');
+    for (var c = 0; c < allCards.length; c++) {
+      allCards[c].classList.remove('tw-fade-in');
+      allCards[c].style.opacity = '1';
+      allCards[c].style.transform = 'none';
+    }
+    // Forzar que el wizard-card sea visible
+    var allWc = targetStep.querySelectorAll('.tw-wizard-card');
+    for (var w = 0; w < allWc.length; w++) {
+      allWc[w].style.opacity = '1';
+      allWc[w].style.transform = 'none';
+    }
+  }
+
   TW.step = n;
-  [1,2,3,4].forEach(i => {
-    const stepEl = document.getElementById('twstep-' + i); const connEl = document.getElementById('twconn-' + i);
+
+  // Actualizar stepper visual
+  [1,2,3,4].forEach(function(i) {
+    var stepEl = document.getElementById('twstep-' + i);
+    var connEl = document.getElementById('twconn-' + i);
     if (!stepEl) return;
     stepEl.classList.remove('active', 'done');
-    if (i < n) stepEl.classList.add('done'); else if (i === n) stepEl.classList.add('active');
+    if (i < n) stepEl.classList.add('done');
+    else if (i === n) stepEl.classList.add('active');
     if (connEl) connEl.classList.toggle('done', i < n);
   });
+
   if (n === 4) twRenderFinalSummary();
 }
 
@@ -4916,11 +5035,19 @@ function twRenderFinalSummary() {
 function twCheckResponsibility() { document.getElementById('tw-btn-create').disabled = !document.getElementById('tw-responsibility-check').checked; }
 
 async function twCreateTemplate() {
-  const btn = document.getElementById('tw-btn-create'); btn.disabled = true; btn.innerHTML = 'Creando template...';
+  var btn = document.getElementById('tw-btn-create');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Creando template...';
+  console.log('🚀 twCreateTemplate: iniciando...');
+
   try {
-    const confirmedMappings = TW.mappings.filter(m => m.confirmed).map(m => ({ original_text: m.original_text, placeholder: m.placeholder, label: m.label, confirmed: true }));
-    
-    const res = await twCallBackend('tw_createTemplate', { 
+    var confirmedMappings = TW.mappings.filter(function(m) { return m.confirmed; }).map(function(m) {
+      return { original_text: m.original_text, placeholder: m.placeholder, label: m.label, confirmed: true, confidence: m.confidence || 'HIGH' };
+    });
+
+    console.log('🚀 Mappings confirmados:', confirmedMappings.length);
+
+    var res = await twCallBackend('tw_createTemplate', { 
       originalText: TW.originalText, 
       sourceDocId: TW.docId || null,
       sourceDocTitle: TW.docTitle || null,
@@ -4928,13 +5055,44 @@ async function twCreateTemplate() {
       metadata: TW.metadata,
       userEmail: currentUser.email 
     });
-    
+
+    console.log('🚀 twCreateTemplate respuesta:', JSON.stringify(res).substring(0, 500));
+
     if (!res.success) throw new Error(res.message);
-    document.getElementById('tw-step-4').classList.add('hidden'); document.getElementById('tw-step-success').classList.remove('hidden');
+
+    // V3.4 FIX: Usar style.display (consistente con twGoToStep)
+    document.getElementById('tw-step-4').style.display = 'none';
+    var successEl = document.getElementById('tw-step-success');
+    successEl.style.display = 'block';
+    // Matar animación como en twGoToStep
+    var scards = successEl.querySelectorAll('.tw-wizard-card, .tw-fade-in');
+    for (var i = 0; i < scards.length; i++) {
+      scards[i].classList.remove('tw-fade-in');
+      scards[i].style.opacity = '1';
+      scards[i].style.transform = 'none';
+    }
+
     document.getElementById('tw-success-msg').textContent = res.message;
-    document.getElementById('tw-success-details').innerHTML = `<p>Doc: <a href="${res.data.docUrl}" target="_blank" class="text-rappi font-bold hover:underline">Abrir</a></p><p>Estado: ${res.data.status}</p>`;
-    [1,2,3,4].forEach(i => { document.getElementById('twstep-'+i)?.classList.add('done'); document.getElementById('twstep-'+i)?.classList.remove('active'); document.getElementById('twconn-'+i)?.classList.add('done'); });
-  } catch (e) { alert('Error: ' + e.message); btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Crear Template'; }
+    document.getElementById('tw-success-details').innerHTML =
+      '<p><strong>Doc:</strong> <a href="' + res.data.docUrl + '" target="_blank" class="text-rappi font-bold hover:underline">Abrir documento</a></p>' +
+      '<p><strong>Estado:</strong> ' + res.data.status + '</p>' +
+      '<p><strong>Campos creados:</strong> ' + (res.data.fieldsCreated || 0) + '</p>';
+
+    // Marcar todos los pasos como completados
+    [1,2,3,4].forEach(function(i) {
+      var stepEl = document.getElementById('twstep-' + i);
+      var connEl = document.getElementById('twconn-' + i);
+      if (stepEl) { stepEl.classList.add('done'); stepEl.classList.remove('active'); }
+      if (connEl) { connEl.classList.add('done'); }
+    });
+
+    console.log('✅ Template creado exitosamente');
+  } catch (e) {
+    console.error('❌ twCreateTemplate error:', e);
+    alert('Error al crear template: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Crear Template';
+  }
 }
 function twLoadCampaignTypes() {
   google.script.run
