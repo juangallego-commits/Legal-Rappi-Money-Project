@@ -1,746 +1,298 @@
-// =================================================================
-// MOTOR LEGAL RAPPI - CORE ENGINE (V2/V3)
-// =================================================================
+// ════════════════════════════════════════════════════════════════
+// Legal Team Tracker · Google Apps Script · Web App
+// RappiPlus · Global Legal · v3.2 (Projects)
+// ════════════════════════════════════════════════════════════════
 
+const SHEET_ID        = '19eR-pXzVLTSEdCADeBZ8fsd5x4f2t0GowUJiJm2X6ms';
+const SHEET_ACTIVO    = 'Tracking Activo';
+const SHEET_HISTORIAL = 'Historial';
+const SHEET_CONFIG    = 'Config';
+const SHEET_EQUIPOS   = 'Equipos';
+const SHEET_PROYECTOS = 'Proyectos';
+
+// Tasks: 14 cols — ID,Nombre,Resp,Acc,Deadline,Prioridad,Estado,Semana,Creado,Cerrado,Notas,Proyecto(ID),País,Líder
+const TASK_COLS = 16;
+// Projects: 12 cols — ID,Nombre,País,Líder,Responsable,Deadline,Prioridad,Estado,Descripción,Notas,Creado,Semana
+const PROJ_COLS = 15;
+
+const STATUS_ORDER = {'Bloqueado':0,'En curso':1,'Pendiente':2,'En revisión':3,'Listo':4};
+const PRIO_ORDER   = {'Alta':0,'Media':1,'Baja':2};
+const PROJ_STATUSES = ['Activo','En pausa','Completado','Cancelado'];
+
+// ── WEB APP ─────────────────────────────────────────────────────
 function doGet(e) {
-  return HtmlService.createTemplateFromFile('WebApp')
-      .evaluate()
-      .setTitle('Motor Legal Rappi')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  var page = e && e.parameter && e.parameter.page;
+  if (page === 'api') return ContentService.createTextOutput(JSON.stringify(getTrackerData())).setMimeType(ContentService.MimeType.JSON);
+  var html = HtmlService.createTemplateFromFile('Dashboard');
+  html.data = JSON.stringify(getTrackerData());
+  return html.evaluate().setTitle('Legal Tracker · Rappi').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).addMetaTag('viewport','width=device-width, initial-scale=1');
 }
+function include(f){return HtmlService.createHtmlOutputFromFile(f).getContent()}
 
-function processWebPayload(payloadString) {
-  try {
-    const payload = JSON.parse(payloadString);
-    let activeEmail = payload.userEmail;
-    try { activeEmail = Session.getActiveUser().getEmail() || payload.userEmail; } catch(e) {}
-      
-    Logger.log('📥 Tipo de campaña: ' + payload.dynamicType);
-    const result = coreEngineV2(payload, activeEmail);
-    return JSON.stringify({ status: 'success', docUrl: result.docUrl, docName: result.docName });
-  } catch (e) {
-    return JSON.stringify({ status: 'error', message: e.message, stack: e.stack });
-  }
-}
+// ════════════════════════════════════════════════════════════════
+// GET ALL DATA
+// ════════════════════════════════════════════════════════════════
+function getTrackerData() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var activeTasks = readTasks(ss.getSheetByName(SHEET_ACTIVO));
+  var histTasks   = readTasks(ss.getSheetByName(SHEET_HISTORIAL));
+  var config  = readConfig(ss);
+  var equipos = readEquipos(ss);
+  var projects = readProjects(ss);
 
-// -----------------------------------------------------------------
-// ENRUTADOR V3 (TEMPLATE ENGINE)
-// -----------------------------------------------------------------
-function coreEngineV2(payload, submitterEmail) {
-  const vars = mapWebToEngine(payload);
-  const countryCode = payload.countryCode || 'CO';
-  const campaignType = vars['Tipo de Dinámica'] || 'Cashback';
-  const vertical = payload.vertical || 'ALL';
-  
-  try {
-    const typeConfig = _getCampaignTypeConfig(campaignType);
-    const registry = _getTemplateRegistry();
-    let template = registry.find(r => r.country_code === countryCode && r.campaign_type === campaignType && r.status === 'active' && (r.vertical === vertical || r.vertical === 'ALL' || !r.vertical));
-    
-    if (template) {
-      if (typeConfig && typeConfig.processing_mode === 'template_only') {
-        // V3.3: Smart Template con fallback a legacy si falla
-        try {
-          return _generateSmartTemplate(template, payload, vars, submitterEmail);
-        } catch (smartErr) {
-          Logger.log('⚠️ Smart Template falló, intentando legacy: ' + smartErr.message);
-          // Solo intentar legacy si el tipo tiene lógica legacy (Cashback o Concurso)
-          var campaignTypeName = vars['Tipo de Dinámica'] || campaignType;
-          if (campaignTypeName === 'Cashback' || campaignTypeName === 'Concurso Mayor Comprador') {
-            Logger.log('🔄 Fallback a _generateWithTemplate para: ' + campaignTypeName);
-            return _generateWithTemplate(template, vars, submitterEmail);
-          }
-          // Si no es legacy-compatible, propagar el error original
-          throw smartErr;
-        }
-      } else {
-        return _generateWithTemplate(template, vars, submitterEmail);
-      }
-    }
-  } catch (e) { Logger.log('⚠️ Engine falló: ' + e.message); }
-  
-  throw new Error("No se encontró una plantilla de documento activa para este tipo de dinámica en este país.");
-}
-// ---INICIO COPIAR---
-// -----------------------------------------------------------------
-// GENERADOR SMART (TEMPLATE_ONLY) — Dinámicas importadas via Wizard
-// -----------------------------------------------------------------
-function _generateSmartTemplate(template, payload, vars, submitterEmail) {
-  // 1. Obtener campos definidos para esta combinación tipo+país
-  var fieldsSheet = _getSheet(FIELDS_SHEET_NAME);
-  if (!fieldsSheet) throw new Error('Sheet Template_Fields no encontrada.');
-
-  var allFields = _sheetToObjects(fieldsSheet);
-  var campaignType = vars['Tipo de Dinámica'] || template.campaign_type;
-  var countryCode = payload.countryCode || template.country_code || 'CO';
-
-  var relevantFields = allFields.filter(function(f) {
-    var matchType = (f.campaign_type === 'ALL' || f.campaign_type === campaignType);
-    var matchCountry = (f.country_code === 'ALL' || f.country_code === countryCode);
-    return matchType && matchCountry;
+  // ── Enrich projects with task stats ─────────────────────────
+  projects.forEach(function(p) {
+    p.tasks = []; p.taskStats = {total:0,pendiente:0,enCurso:0,enRevision:0,bloqueado:0,listo:0,alta:0,media:0,baja:0};
   });
+  var projMap = {};
+  projects.forEach(function(p){ projMap[p.id] = p; });
 
-  // 2. Construir mapa de placeholders cruzando payload con Template_Fields
-  var placeholders = {};
-
-  relevantFields.forEach(function(field) {
-    var fieldId = field.field_id;
-    var placeholder = field.placeholder; // Ej: "{{FECHA_INICIO}}"
-    if (!placeholder) return;
-
-    // V3.2: Si tiene canonical_field_id, buscar primero en el campo base del payload
-    var value = '';
-    var canonicalId = (field.canonical_field_id || '').toString().trim();
-
-    if (canonicalId && payload[canonicalId] !== undefined && payload[canonicalId] !== '') {
-      // Señal principal: este placeholder corresponde a un campo base del formulario
-      value = String(payload[canonicalId]);
-    } else if (payload[fieldId] !== undefined && payload[fieldId] !== null) {
-      value = String(payload[fieldId]);
-    } else if (payload.dynamicFields && payload.dynamicFields[fieldId] !== undefined) {
-      value = String(payload.dynamicFields[fieldId]);
-    } else if (vars[field.label_es] !== undefined) {
-      value = String(vars[field.label_es]);
-    }
-
-    // Aplicar formateo si tiene format_as
-    if (value && field.format_as) {
-      value = _applySmartFormat(value, field.format_as, countryCode);
-    }
-
-    var cleanKey = placeholder.replace(/^\{\{/, '').replace(/\}\}$/, '');
-    placeholders['{{' + cleanKey + '}}'] = value;
-  });
-  // ──── V3.3: RESOLVER CAMPOS DERIVADOS ────
-  // Estos son placeholders compuestos que se calculan del payload
-  // (ej: TOPE_LETRAS, TEXTO_PORCENTAJE, UMBRAL_NUM, etc.)
-  if (typeof DERIVED_FIELDS !== 'undefined') {
-    var derivedKeys = Object.keys(DERIVED_FIELDS);
-    for (var dk = 0; dk < derivedKeys.length; dk++) {
-      var dKey = derivedKeys[dk];
-      var phDerived = '{{' + dKey + '}}';
-      // V3.3: DERIVED_FIELDS siempre sobreescribe — es la fuente autoritativa
-      // para formato complejo (ej: "veinte por ciento (20%)" vs "20%")
-      {
-        try {
-          var derivedVal = DERIVED_FIELDS[dKey](payload);
-          if (derivedVal !== null && derivedVal !== undefined && derivedVal !== '') {
-            placeholders[phDerived] = String(derivedVal);
-          }
-        } catch(de) {
-          Logger.log('⚠️ Derived field ' + dKey + ': ' + de.message);
-        }
-      }
-    }
-  }
-
-  // ──── V3.3: RESOLVER LEGAL DEFAULTS ────
-  // Campos como jurisdicción, ley aplicable, se resuelven de Country_Settings
-  if (typeof LEGAL_DEFAULTS_MAP !== 'undefined') {
-    try {
-      var csSheet = _getSheet(COUNTRY_SETTINGS_SHEET);
-      if (csSheet) {
-        var csData = _sheetToObjects(csSheet);
-        var csRow = csData.find(function(c) { return c.country_code === countryCode; });
-        if (csRow) {
-          var legalKeys = Object.keys(LEGAL_DEFAULTS_MAP);
-          for (var lk = 0; lk < legalKeys.length; lk++) {
-            var lKey = legalKeys[lk];
-            var phLegal = '{{' + lKey + '}}';
-            if (!placeholders[phLegal] || placeholders[phLegal] === '') {
-              var colName = LEGAL_DEFAULTS_MAP[lKey].column;
-              if (csRow[colName]) {
-                placeholders[phLegal] = String(csRow[colName]);
-              }
-            }
-          }
-        }
-      }
-    } catch(le) {
-      Logger.log('⚠️ Legal defaults: ' + le.message);
-    }
-  }
-  // 3. Nombre del documento
-  var campaignName = payload.campaignName || vars['Nombre de Campaña (Opcional)'] || campaignType;
-  var shopName = payload.shopName || vars['Tienda Participante'] || 'General';
-  var today = new Date();
-  var dateStr = today.getFullYear() + '-' +
-    String(today.getMonth() + 1).padStart(2, '0') + '-' +
-    String(today.getDate()).padStart(2, '0');
-  var docName = 'T&C ' + shopName + ' - ' + campaignName + ' (' + dateStr + ')';
-
-  // 4. Clonar el template Doc
-  var newFile = DriveApp.getFileById(template.template_doc_id).makeCopy(docName);
-
-  if (DRIVE_FOLDER_ID) {
-    try {
-      DriveApp.getFolderById(DRIVE_FOLDER_ID).addFile(newFile);
-      DriveApp.getRootFolder().removeFile(newFile);
-    } catch(e) {}
-  }
-
-  // 5. Abrir y hacer reemplazos
-  var doc = DocumentApp.openById(newFile.getId());
-  var body = doc.getBody();
-
-  // 5a. Reemplazar placeholders con valor
-  Object.keys(placeholders).forEach(function(key) {
-    var value = placeholders[key];
-    if (value !== null && value !== undefined && value !== '') {
-      var escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      body.replaceText(escaped, value);
+  activeTasks.forEach(function(t) {
+    var pid = t.proyectoId;
+    if (pid && projMap[pid]) {
+      projMap[pid].tasks.push(t);
+      var s = projMap[pid].taskStats; s.total++;
+      if(t.status==='Pendiente')s.pendiente++;if(t.status==='En curso')s.enCurso++;
+      if(t.status==='En revisión')s.enRevision++;if(t.status==='Bloqueado')s.bloqueado++;
+      if(t.status==='Listo')s.listo++;
+      if(t.priority==='Alta')s.alta++;if(t.priority==='Media')s.media++;if(t.priority==='Baja')s.baja++;
     }
   });
-
-  // 5b. SMART DELETION: Viñetas vacías (solo placeholder)
-  var listItems = body.getListItems();
-  for (var i = listItems.length - 1; i >= 0; i--) {
-    if (listItems[i].getText().trim().match(/^\{\{[A-Z_0-9]+\}\}$/)) {
-      listItems[i].removeFromParent();
-    }
-  }
-
-  // 5c. SMART DELETION: Párrafos vacíos (solo placeholder)
-  var paragraphs = body.getParagraphs();
-  for (var j = paragraphs.length - 1; j >= 0; j--) {
-    if (paragraphs[j].getText().trim().match(/^\{\{[A-Z_0-9]+\}\}$/)) {
-      paragraphs[j].removeFromParent();
-    }
-  }
-
-  // 5d. Limpiar placeholders sueltos residuales
-  body.replaceText('\\{\\{[A-Z_0-9_]+\\}\\}', '');
-  doc.saveAndClose();
-
-  // 6. Permisos + tracking
-  var publicUrl = setPublicViewPermissions(doc);
-
-  var auditVars = {
-    'Tipo de Dinámica': campaignType,
-    'Tienda Participante': shopName,
-    'Nombre de Campaña (Opcional)': campaignName,
-    'Email Generador': submitterEmail
-  };
-  relevantFields.forEach(function(f) {
-    var cleanKey = (f.placeholder || '').replace(/^\{\{/, '').replace(/\}\}$/, '');
-    if (cleanKey && placeholders['{{' + cleanKey + '}}']) {
-      auditVars[f.label_es || f.field_id] = placeholders['{{' + cleanKey + '}}'];
+// Count completed tasks from historial toward project stats
+  histTasks.forEach(function(t) {
+    var pid = t.proyectoId;
+    if (pid && projMap[pid]) {
+      var s = projMap[pid].taskStats; s.total++; s.listo++;
     }
   });
-
-  try { saveResponseToSheet(auditVars, publicUrl); } catch(e) { Logger.log('⚠️ Audit: ' + e.message); }
-
-  // 7. Email
-  try {
-    sendEmailNotification(submitterEmail, docName, publicUrl, {
-      docName: docName,
-      dinamica: campaignType,
-      tiendaDisplay: shopName,
-      textoVigenciaEmail: (payload.startDate || '') + ' → ' + (payload.endDate || ''),
-      condicionesEspeciales: payload.specialConditions || ''
-    });
-  } catch(e) { Logger.log('⚠️ Email: ' + e.message); }
-
-  return { docUrl: publicUrl, docName: docName };
-}
-
-// -----------------------------------------------------------------
-// FORMATO INTELIGENTE para campos de templates importados
-// -----------------------------------------------------------------
-function _applySmartFormat(value, formatType, countryCode) {
-  try {
-    switch(formatType) {
-      case 'date_legal':
-        var parts = value.split('-');
-        if (parts.length === 3) {
-          var day = parseInt(parts[2]);
-          var monthIdx = parseInt(parts[1]) - 1;
-          if (monthIdx >= 0 && monthIdx < 12) {
-            return day + ' de ' + MESES_ES[monthIdx] + ' de ' + parts[0];
-          }
-        }
-        return value;
-
-      case 'money':
-        var symbol = '$';
-        try {
-          var cSheet = _getSheet(COUNTRY_SETTINGS_SHEET);
-          if (cSheet) {
-            var cData = _sheetToObjects(cSheet);
-            var cc = cData.find(function(c) { return c.country_code === countryCode; });
-            if (cc) symbol = cc.currency_symbol || '$';
-          }
-        } catch(e) {}
-        var num = parseFloat(value);
-        if (!isNaN(num)) return symbol + num.toLocaleString('es-CO');
-        return value;
-
-      case 'percentage':
-        var pct = parseFloat(value);
-        if (!isNaN(pct)) return pct + '%';
-        return value;
-
-      case 'number_words':
-        var numWords = ['cero','uno','dos','tres','cuatro','cinco','seis','siete',
-                        'ocho','nueve','diez','once','doce','trece','catorce','quince',
-                        'dieciséis','diecisiete','dieciocho','diecinueve','veinte'];
-        var n = parseInt(value);
-        if (!isNaN(n) && n >= 0 && n <= 20) return numWords[n] + ' (' + n + ')';
-        return value;
-
-      default:
-        return value;
-    }
-  } catch(e) { return value; }
-}
-// -----------------------------------------------------------------
-// GENERADOR CON PLANTILLA
-// -----------------------------------------------------------------
-function _generateWithTemplate(template, vars, submitterEmail) {
-  vars['Email Generador'] = submitterEmail;
-  validateDates(vars);
-  
-  const tipoDinamica = vars['Tipo de Dinámica'] || 'Cashback';
-  let data = tipoDinamica === 'Concurso Mayor Comprador' ? procesarConcurso(vars) : procesarCashback(vars);
-  auditData(data);
-  
-  const placeholders = _buildPlaceholderMap(data);
-  const newFile = DriveApp.getFileById(template.template_doc_id).makeCopy(data.docName);
-  
-  if (DRIVE_FOLDER_ID) {
-    try { DriveApp.getFolderById(DRIVE_FOLDER_ID).addFile(newFile); DriveApp.getRootFolder().removeFile(newFile); } catch(e){}
-  }
-  
-  const doc = DocumentApp.openById(newFile.getId());
-  const body = doc.getBody();
-  
-  // 1. Reemplazar variables que SÍ tienen contenido
-  Object.entries(placeholders).forEach(([key, value]) => {
-    if (value !== null && value !== undefined && value !== '') {
-      body.replaceText(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), String(value));
-    }
+  // Auto-calculate project status (if not manually forced)
+  projects.forEach(function(p) {
+    if (p.statusForced) return; // manually set, don't override
+    var s = p.taskStats;
+    if (s.total === 0) { /* keep current */ }
+    else if (s.listo === s.total) p.status = 'Completado';
+    else if (s.bloqueado > 0 && s.enCurso === 0 && s.pendiente === 0 && s.enRevision === 0) p.status = 'En pausa';
+    else p.status = 'Activo';
+    p.pctDone = s.total > 0 ? Math.round(s.listo / s.total * 100) : 0;
   });
-  
-  // 2. SMART DELETION: Eliminar viñetas enteras que quedaron con variables vacías
-  const listItems = body.getListItems();
-  for (let i = listItems.length - 1; i >= 0; i--) {
-    if (listItems[i].getText().trim().match(/^\{\{[A-Z_0-9_]+\}\}$/)) {
-      listItems[i].removeFromParent();
-    }
-  }
-  
-  // 3. SMART DELETION: Eliminar párrafos enteros que quedaron con variables vacías
-  const paragraphs = body.getParagraphs();
-  for (let i = paragraphs.length - 1; i >= 0; i--) {
-    if (paragraphs[i].getText().trim().match(/^\{\{[A-Z_0-9_]+\}\}$/)) {
-      paragraphs[i].removeFromParent();
-    }
-  }
-  
-  // 4. Limpiar cualquier otro placeholder que haya quedado suelto
-  body.replaceText('\\{\\{[A-Z_0-9_]+\\}\\}', '');
-  doc.saveAndClose();
-  
-  const publicUrl = setPublicViewPermissions(doc);
-  saveResponseToSheet(vars, publicUrl);
-  sendEmailNotification(submitterEmail, data.docName, publicUrl, data);
-  return { docUrl: publicUrl, docName: data.docName };
-}
 
-// -----------------------------------------------------------------
-// MAPEOS Y PROCESAMIENTO INTELIGENTE
-// -----------------------------------------------------------------
-function mapWebToEngine(webData) {
+  // ── KPIs ────────────────────────────────────────────────────
+  var total=activeTasks.length,alta=0,media=0,baja=0,pendiente=0,enCurso=0,bloqueado=0,enRevision=0,listo=0;
+  activeTasks.forEach(function(t){
+    if(t.priority==='Alta')alta++;if(t.priority==='Media')media++;if(t.priority==='Baja')baja++;
+    if(t.status==='Pendiente')pendiente++;if(t.status==='En curso')enCurso++;
+    if(t.status==='Bloqueado')bloqueado++;if(t.status==='En revisión')enRevision++;if(t.status==='Listo')listo++;
+  });
+
+  // ── Per-person stats ────────────────────────────────────────
+  var allMembers = getAllMembers(equipos);
+  var teamMap = {};
+  allMembers.forEach(function(n){teamMap[n]={total:0,alta:0,media:0,baja:0,pendiente:0,enCurso:0,bloqueado:0,enRevision:0,listo:0}});
+  activeTasks.forEach(function(t){
+    if(!teamMap[t.resp])teamMap[t.resp]={total:0,alta:0,media:0,baja:0,pendiente:0,enCurso:0,bloqueado:0,enRevision:0,listo:0};
+    var p=teamMap[t.resp];p.total++;
+    if(t.priority==='Alta')p.alta++;if(t.priority==='Media')p.media++;if(t.priority==='Baja')p.baja++;
+    if(t.status==='Pendiente')p.pendiente++;if(t.status==='En curso')p.enCurso++;
+    if(t.status==='Bloqueado')p.bloqueado++;if(t.status==='En revisión')p.enRevision++;if(t.status==='Listo')p.listo++;
+  });
+  var team = Object.keys(teamMap).sort().map(function(name){
+    return {name:name,initials:name.split(' ').slice(0,2).map(function(w){return w[0]}).join('').toUpperCase(),
+      country:getCountryForMember(name,equipos),total:teamMap[name].total,alta:teamMap[name].alta,media:teamMap[name].media,
+      baja:teamMap[name].baja,pendiente:teamMap[name].pendiente,enCurso:teamMap[name].enCurso,bloqueado:teamMap[name].bloqueado,
+      enRevision:teamMap[name].enRevision,listo:teamMap[name].listo,
+      pctDone:teamMap[name].total>0?Math.round(teamMap[name].listo/teamMap[name].total*100):0};
+  });
+
+  // ── Per-country stats ───────────────────────────────────────
+  var countryStats = {};
+  equipos.forEach(function(eq){countryStats[eq.code]={code:eq.code,name:eq.country,leader:eq.leader,total:0,alta:0,media:0,baja:0}});
+  activeTasks.forEach(function(t){var cc=t.pais||getCountryForMember(t.resp,equipos);if(cc&&countryStats[cc]){var c=countryStats[cc];c.total++;if(t.priority==='Alta')c.alta++;if(t.priority==='Media')c.media++;if(t.priority==='Baja')c.baja++}});
+
+  // ── SLA ─────────────────────────────────────────────────────
+  var now=new Date(),slaData={onTime:0,atRisk:0,overdue:0},slaLimits={Alta:2,Media:5,Baja:7};
+  activeTasks.forEach(function(t){
+    if(t.status==='Listo')return;if(!t.creadoRaw){slaData.onTime++;return}
+    var bizDays=countBizDays(new Date(t.creadoRaw),now),limit=slaLimits[t.priority]||5;
+    if(bizDays>limit)slaData.overdue++;else if(bizDays>=limit-1)slaData.atRisk++;else slaData.onTime++;
+  });
+
+  // ── Project list for dropdowns (id + name) ──────────────────
+  var projectList = projects.filter(function(p){return p.status!=='Completado'&&p.status!=='Cancelado'}).map(function(p){return {id:p.id,nombre:p.nombre}});
+
   return {
-    'Tipo de Dinámica': webData.dynamicType, 'Tienda Participante': webData.shopName, 'Territorio': webData.territory,
-    'Fecha de INICIO de Campaña': webData.startDate, 'Hora de INICIO de Campaña': webData.startTime,
-    'Fecha de FIN de Campaña': webData.endDate, 'Hora de FIN de Campaña': webData.endTime,
-    'Nombre de Campaña (Opcional)': webData.campaignName, 'Email(s) adicionales': webData.extraEmails,
-    'Condiciones Especiales (Adicionales)': webData.specialConditions, 'Tipo de Usuarios Participantes': webData.userSegment,
-    'Métodos de Pago Válidos': webData.paymentMethods, 'Máximo de Órdenes por Usuario': webData.maxOrders,
-    'Valor Mínimo de Compra (Opcional)': webData.minPurchase, 'Lugar de Redención de Créditos': webData.redemptionPlace,
-    'Porcentaje del Cashback': webData.cashbackPct, 'Presupuesto (Existencias)': webData.budget,
-    'Tope Máximo de Cashback': webData.cap, 'Tipo de Carga de Créditos': webData.loadType,
-    'Fecha de Carga de Créditos': webData.loadDate, '¿Cómo se define la vigencia de los Créditos?': webData.validityType,
-    'Cantidad de Días de Vigencia': webData.validityDays, 'Fecha Inicio de Redención': webData.redemptionStart,
-    'Fecha Fin de Redención': webData.redemptionEnd, 'Razón Social Organizador': webData.organizerLegalName,
-    'Teléfono Contacto Organizador': webData.organizerPhone, 'Email Contacto Organizador': webData.organizerEmail,
-    'Número de Ganadores': webData.numberOfWinners, 'Tipo de Premio': webData.prizeType,
-    'Quién Entrega Premio': webData.prizeDeliveryBy, 'Monto Créditos Premio': webData.creditsAmount,
-    'Días para Carga Premio': webData.creditLoadDays, 'Vigencia Créditos Premio': webData.creditsValidityDays,
-    'Lugar Redención Premio': webData.creditsRedemptionPlace, 'Descripción Premio Físico': webData.physicalPrizeDescription,
-    'Verticales/Secciones participantes': webData.verticals, 'Productos Participantes': webData.participatingProducts,
-    'Criterio del Ganador': webData.winnerCriteria, 'Mínimo de Compra para participar': webData.minParticipation,
-    'Lista de Premios': webData.prizes, 'Fecha de Anuncio de Ganadores': webData.announcementDate,
-    'País Seleccionado': webData.countryCode, 'Código de Moneda': webData.currencyCode, 'Símbolo de Moneda': webData.currencySymbol
+    tasks:activeTasks, historial:histTasks,
+    kpi:{total:total,alta:alta,media:media,baja:baja,pendiente:pendiente,enCurso:enCurso,bloqueado:bloqueado,enRevision:enRevision,listo:listo},
+    sla:slaData, team:team, countries:Object.values(countryStats),
+    equipos:equipos, projects:projects, projectList:projectList,
+    semana:activeTasks.length>0?activeTasks[0].semana:getCurrentWeekLabel(),
+    generated:Utilities.formatDate(new Date(),'America/Bogota','dd/MM/yyyy HH:mm'), config:config
   };
 }
 
-function processCommonVariables(vars) {
-  const data = {};
-  data.tiendaBase = capitalize(vars['Tienda Participante'] ? vars['Tienda Participante'].trim() : "TIENDA");
-  data.marcaAliada = data.tiendaBase;
-
-  let rawTerritorio = vars['Territorio'];
-  let territoriosSeleccionados = Array.isArray(rawTerritorio) ? rawTerritorio : (typeof rawTerritorio === 'string' ? rawTerritorio.split(',').map(s => s.trim()) : [rawTerritorio]);
-  
-  if (territoriosSeleccionados.includes('Nacional')) {
-    data.textoTerritorio = 'el territorio nacional de la República de Colombia';
-    data.territorioResumen = 'Nacional';
-  } else {
-    const listaFinalStr = formatListToText(territoriosSeleccionados);
-    data.territorioResumen = listaFinalStr;
-    let hayMunicipios = false;
-    let hayCiudades = false;
-    
-    territoriosSeleccionados.forEach(lugar => {
-      if (typeof LISTA_MUNICIPIOS !== 'undefined' && LISTA_MUNICIPIOS.includes(lugar)) {
-        hayMunicipios = true;
-      } else {
-        hayCiudades = true;
-      }
+// ════════════════════════════════════════════════════════════════
+// PROJECTS CRUD
+// ════════════════════════════════════════════════════════════════
+function readProjects(ss) {
+  var ws = ss.getSheetByName(SHEET_PROYECTOS);
+  if (!ws) return [];
+  var lastRow = ws.getLastRow();
+  if (lastRow < 2) return [];
+  var lastCol = Math.min(ws.getLastColumn(), PROJ_COLS);
+  var data = ws.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  var projects = [];
+  data.forEach(function(row) {
+    if (!row[1]) return;
+    projects.push({
+      id: row[0], nombre: row[1]||'', pais: (row[2]||'').toString().trim(),
+      lider: (row[3]||'').toString().trim(), responsable: (row[4]||'').toString().trim(),
+      deadline: row[5]?(row[5] instanceof Date?Utilities.formatDate(row[5],'America/Bogota','dd/MM/yyyy'):row[5].toString()):'',
+      deadlineISO: row[5]?(row[5] instanceof Date?Utilities.formatDate(row[5],'America/Bogota','yyyy-MM-dd'):''):'', priority: row[6]||'Media',
+      status: row[7]||'Activo', statusForced: (row[7]||'').toString().trim() === 'Cancelado',
+      descripcion: row[8]||'', notas: row[9]||'',
+      creado: row[10]? Utilities.formatDate(new Date(row[10]),'America/Bogota','dd/MM/yyyy'):'',
+      semana: row[11]||'',
+      participantes: (row[12]||'').toString().split(',').map(function(s){return s.trim()}).filter(Boolean),
+      tipoTrabajo: (row[13]||'').toString().trim(),
+      riesgo: (row[14]||'').toString().trim(),
+      pctDone: 0, tasks: [], taskStats: {}
     });
-    
-    let prefix = "";
-    if (hayCiudades && hayMunicipios) {
-      prefix = "las ciudades y municipios de";
-    } else if (hayMunicipios && !hayCiudades) {
-      prefix = (territoriosSeleccionados.length > 1 || listaFinalStr.includes(' y ')) ? "los municipios de" : "el municipio de";
-    } else {
-      prefix = (territoriosSeleccionados.length > 1 || listaFinalStr.includes(' y ')) ? "las ciudades de" : "la ciudad de";
-    }
-    data.textoTerritorio = `${prefix} ${listaFinalStr}, dentro de la República de Colombia`;
-  }
-
-  const startDateStr = vars['Fecha de INICIO de Campaña'];
-  const startTimeStr = vars['Hora de INICIO de Campaña'];
-  const endDateStr = vars['Fecha de FIN de Campaña'];
-  const endTimeStr = vars['Hora de FIN de Campaña'];
-  
-  const startDate = new Date(parseInt(startDateStr.split('-')[0]), parseInt(startDateStr.split('-')[1]) - 1, parseInt(startDateStr.split('-')[2]), parseInt(startTimeStr.split(':')[0]), parseInt(startTimeStr.split(':')[1]));
-  const endDate = new Date(parseInt(endDateStr.split('-')[0]), parseInt(endDateStr.split('-')[1]) - 1, parseInt(endDateStr.split('-')[2]), parseInt(endTimeStr.split(':')[0]), parseInt(endTimeStr.split(':')[1]));
-  
-  data.startFmtDate = formatDateInSpanish(startDate); data.endFmtDate = formatDateInSpanish(endDate);
-  data.startFmtTime = formatTimeInSpanish(startDate); data.endFmtTime = formatTimeInSpanish(endDate);
-  data.isSameDay = (data.startFmtDate === data.endFmtDate);
-  data.textoVigenciaEmail = data.isSameDay ? `El ${data.startFmtDate} (${data.startFmtTime} - ${data.endFmtTime})` : `Del ${data.startFmtDate} al ${data.endFmtDate}`;
-  data.condicionesEspeciales = vars['Condiciones Especiales (Adicionales)'] || '';
-  return data;
+  });
+  return projects;
 }
 
-function procesarCashback(vars) {
-  const data = processCommonVariables(vars);
-  data.dinamica = 'CASHBACK';
-  
-  const redencionSeleccionada = vars['Lugar de Redención de Créditos'] || 'Únicamente en la Tienda Participante (Brand Credits)';
-  const isGeneric = (vars['Tienda Participante'].toUpperCase().startsWith('TODAS') || vars['Tienda Participante'].toUpperCase().startsWith('TODOS'));
-
-  if (isGeneric) {
-    data.tiendaDisplay = "Aliados Comerciales"; 
-    data.txtDefinicionTienda = ' (en adelante las "Tiendas Participantes") ';
-    data.txtRefTienda = 'las Tiendas Participantes';
-    data.txtDeclaracionTienda = 'son las Tiendas Participantes';
-  } else {
-    data.tiendaDisplay = `"${data.tiendaBase}"`;
-    data.txtDefinicionTienda = ' (en adelante la "Tienda Participante") ';
-    data.txtRefTienda = 'la Tienda Participante';
-    data.txtDeclaracionTienda = 'es la Tienda Participante';
+function addProject(obj) {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var ws = ss.getSheetByName(SHEET_PROYECTOS);
+  if (!ws) {
+    ws = ss.insertSheet(SHEET_PROYECTOS);
+    ws.appendRow(['ID','Nombre','País','Líder','Responsable','Deadline','Prioridad','Estado','Descripción','Notas','Creado','Semana']);
+    ws.getRange(1,1,1,PROJ_COLS).setFontWeight('bold').setBackground('#FF4940').setFontColor('#FFFFFF');
+    ws.setTabColor('#FF4940');
   }
-
-  data.segmento = vars['Tipo de Usuarios Participantes'];
-  data.metodosPago = vars['Métodos de Pago Válidos'];
-  data.extraEmails = vars['Email(s) adicionales'];
-  data.limiteOrdenes = vars['Máximo de Órdenes por Usuario'] || '1';
-  const ordenNum = parseInt(data.limiteOrdenes);
-  data.txtOrdenesGramatica = (!isNaN(ordenNum) && ordenNum === 1) ? 'orden' : 'órdenes';
-  
-  const pctNum = Number(vars['Porcentaje del Cashback'] || '99'); 
-  data.textoPorcentaje = `${numeroALetras(Math.floor(pctNum))} por ciento (${pctNum}%)`;
-
-  const topeNum = Number(vars['Tope Máximo de Cashback'] || 0);
-  data.topeLetras = numeroALetras(topeNum);
-  data.topeNumFmt = topeNum.toLocaleString('es-CO');
-  data.presupuestoNumFmt = Number(vars['Presupuesto (Existencias)'] || 0).toLocaleString('es-CO');
-  
-  let umbralCompraNum = (pctNum > 0) ? Math.ceil(topeNum / (pctNum / 100)) : topeNum;
-  data.umbralCompraFmt = umbralCompraNum.toLocaleString('es-CO');
-  data.umbralCompraLetras = numeroALetras(umbralCompraNum); 
-  
-  const tipoCarga = vars['Tipo de Carga de Créditos'];
-  const objFechaCarga = parseFormDate(vars['Fecha de Carga de Créditos']);
-  let fechaCargaFmt = formatDateInSpanish(objFechaCarga); 
-  if (tipoCarga === 'Inmediatamente (Al finalizar la orden)') {
-    data.txtCargaCompleto = 'de manera inmediata una vez finalizada la orden';
-  } else if (tipoCarga === 'Al día siguiente') {
-    data.txtCargaCompleto = 'al día calendario siguiente de haber finalizado la orden';
-  } else {
-    data.txtCargaCompleto = `el ${fechaCargaFmt || "[FECHA PENDIENTE]"}`;
-  }
-
-  const tipoVigenciaCreditos = vars['¿Cómo se define la vigencia de los Créditos?'];
-  if (tipoVigenciaCreditos === 'Por días calendario (Duración)') {
-    const diasNum = vars['Cantidad de Días de Vigencia'] || '30';
-    data.txtVigenciaCreditos = `tendrán una vigencia de ${numeroALetras(Number(diasNum))} (${diasNum}) días calendario contados a partir de su carga`;
-  } else {
-    let iniRed = formatDateInSpanish(parseFormDate(vars['Fecha Inicio de Redención'])) || "el momento en que sean cargados";
-    let finRed = formatDateInSpanish(parseFormDate(vars['Fecha Fin de Redención'])) || "[FECHA FIN PENDIENTE]";
-    data.txtVigenciaCreditos = `podrán ser utilizados entre ${iniRed} y el ${finRed}`;
-  }
-
-  // Texto segmento
-  if (data.segmento === 'Pro y Pro Black') data.textoSegmento = 'Pueden participar los Usuarios/Consumidores que tengan activa la suscripción RappiPro y/o RappiPro Black.';
-  else if (data.segmento === 'Nuevos Usuarios') data.textoSegmento = 'Campaña válida únicamente para Nuevos Usuarios/Consumidores.';
-  else data.textoSegmento = 'Pueden participar todos los Usuarios/Consumidores de la Plataforma Rappi que sean mayores de edad.';
-
-  // Texto método pago
-  if (data.metodosPago === 'Todos excepto Efectivo') data.textoMetodoPago = 'Campaña válida para órdenes pagadas con todos los medios de pago habilitados en la Plataforma Rappi, excepto efectivo. No se obtendrá el Beneficio respecto de órdenes pagadas en efectivo o parcial/totalmente con Créditos.';
-  else if (data.metodosPago && data.metodosPago.includes('Todos')) data.textoMetodoPago = 'Campaña válida para órdenes pagadas con todos los medios de pago habilitados en la Plataforma Rappi.';
-  else data.textoMetodoPago = `Campaña válida únicamente para órdenes pagadas con ${(data.metodosPago || '').replace('Únicamente ', '')}.`;
-
-  // Texto redención
-  const suffix = " únicamente dentro del Territorio.";
-  if (redencionSeleccionada.includes('Restaurantes')) data.textoLugarRedencion = `Se aclara que los Créditos otorgados podrán ser redimidos en cualquier tienda de la sección "Restaurantes"${suffix}`;
-  else if (redencionSeleccionada.includes('Plataforma')) data.textoLugarRedencion = `Se aclara que los Créditos otorgados podrán ser redimidos en cualquier sección de la Plataforma Rappi (excepto Cajero ATM y RappiFavor)${suffix}`;
-  else data.textoLugarRedencion = `Se aclara que los Créditos otorgados podrán ser redimidos únicamente en ${data.txtRefTienda} donde se originó el Beneficio${suffix}`;
-
-  data.nombreCampana = vars['Nombre de Campaña (Opcional)'] || `CASHBACK ${pctNum}% ${data.tiendaArchivo || data.tiendaBase.toUpperCase()}`; 
-  data.docName = `T&C - ${data.nombreCampana}`;
-  return data;
+  var lastRow = ws.getLastRow();
+  var newId = lastRow >= 2 ? ws.getRange(lastRow, 1).getValue() + 1 : 1;
+  var equipos = readEquipos(ss);
+  var pais  = obj.pais || getCountryForMember(obj.responsable, equipos);
+  var lider = obj.lider || getLeaderForCountry(pais, equipos);
+  ws.appendRow([
+    newId, obj.nombre||'', pais, lider, obj.responsable||'',
+    obj.deadline||'', obj.priority||'Media', obj.status||'Activo',
+    obj.descripcion||'', obj.notas||'', new Date(), getCurrentWeekLabel(), obj.participantes||'',
+    obj.tipoTrabajo||'', obj.riesgo||''
+  ]);
+  return {success:true, id:newId, nombre:obj.nombre||''};
 }
 
-function procesarConcurso(vars) {
-  const data = processCommonVariables(vars);
-  data.dinamica = 'TOP_SPENDER';
-  data.razonSocialOrganizador = vars['Razón Social Organizador'] || data.tiendaBase;
-  data.telefonoContacto = vars['Teléfono Contacto Organizador'] || 'Soporte In-App Rappi';
-  data.emailContacto = vars['Email Contacto Organizador'] || 'servicioalcliente@rappi.com';
-  data.numeroGanadores = Number(vars['Número de Ganadores']) || 1;
-  data.numeroGanadoresLetras = numeroALetras(data.numeroGanadores);
-  data.txtGanadoresPlural = data.numeroGanadores === 1 ? 'ganador' : 'ganadores';
-  
-  // Variables obligatorias que faltaban en el map
-  data.criterioGanador = (vars['Criterio del Ganador'] && vars['Criterio del Ganador'].includes('$')) ? 'mayor valor acumulado (dinero) en compras' : 'mayor cantidad de órdenes finalizadas';
-  data.verticales = vars['Verticales/Secciones participantes'] || "Restaurantes";
-  data.productosParticipantes = vars['Productos Participantes'] || `todos los productos de la marca ${data.tiendaBase}`;
-  data.fechaAnuncio = formatDateInSpanish(parseFormDate(vars['Fecha de Anuncio de Ganadores'])) || "[FECHA PENDIENTE]";
-  data.minimoCompraTexto = vars['Mínimo de Compra para participar'] ? `$${vars['Mínimo de Compra para participar']} M/Cte` : 'No aplica un valor mínimo.';
-
-  data.isPremioCreditos = vars['Tipo de Premio'] === 'credits';
-  if (data.isPremioCreditos) {
-    data.montoCreditosPremioFmt = Number(vars['Monto Créditos Premio'] || 50000).toLocaleString('es-CO');
-    data.montoCreditosPremioLetras = numeroALetras(Number(vars['Monto Créditos Premio'] || 50000));
-    data.diasCargaPremio = vars['Días para Carga Premio'] || 5;
-    data.diasCargaPremioLetras = numeroALetras(Number(data.diasCargaPremio));
-    data.vigenciaCreditosPremio = vars['Vigencia Créditos Premio'] || 30;
-    data.vigenciaCreditosPremioLetras = numeroALetras(Number(data.vigenciaCreditosPremio));
-    data.textoLugarRedencionPremio = `únicamente en la Tienda Participante "${data.tiendaBase}"`;
-    data.listaPremios = `${data.montoCreditosPremioLetras} (${data.montoCreditosPremioFmt}) Créditos de la App por cada ganador.`;
-    data.responsableEntrega = "Rappi";
-  } else {
-    data.listaPremios = cleanTechNames(vars['Descripción Premio Físico'] || "Premio sorpresa.");
-    data.responsableEntrega = vars['Quién Entrega Premio'] === 'rappi' ? "Rappi" : "el Organizador";
-  }
-
-  data.textoSegmento = 'Pueden participar todos los Usuarios/Consumidores de la Plataforma Rappi que sean mayores de edad.';
-  data.textoMetodoPago = 'Actividad válida para órdenes pagadas con todos los medios de pago habilitados en la Plataforma Rappi, excepto efectivo. No sumarán al acumulado las órdenes pagadas en efectivo o parcial/totalmente con Créditos.';
-
-  data.nombreCampana = vars['Nombre de Campaña (Opcional)'] || `CONCURSO ${data.tiendaBase.toUpperCase()}`; 
-  data.docName = `T&C - ${data.nombreCampana}`;
-  return data;
-}
-
-function _buildPlaceholderMap(data) {
-  const map = {
-    '{{NOMBRE_CAMPANA_UPPER}}': (data.nombreCampana || '').toUpperCase(),
-    '{{NOMBRE_CAMPANA}}': data.nombreCampana || '',
-    '{{TEXTO_TERRITORIO}}': data.textoTerritorio || '',
-    '{{FECHA_INICIO}}': data.startFmtDate || '',
-    '{{FECHA_FIN}}': data.endFmtDate || '',
-    '{{HORA_INICIO}}': data.startFmtTime || '',
-    '{{HORA_FIN}}': data.endFmtTime || '',
-    '{{TIENDA_BASE}}': data.tiendaBase || '',
-    '{{TEXTO_SEGMENTO}}': data.textoSegmento || '',
-    '{{TEXTO_METODO_PAGO}}': data.textoMetodoPago || '',
-    '{{REF_TIENDA}}': data.txtRefTienda || 'la Tienda Participante',
-    '{{TIENDA_DISPLAY}}': data.tiendaDisplay || `"${data.tiendaBase}"`,
-    '{{DEFINICION_TIENDA}}': data.txtDefinicionTienda || ' (en adelante la "Tienda Participante") ',
-    '{{TITULO_TIENDA}}': data.txtTituloTienda || 'IV. Tienda Participante: ',
-    '{{DECLARACION_TIENDA}}': data.txtDeclaracionTienda || 'es la Tienda Participante',
-    '{{CONDICIONES_ESPECIALES}}': data.condicionesEspeciales || ''
-  };
-  
-  if (data.dinamica === 'CASHBACK') {
-    map['{{TEXTO_PORCENTAJE}}'] = data.textoPorcentaje || '';
-    map['{{TOPE_LETRAS}}'] = data.topeLetras || '';
-    map['{{TOPE_NUM}}'] = data.topeNumFmt || '';
-    map['{{PRESUPUESTO_NUM}}'] = data.presupuestoNumFmt || '';
-    map['{{UMBRAL_LETRAS}}'] = data.umbralCompraLetras || '';
-    map['{{UMBRAL_NUM}}'] = data.umbralCompraFmt || '';
-    map['{{TEXTO_CARGA}}'] = data.txtCargaCompleto || '';
-    map['{{TEXTO_VIGENCIA_CREDITOS}}'] = data.txtVigenciaCreditos || '';
-    map['{{TEXTO_LUGAR_REDENCION}}'] = data.textoLugarRedencion || '';
-    map['{{LIMITE_ORDENES}}'] = data.limiteOrdenes || '1';
-    map['{{TEXTO_ORDENES}}'] = data.txtOrdenesGramatica || 'orden';
-  } else {
-    map['{{ORGANIZADOR}}'] = data.razonSocialOrganizador || '';
-    map['{{TELEFONO_CONTACTO}}'] = data.telefonoContacto || '';
-    map['{{EMAIL_CONTACTO}}'] = data.emailContacto || '';
-    map['{{NUM_GANADORES}}'] = String(data.numeroGanadores || 1);
-    map['{{NUM_GANADORES_LETRAS}}'] = data.numeroGanadoresLetras || '';
-    map['{{PLURAL_GANADORES}}'] = data.txtGanadoresPlural || 'ganador';
-    map['{{CRITERIO_GANADOR}}'] = data.criterioGanador || '';
-    map['{{VERTICALES}}'] = data.verticales || '';
-    map['{{PRODUCTOS_PARTICIPANTES}}'] = data.productosParticipantes || '';
-    map['{{LISTA_PREMIOS}}'] = data.listaPremios || '';
-    map['{{RESPONSABLE_ENTREGA}}'] = data.responsableEntrega || '';
-    map['{{FECHA_ANUNCIO}}'] = data.fechaAnuncio || '';
-    map['{{MINIMO_COMPRA_TEXTO}}'] = data.minimoCompraTexto || '';
-    
-    if (data.isPremioCreditos) {
-      map['{{MONTO_CREDITOS_LETRAS}}'] = data.montoCreditosPremioLetras || '';
-      map['{{MONTO_CREDITOS_NUM}}'] = data.montoCreditosPremioFmt || '';
-      map['{{DIAS_CARGA_LETRAS}}'] = data.diasCargaPremioLetras || '';
-      map['{{DIAS_CARGA_NUM}}'] = String(data.diasCargaPremio || 5);
-      map['{{VIGENCIA_CREDITOS_LETRAS}}'] = data.vigenciaCreditosPremioLetras || '';
-      map['{{VIGENCIA_CREDITOS_NUM}}'] = String(data.vigenciaCreditosPremio || 30);
-      map['{{LUGAR_REDENCION_PREMIO}}'] = data.textoLugarRedencionPremio || '';
+function updateProjectField(projId, field, value) {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var ws = ss.getSheetByName(SHEET_PROYECTOS);
+  if (!ws) return {success:false, error:'No projects sheet'};
+  var lastRow = ws.getLastRow();
+  if (lastRow < 2) return {success:false, error:'No projects'};
+  var data = ws.getRange(2, 1, lastRow - 1, Math.min(ws.getLastColumn(), PROJ_COLS)).getValues();
+  var fieldMap = {'nombre':2,'pais':3,'lider':4,'responsable':5,'deadline':6,'priority':7,'status':8,'descripcion':9,'notas':10,'participantes':13};
+  var col = fieldMap[field];
+  if (!col) return {success:false, error:'Invalid field: '+field};
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][0] == projId) {
+      ws.getRange(i + 2, col).setValue(value);
+      return {success:true};
     }
   }
-  return map;
+  return {success:false, error:'Project #'+projId+' not found'};
 }
 
-// -----------------------------------------------------------------
-// BASE DE DATOS Y CORREOS
-// -----------------------------------------------------------------
-function saveResponseToSheet(vars, docUrl) {
-  try {
-    const sheet = _getOrCreateSheet('Respuestas_Audit_V2', ['Timestamp', 'Email Generador', 'Link Documento', 'Tipo Dinámica', 'País', 'Tienda', 'Campaña', 'JSON_DATA']);
-    sheet.appendRow([new Date(), vars['Email Generador'] || '', docUrl, vars['Tipo de Dinámica'] || '', vars['País Seleccionado'] || 'CO', vars['Tienda Participante'] || '', vars['Nombre de Campaña (Opcional)'] || '', JSON.stringify(vars)]);
-  } catch (error) {}
-}
-
-function sendEmailNotification(submitterEmail, docName, docUrl, data) {
-  const htmlBody = getEmailTemplate(data, docUrl, docName);
-  MailApp.sendEmail({ to: submitterEmail, subject: `T&C: ${data.nombreCampana}`, htmlBody: htmlBody, name: "Motor Legal Rappi" });
-}
-
-function getEmailTemplate(data, docUrl, docName) {
-  const color = (data.dinamica === 'CASHBACK') ? '#FF441F' : '#2962FF';
-  const icon = (data.dinamica === 'CASHBACK') ? '💰' : '🏆';
-  const typeLabel = (data.dinamica === 'CASHBACK') ? 'Campaña de Cashback' : 'Concurso / Top Spender';
-  
-  let tableRows = '';
-  if (data.dinamica === 'CASHBACK') {
-    tableRows = `
-      <tr><td style="padding:8px; border-bottom:1px solid #eee;"><strong>🏪 Tienda:</strong></td><td style="padding:8px; border-bottom:1px solid #eee;">${data.tiendaBase}</td></tr>
-      <tr><td style="padding:8px; border-bottom:1px solid #eee;"><strong>💸 Beneficio:</strong></td><td style="padding:8px; border-bottom:1px solid #eee;">${data.textoPorcentaje}</td></tr>
-      <tr><td style="padding:8px; border-bottom:1px solid #eee;"><strong>🛑 Tope:</strong></td><td style="padding:8px; border-bottom:1px solid #eee;">${data.topeNumFmt}</td></tr>
-      <tr><td style="padding:8px; border-bottom:1px solid #eee;"><strong>💰 Presupuesto:</strong></td><td style="padding:8px; border-bottom:1px solid #eee;">${data.presupuestoNumFmt}</td></tr>
-    `;
-  } else {
-    tableRows = `
-      <tr><td style="padding:8px; border-bottom:1px solid #eee;"><strong>👑 Organizador:</strong></td><td style="padding:8px; border-bottom:1px solid #eee;">${data.razonSocialOrganizador}</td></tr>
-      <tr><td style="padding:8px; border-bottom:1px solid #eee;"><strong>🎯 Criterio:</strong></td><td style="padding:8px; border-bottom:1px solid #eee;">${data.criterioGanador}</td></tr>
-      <tr><td style="padding:8px; border-bottom:1px solid #eee;"><strong>🎁 Premio:</strong></td><td style="padding:8px; border-bottom:1px solid #eee;">${data.listaPremios}</td></tr>
-    `;
-  }
-
-  return `
-    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
-      <div style="background-color: ${color}; padding: 20px; text-align: center; color: white;">
-        <h1 style="margin:0; font-size: 24px;">${icon} Documento Generado</h1>
-        <p style="margin:5px 0 0 0; opacity: 0.9;">Motor Legal Rappi V2.4</p>
-      </div>
-      <div style="padding: 30px; background-color: white;">
-        <p style="color: #374151; font-size: 16px; margin-top: 0;">Hola,</p>
-        <p style="color: #4b5563; line-height: 1.5;">Se han generado exitosamente los Términos y Condiciones:</p>
-        <div style="background-color: #f3f4f6; border-radius: 8px; padding: 15px; margin: 20px 0;">
-          <h3 style="margin-top:0; color: ${color}; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">${typeLabel}</h3>
-          <table style="width:100%; border-collapse: collapse; font-size: 14px; color: #374151;">
-            ${tableRows}
-          </table>
-        </div>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${docUrl}" style="background-color: ${color}; color: white; padding: 14px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
-            Abrir Documento
-          </a>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function _getTemplateRegistry() {
-  return _sheetToObjects(_getSheet(TW_CONFIG.SHEET_REGISTRY) || []);
-}
-// -----------------------------------------------------------------
-// ENDPOINTS PARA FRONTEND DINÁMICO (GOD MODE)
-// -----------------------------------------------------------------
-function getCampaignTypesForUser() {
-  try {
-    const sheet = _getSheet(CAMPAIGN_TYPES_SHEET);
-    if (!sheet) return JSON.stringify([]);
-    const all = _sheetToObjects(sheet);
-    const active = all.filter(t => String(t.status).toLowerCase() === 'active');
-    return JSON.stringify(active.map(t => ({
-      type_id:    t.type_id,
-      type_name:  t.type_name,
-      description: t.description || '',
-      icon:       t.icon || 'fa-bolt',
-      color:      t.color || '#FF4500',
-      countries:  t.countries || 'ALL'
-    })));
-  } catch (e) {
-    Logger.log('❌ getCampaignTypesForUser: ' + e.message);
-    return JSON.stringify([]);
-  }
-}
-
-function getFieldsForUserForm(campaignType, countryCode) {
-  try {
-    const sheet = _getSheet(FIELDS_SHEET_NAME);
-    if (!sheet) return JSON.stringify([]);
-    const all = _sheetToObjects(sheet);
-    const filtered = all.filter(f => {
-      const matchType = (f.campaign_type === 'ALL' || f.campaign_type === campaignType);
-      const matchCountry = (f.country_code === 'ALL' || f.country_code === countryCode);
-      // V3.2: No enviar campos base (canonical) al frontend — ya se preguntan en el formulario estático
-      // canonical_field_id es la señal principal; section='0' es redundancia de seguridad
-      const canonicalVal = (f.canonical_field_id || '').toString().trim();
-      // V3.3: Excluir campos base (section 0), legales auto-resueltos (section L), y canónicos
-      var isNotBaseField = (String(f.section) !== '0') && (String(f.section) !== 'L') && (canonicalVal === '');
-      return matchType && matchCountry && isNotBaseField;
+// ════════════════════════════════════════════════════════════════
+// TASKS
+// ════════════════════════════════════════════════════════════════
+function readTasks(ws) {
+  if (!ws) return [];
+  var lastRow = ws.getLastRow(); if (lastRow < 4) return [];
+  var lastCol = Math.min(ws.getLastColumn(), TASK_COLS);
+  var data = ws.getRange(4, 1, lastRow - 3, lastCol).getValues();
+  var tasks = [];
+  data.forEach(function(row) {
+    if (!row[1]) return;
+    var proyVal = (row[11]||'').toString().trim();
+    tasks.push({
+      id:row[0], nombre:row[1]||'', resp:row[2]||'', acc:row[3]||'',
+      deadline:row[4]?(row[4] instanceof Date?Utilities.formatDate(row[4],'America/Bogota','dd/MM/yyyy'):row[4].toString()):'',
+      deadlineISO:row[4]?(row[4] instanceof Date?Utilities.formatDate(row[4],'America/Bogota','yyyy-MM-dd'):''):'', priority:row[5]||'Media', status:row[6]||'Pendiente',
+      semana:row[7]||'',
+      creado:row[8]?Utilities.formatDate(new Date(row[8]),'America/Bogota','dd/MM/yyyy'):'',
+      creadoRaw:row[8]?new Date(row[8]).toISOString():null,
+      cerrado:row[9]?Utilities.formatDate(new Date(row[9]),'America/Bogota','dd/MM/yyyy'):'',
+      notas:row[10]||'',
+      proyectoId: isNaN(parseInt(proyVal)) ? '' : parseInt(proyVal),
+      proyecto: proyVal, // keep raw for backward compat
+      pais:(row[12]||'').toString().trim(),
+      lider:(row[13]||'').toString().trim(),
+      tipoTrabajo:(row[14]||'').toString().trim(),
+      riesgo:(row[15]||'').toString().trim()
     });
-    // Ordenar por section y luego por order
-    filtered.sort((a, b) => {
-      const secDiff = Number(a.section || 99) - Number(b.section || 99);
-      if (secDiff !== 0) return secDiff;
-      return Number(a.order || 99) - Number(b.order || 99);
-    });
-    return JSON.stringify(filtered.map(f => ({
-      field_id:       f.field_id,
-      label:          f.label_es || f.field_id,
-      field_type:     f.field_type || 'text',
-      icon:           f.icon || '',
-      required:       String(f.required).toUpperCase() === 'TRUE',
-      section:        String(f.section || '3'),
-      options:        f.options ? String(f.options).split('|').map(o => o.trim()) : [],
-      default_value:  f.default_value || '',
-      tooltip:        f.tooltip || '',
-      depends_on:     f.depends_on || '',
-      order:          Number(f.order || 0),
-      group:          f.group || '',
-      validation_rule: f.validation_rule || '',
-      placeholder:    f.placeholder || ''
-    })));
-  } catch (e) {
-    Logger.log('❌ getFieldsForUserForm: ' + e.message);
-    return JSON.stringify([]);
-  }
+  });
+  tasks.sort(function(a,b){return (PRIO_ORDER[a.priority]||1)-(PRIO_ORDER[b.priority]||1)||(STATUS_ORDER[a.status]||2)-(STATUS_ORDER[b.status]||2)});
+  return tasks;
 }
-function _getCampaignTypeConfig(campaignType) {
-  const sheet = _getSheet('Campaign_Types');
-  if (!sheet) return null;
-  return _sheetToObjects(sheet).find(t => t.type_name === campaignType && t.status === 'active') || null;
+
+function addTask(taskObj) {
+  var ss=SpreadsheetApp.openById(SHEET_ID),ws=ss.getSheetByName(SHEET_ACTIVO);
+  var lastRow=ws.getLastRow();
+  var newId=lastRow>=4?ws.getRange(lastRow,1).getValue()+1:1;
+  var equipos=readEquipos(ss);
+  var pais =taskObj.pais ||getCountryForMember(taskObj.resp,equipos);
+  var lider=taskObj.lider||getLeaderForCountry(pais,equipos);
+  ws.appendRow([
+    newId, taskObj.nombre||'', taskObj.resp||'', taskObj.acc||'',
+    taskObj.deadline||'', taskObj.priority||'Media', taskObj.status||'Pendiente',
+    taskObj.semana||getCurrentWeekLabel(), new Date(), '', taskObj.notas||'',
+    taskObj.proyectoId||taskObj.proyecto||'', pais, lider,
+    taskObj.tipoTrabajo||'', taskObj.riesgo||''
+  ]);
+  return {success:true, id:newId};
+}
+
+function updateTaskField(taskId, field, value) {
+  var ss=SpreadsheetApp.openById(SHEET_ID),ws=ss.getSheetByName(SHEET_ACTIVO);
+  var lastRow=ws.getLastRow();if(lastRow<4)return{success:false,error:'No tasks'};
+  var lastCol=Math.min(ws.getLastColumn(),TASK_COLS);
+  var data=ws.getRange(4,1,lastRow-3,lastCol).getValues();
+  var fieldMap={'nombre':2,'resp':3,'acc':4,'deadline':5,'priority':6,'status':7,'notas':11,'proyecto':12,'proyectoId':12,'pais':13,'lider':14,'tipoTrabajo':15,'riesgo':16};
+  var col=fieldMap[field];if(!col)return{success:false,error:'Invalid field: '+field};
+  for(var i=0;i<data.length;i++){
+    if(data[i][0]==taskId){
+      var row=i+4;ws.getRange(row,col).setValue(value);
+      if(field==='status'&&value==='Listo'){ws.getRange(row,10).setValue(new Date());moveToHistorial(ss,ws,row);return{success:true,moved:true,message:'Tarea movida a Historial'}}
+      return{success:true};
+    }
+  }
+  return{success:false,error:'Task #'+taskId+' not found'};
+}
+function updateTaskStatus(taskId,newStatus){return updateTaskField(taskId,'status',newStatus)}
+
+// ════════════════════════════════════════════════════════════════
+// EQUIPOS / CONFIG / HELPERS
+// ════════════════════════════════════════════════════════════════
+function readEquipos(ss){var ws=ss.getSheetByName(SHEET_EQUIPOS);if(!ws)return getDefaultEquipos();var lr=ws.getLastRow();if(lr<2)return getDefaultEquipos();var data=ws.getRange(2,1,lr-1,8).getValues();var eq=[];data.forEach(function(r){var c=(r[0]||'').toString().trim();if(!c)return;eq.push({code:c,country:(r[1]||'').toString().trim(),leader:(r[2]||'').toString().trim().replace(/\n/g,''),leaderEmail:(r[3]||'').toString().trim(),members:(r[4]||'').toString().split(',').map(function(s){return s.trim()}).filter(Boolean),emails:(r[5]||'').toString().split(',').map(function(s){return s.trim()}).filter(Boolean),slackChannel:(r[6]||'').toString().trim(),notes:(r[7]||'').toString().trim()})});return eq.length>0?eq:getDefaultEquipos()}
+function getDefaultEquipos(){return [{code:'CO',country:'Colombia',leader:'Carlos Eduardo Fernández',leaderEmail:'',members:['Isabela Zuluaga','Nicolás Naranjo','Juan Manuel Caicedo','Juan Camilo Gallego','Valeria Rangel','David Gaviria'],emails:[],slackChannel:'',notes:''}]}
+function getAllMembers(eq){var n={};eq.forEach(function(e){if(e.leader)n[e.leader]=1;e.members.forEach(function(m){n[m]=1})});return Object.keys(n).sort()}
+function getCountryForMember(name,eq){if(!name)return '';for(var i=0;i<eq.length;i++){if(eq[i].leader===name)return eq[i].code;if(eq[i].members.indexOf(name)>=0)return eq[i].code}return ''}
+function getLeaderForCountry(code,eq){for(var i=0;i<eq.length;i++){if(eq[i].code===code)return eq[i].leader}return ''}
+function readConfig(ss){var ws=ss.getSheetByName(SHEET_CONFIG);if(!ws)return {};var lr=ws.getLastRow();if(lr<3)return {};var data=ws.getRange(3,1,lr-2,2).getValues(),c={};data.forEach(function(r){if(r[0])c[r[0]]=r[1]});return c}
+function countBizDays(start,end){var count=0,cur=new Date(start);while(cur<end){cur.setDate(cur.getDate()+1);var d=cur.getDay();if(d!==0&&d!==6)count++}return count}
+function moveToHistorial(ss,wsA,row){var wsH=ss.getSheetByName(SHEET_HISTORIAL);var lc=Math.min(wsA.getLastColumn(),TASK_COLS);var rd=wsA.getRange(row,1,1,lc).getValues()[0];while(rd.length<TASK_COLS)rd.push('');var hl=wsH.getLastRow();var nid=hl>=4?wsH.getRange(hl,1).getValue()+1:1;rd[0]=nid;wsH.appendRow(rd);wsA.deleteRow(row);renumberTasks(wsA)}
+function renumberTasks(ws){var lr=ws.getLastRow();if(lr<4)return;for(var i=4;i<=lr;i++)ws.getRange(i,1).setValue(i-3)}
+function getCurrentWeekLabel(){var now=new Date(),mon=new Date(now);mon.setDate(now.getDate()-(now.getDay()===0?6:now.getDay()-1));var fri=new Date(mon);fri.setDate(mon.getDate()+4);var m=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];return mon.getDate()+'-'+fri.getDate()+' '+m[fri.getMonth()]+' '+fri.getFullYear()}
+
+// ════════════════════════════════════════════════════════════════
+// SLACK HELPERS
+// ════════════════════════════════════════════════════════════════
+function handleCloseTask(params){var ss=SpreadsheetApp.openById(SHEET_ID),ws=ss.getSheetByName(SHEET_ACTIVO);var lr=ws.getLastRow();if(lr<4)return ContentService.createTextOutput(JSON.stringify({success:false,message:'No hay tareas activas'})).setMimeType(ContentService.MimeType.JSON);var lc=Math.min(ws.getLastColumn(),TASK_COLS);var data=ws.getRange(4,1,lr-3,lc).getValues();var st=(params.task_name||params.message_text||'').toLowerCase();var bm=-1,bs=0;for(var i=0;i<data.length;i++){var n=(data[i][1]||'').toLowerCase();if(!n)continue;var w=st.split(/\s+/),sc=0;w.forEach(function(x){if(x.length>2&&n.indexOf(x)>=0)sc++});if(sc>bs){bs=sc;bm=i}}if(bm>=0&&bs>=1){var row=bm+4,tn=data[bm][1],tid=data[bm][0];ws.getRange(row,7).setValue('Listo');ws.getRange(row,10).setValue(new Date());moveToHistorial(ss,ws,row);return ContentService.createTextOutput(JSON.stringify({success:true,message:'Tarea #'+tid+' "'+tn+'" marcada como Listo y movida a Historial'})).setMimeType(ContentService.MimeType.JSON)}return ContentService.createTextOutput(JSON.stringify({success:false,message:'No encontré una tarea que coincida'})).setMimeType(ContentService.MimeType.JSON)}
+function handleBlockTask(params){var ss=SpreadsheetApp.openById(SHEET_ID),ws=ss.getSheetByName(SHEET_ACTIVO);var lr=ws.getLastRow();if(lr<4)return ContentService.createTextOutput(JSON.stringify({success:false,message:'No hay tareas activas'})).setMimeType(ContentService.MimeType.JSON);var lc=Math.min(ws.getLastColumn(),TASK_COLS);var data=ws.getRange(4,1,lr-3,lc).getValues();var st=(params.task_name||'').toLowerCase();var bm=-1,bs=0;for(var i=0;i<data.length;i++){var n=(data[i][1]||'').toLowerCase();if(!n)continue;var w=st.split(/\s+/),sc=0;w.forEach(function(x){if(x.length>2&&n.indexOf(x)>=0)sc++});if(sc>bs){bs=sc;bm=i}}if(bm>=0&&bs>=1){var row=bm+4,tn=data[bm][1],tid=data[bm][0];ws.getRange(row,7).setValue('Bloqueado');var on=ws.getRange(row,11).getValue()||'';ws.getRange(row,11).setValue((on?on+' | ':'')+'⛔ '+(params.reason||'')+' ('+(params.slack_user||'')+', '+new Date().toLocaleDateString('es-CO')+')');return ContentService.createTextOutput(JSON.stringify({success:true,message:'Tarea bloqueada: #'+tid+' "'+tn+'"'})).setMimeType(ContentService.MimeType.JSON)}return ContentService.createTextOutput(JSON.stringify({success:false,message:'No encontré una tarea que coincida'})).setMimeType(ContentService.MimeType.JSON)}
+function testData() {
+  var d = getTrackerData();
+  Logger.log('Tasks: ' + d.tasks.length);
+  Logger.log('Equipos: ' + d.equipos.length);
+  Logger.log('Projects: ' + d.projects.length);
+  Logger.log('Team: ' + d.team.length);
 }
