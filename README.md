@@ -1,15 +1,12 @@
-# Legal · Rappi · Money
+# RappiMind — Legal T&C Generator
 
-Automation toolkit for Rappi's Legal team. The repository hosts **two
-independent Google Apps Script projects** that share utility code:
+Google Apps Script web application that lets Rappi KAMs and the Legal
+team generate compliant Terms & Conditions documents for marketing
+campaigns (Cashback, contests, etc.) across LATAM countries.
 
-| Project | Entry point | Purpose |
-|---|---|---|
-| **RappiMind** — T&C Generator | `WebApp.Html`, `Admin.gs`, `Setupg.gs` | Generate compliant Terms & Conditions documents for marketing campaigns (Cashback, contests, etc.) across LATAM countries. |
-| **Legal Team Tracker** | `Codigo.gs` (+ `Dashboard.html` — *deployed separately, not in this repo*) | Track legal team's projects, tasks, SLAs and weekly OKRs in a kanban-style dashboard. |
-
-> Both projects are deployed as separate Apps Script Web Apps. They
-> share **only** the helper modules below.
+The form is dynamic: country picker → campaign type selector →
+auto-generated fields → live preview → Google Doc rendered from a
+template + per-country legal defaults.
 
 ---
 
@@ -17,34 +14,19 @@ independent Google Apps Script projects** that share utility code:
 
 ```
 .
-├── Config.gs                       — Constants + Property loaders (RappiMind)
+├── Config.gs                       — Constants + Script-Property loaders
 ├── Helper.gs                       — Pure utilities, sheet I/O helpers
 ├── Security.gs                     — Validation & sanitisation library
-├── Admin.gs                        — RappiMind admin RPCs + Gemini wizard
+├── Admin.gs                        — Admin RPCs + Gemini wizard
 ├── Setupg.gs                       — One-shot setup / seeding utilities
-├── Codigo.gs                       — Legal Team Tracker backend (separate project)
-├── WebApp.Html                     — RappiMind front-end (Web App)
+├── WebApp.Html                     — Front-end (Web App)
 ├── Propuesta de ajuste del front   — Draft dark-theme UI proposal (not deployed)
 └── README.md                       — You are here
 ```
 
-### Shared modules
-
-* **`Helper.gs`** — date/number formatting, Spanish number-to-letters
-  (`numeroALetras`), `_getSheet` / `_getOrCreateSheet`, response builder.
-* **`Security.gs`** — `htmlEscape`, email/URL/country/number validation,
-  formula-injection guard (`sheetCellSafe`), Script Property lookups.
-
 ---
 
-## RappiMind — T&C Generator
-
-A multi-step web form that lets a Rappi KAM (Key Account Manager) fill
-in a campaign brief; the backend renders a Google Doc from a country +
-campaign-type template, replacing `{{PLACEHOLDERS}}` with both raw and
-*derived* fields (see `Config.gs → DERIVED_FIELDS`).
-
-### Architecture
+## Architecture
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
@@ -75,11 +57,12 @@ campaign-type template, replacing `{{PLACEHOLDERS}}` with both raw and
 > ⚠️ The `processWebPayload`, `askGemini`, `getCampaignTypesForUser`
 > and `getFieldsForUserForm` functions are defined in the deployed
 > Apps Script project but **not currently checked into this repo**.
-> If you cloned this and the Web App throws "ReferenceError", add
-> them back from the Apps Script editor or restore from version
-> history.
+> If you cloned this and the Web App throws "ReferenceError", restore
+> them from the Apps Script editor or version history.
 
-### Spreadsheet tabs
+---
+
+## Spreadsheet tabs
 
 | Sheet | Owner | Description |
 |---|---|---|
@@ -91,7 +74,9 @@ campaign-type template, replacing `{{PLACEHOLDERS}}` with both raw and
 | `Approval_Log` | System | Append-only audit trail of admin actions. |
 | `Respuestas_Audit_V2` | System | Every generated document is logged here for traceability. |
 
-### Roles & permissions
+---
+
+## Roles & permissions
 
 | Role | View admin | Edit fields | Create templates | Approve | Activate | Delete | Manage team |
 |---|---|---|---|---|---|---|---|
@@ -102,7 +87,9 @@ campaign-type template, replacing `{{PLACEHOLDERS}}` with both raw and
 
 Enforced server-side via `_requireRole()` (Admin.gs).
 
-### Configuration via Script Properties
+---
+
+## Configuration via Script Properties
 
 Set these in the Apps Script editor → **Project Settings → Script
 properties**. The legacy hard-coded values still act as fallback, but
@@ -116,9 +103,10 @@ separation.
 | `LEGAL_AUDIT_EMAILS` | csv | `legal@rappi.com` | Config.gs |
 | `TEMPLATES_FOLDER_ID` | string | Drive folder ID | Admin.gs / Setup |
 | `GEMINI_API_KEY` | string | `AIza...` | Admin.gs (wizard) |
-| `TRACKER_SHEET_ID` | string | `19eR...6ms` | Codigo.gs (Tracker) |
 
-### Bootstrap a fresh deployment
+---
+
+## Bootstrap a fresh deployment
 
 1. Push the project to Apps Script: `clasp push`.
 2. Set the Script Properties above.
@@ -132,7 +120,9 @@ separation.
 4. Deploy as **Web App** (Execute as: Me, Access: domain).
 5. Open the URL and sign in with a `@rappi.com` account.
 
-### Migrations
+---
+
+## Migrations
 
 Setupg.gs ships idempotent V3.3 migrations:
 
@@ -145,35 +135,9 @@ Each step logs its progress and is safe to re-run.
 
 ---
 
-## Legal Team Tracker (`Codigo.gs`)
-
-Independent dashboard for weekly task tracking with per-country
-leaders, SLA computation and Slack integration.
-
-### Spreadsheet tabs (separate spreadsheet)
-
-| Sheet | Description |
-|---|---|
-| `Tracking Activo` | Active tasks (16 columns; ID + metadata + project) |
-| `Historial` | Completed tasks (same shape) |
-| `Proyectos` | Projects (15 columns) |
-| `Equipos` | Country teams, leaders, members CSV |
-| `Config` | Key/value config rows starting at row 3 |
-
-### Public RPCs
-
-* `doGet(e)` — renders the `Dashboard` HTML template.
-* `getTrackerData()` — KPI bundle (tasks, projects, team, SLA).
-* `addTask(taskObj)`, `updateTaskField(id, field, value)` — task CRUD.
-* `addProject(obj)`, `updateProjectField(id, field, value)` — project CRUD.
-* `handleCloseTask(params)`, `handleBlockTask(params)` — Slack hooks
-  (use ContentService JSON envelope).
-
----
-
 ## Security model
 
-Recent hardening pass (May 2026):
+Recent hardening pass:
 
 * **Centralised escaping** — `Security.gs` (backend) and inline
   `escapeHtml` / `escapeAttr` / `escapeJsString` (front-end) on every
@@ -221,8 +185,8 @@ clasp push
 * **No build step.** Files are uploaded as-is; keep ES5-compatible
   syntax in `.gs` (no `optional?.chaining`, no template literal types).
   Modern arrow functions and `let`/`const` are fine — V8 runtime.
-* **No tests yet.** Use `testData()` and the migration verifiers as
-  smoke checks from the Apps Script editor.
+* **No tests yet.** Use the migration verifiers as smoke checks from
+  the Apps Script editor.
 * **Naming.** Private helpers start with `_`. Files match the Apps
   Script editor display order.
 
@@ -230,7 +194,7 @@ clasp push
 
 ## Roadmap
 
-* Re-include `processWebPayload`/`askGemini` in the repo (currently
+* Re-include `processWebPayload` / `askGemini` in the repo (currently
   source-of-truth lives only in the Apps Script editor).
 * Migrate the front-end to the dark-theme proposal
   (`Propuesta de ajuste del front`) once feature parity is reached.
