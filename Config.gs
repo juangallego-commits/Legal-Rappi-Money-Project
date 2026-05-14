@@ -1,15 +1,57 @@
 // =================================================================
-// CONFIGURACIÓN GLOBAL Y CONSTANTES
+// RAPPIMIND · CONFIGURACIÓN GLOBAL Y CONSTANTES
+// -----------------------------------------------------------------
+// Values here are *defaults*. Anything that may differ per
+// environment (sheet IDs, admin emails, API keys, folder IDs) should
+// be overridden via Script Properties so they aren't baked into VCS.
+//
+// To set a property: Apps Script editor → Project Settings →
+// Script properties → Add property. Keys recognised at runtime:
+//
+//   AUDIT_SHEET_ID         Google Sheets ID with audit/registry tabs.
+//   ADMIN_EMAILS           Comma-separated owner emails.
+//   LEGAL_AUDIT_EMAILS     Comma-separated legal audit recipients.
+//   TEMPLATES_FOLDER_ID    Root Drive folder for templates.
+//   GEMINI_API_KEY         Gemini API key (used by Admin.gs).
+//
+// When a property is missing the constants below act as fallback,
+// preserving backwards compatibility with the original deployment.
 // =================================================================
 
+/**
+ * Read an env-like value from Script Properties, returning `fallback`
+ * when unset. Defined here (rather than relying on Security.gs) so
+ * Config.gs can stand alone during initial setup.
+ *
+ * @param {string} key
+ * @param {string} fallback
+ * @return {string}
+ */
+function _cfgProp(key, fallback) {
+  try {
+    var v = PropertiesService.getScriptProperties().getProperty(key);
+    return (v === null || v === undefined || v === '') ? fallback : v;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function _cfgList(key, fallback) {
+  var raw = _cfgProp(key, '');
+  if (!raw) return Array.isArray(fallback) ? fallback.slice() : [];
+  return raw.split(/[,;]/).map(function(s) { return s.trim(); }).filter(Boolean);
+}
+
 // 1. Correos y Carpetas
-const LEGAL_AUDIT_EMAIL = ['juan.gallego@rappi.com'];
-const ADMIN_EMAILS_LIST = ['juan.gallego@rappi.com'];
-const DRIVE_FOLDER_ID = ''; 
+const LEGAL_AUDIT_EMAIL = _cfgList('LEGAL_AUDIT_EMAILS', ['juan.gallego@rappi.com']);
+const ADMIN_EMAILS_LIST = _cfgList('ADMIN_EMAILS',       ['juan.gallego@rappi.com']);
+const DRIVE_FOLDER_ID   = _cfgProp('TEMPLATES_FOLDER_ID', '');
 const TEMPLATES_ROOT_NAME = 'RappiMind_Templates';
 
 // 2. Base de Datos (Google Sheets)
-const AUDIT_SHEET_ID = '1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI';
+//    Note: hard-coded value preserved as the *fallback* only. Override
+//    in Script Properties for prod / staging separation.
+const AUDIT_SHEET_ID = _cfgProp('AUDIT_SHEET_ID', '1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI');
 const REGISTRY_SHEET_NAME = 'Template_Registry';
 const FIELDS_SHEET_NAME = 'Template_Fields';
 const TEAM_SHEET_NAME = 'Admin_Team';

@@ -1,27 +1,56 @@
 // =================================================================
-// SETUP FUNCTIONS — Ejecutar UNA sola vez cada una
+// RAPPIMIND · SETUP FUNCTIONS
+// -----------------------------------------------------------------
+// Run-once utilities executed from the Apps Script editor to scaffold
+// the project's sheets, drive folders and seed templates. Each
+// function is idempotent unless explicitly noted.
+//
+// Recommended bootstrap order (first deployment):
+//   1. setupTemplateEngine()       — create base Cashback/Concurso docs.
+//   2. setupAdminSystem()          — provision Admin_Team + Approval_Log.
+//   3. setupTemplateFolders()      — create the country/type Drive tree.
+//   4. setupCampaignTypes()        — seed catalog of dinámicas.
+//   5. setupCountrySettings()      — seed multi-country legal defaults.
 // =================================================================
 
-// ---- MASTER: Corre esto y se hace todo ----
+/**
+ * Helper: shorthand for resolving the audit spreadsheet, falling back
+ * to the legacy hardcoded ID via Config.gs. All other functions in
+ * this file delegate here so we have a single failure surface.
+ */
+function _ss() {
+  try {
+    return SpreadsheetApp.openById(_resolveSheetId());
+  } catch (e) {
+    throw new Error('Setup no pudo abrir AUDIT_SHEET_ID: ' + e.message);
+  }
+}
+
+/**
+ * MASTER setup. Runs every seed step inside a try/catch so partial
+ * failure is surfaced clearly instead of silently aborting.
+ */
 function setupTemplateEngine() {
   Logger.log('🚀 === SETUP TEMPLATE ENGINE ===');
-  
-  // Paso 1: Crear template Cashback
-  const cashbackDocId = seedCashbackTemplate();
-  Logger.log('✅ Template Cashback creado: ' + cashbackDocId);
-  
-  // Paso 2: Crear template Concurso
-  const concursoDocId = seedConcursoTemplate();
-  Logger.log('✅ Template Concurso creado: ' + concursoDocId);
-  
-  // Paso 3: Registrar en Template_Registry
-  _seedRegistry(cashbackDocId, concursoDocId);
-  Logger.log('✅ Registry creado');
-  
-  // Paso 4: Crear campos en Template_Fields
-  seedColombiaFields();
-  Logger.log('✅ Campos creados');
-  
+
+  var cashbackDocId, concursoDocId;
+  try {
+    cashbackDocId = seedCashbackTemplate();
+    Logger.log('✅ Template Cashback creado: ' + cashbackDocId);
+
+    concursoDocId = seedConcursoTemplate();
+    Logger.log('✅ Template Concurso creado: ' + concursoDocId);
+
+    _seedRegistry(cashbackDocId, concursoDocId);
+    Logger.log('✅ Registry creado');
+
+    seedColombiaFields();
+    Logger.log('✅ Campos creados');
+  } catch (e) {
+    Logger.log('❌ Setup falló: ' + e.message);
+    throw e;
+  }
+
   Logger.log('🎉 === SETUP COMPLETO ===');
   Logger.log('📋 Cashback Doc ID: ' + cashbackDocId);
   Logger.log('📋 Concurso Doc ID: ' + concursoDocId);
@@ -30,8 +59,8 @@ function setupTemplateEngine() {
   Logger.log('   ANTES:  const v67Map = mapWebToEngine(payload);');
   Logger.log('           const result = coreEngine(v67Map, payload.userEmail);');
   Logger.log('   DESPUÉS: const result = coreEngineV2(payload, payload.userEmail);');
-  
-  return { cashbackDocId, concursoDocId };
+
+  return { cashbackDocId: cashbackDocId, concursoDocId: concursoDocId };
 }
 
 // ---- CASHBACK TEMPLATE ----
@@ -323,36 +352,31 @@ function seedConcursoTemplate() {
 
 // ---- SEED REGISTRY ----
 function _seedRegistry(cashbackDocId, concursoDocId) {
-  const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
-  let sheet = ss.getSheetByName(REGISTRY_SHEET_NAME);
-  
-  if (!sheet) {
-    sheet = ss.insertSheet(REGISTRY_SHEET_NAME);
-    const headers = ['country_code', 'country_name', 'campaign_type', 'template_doc_id', 'version', 'status', 'currency_code', 'currency_symbol', 'legal_owner', 'last_updated', 'notes'];
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.getRange(1, 1, 1, headers.length).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
-    sheet.setFrozenRows(1);
-  }
-  
-  const today = new Date().toISOString().split('T')[0];
-  
-  sheet.appendRow(['CO', 'Colombia', 'Cashback', cashbackDocId, '1.0', 'active', 'COP', '$', 'juan.gallego@rappi.com', today, 'Template base generado automáticamente']);
-  sheet.appendRow(['CO', 'Colombia', 'Concurso Mayor Comprador', concursoDocId, '1.0', 'active', 'COP', '$', 'juan.gallego@rappi.com', today, 'Template base generado automáticamente']);
+  var sheet = _getOrCreateSheet(REGISTRY_SHEET_NAME, [
+    'country_code', 'country_name', 'campaign_type', 'template_doc_id',
+    'version', 'status', 'currency_code', 'currency_symbol',
+    'legal_owner', 'last_updated', 'notes'
+  ]);
+
+  var today = new Date().toISOString().split('T')[0];
+  var legalOwner = (ADMIN_EMAILS_LIST && ADMIN_EMAILS_LIST[0]) || getActiveUserEmailSafe() || 'unknown@rappi.com';
+
+  sheet.appendRow(['CO', 'Colombia', 'Cashback', cashbackDocId,
+    '1.0', 'active', 'COP', '$', legalOwner, today,
+    'Template base generado automáticamente']);
+  sheet.appendRow(['CO', 'Colombia', 'Concurso Mayor Comprador', concursoDocId,
+    '1.0', 'active', 'COP', '$', legalOwner, today,
+    'Template base generado automáticamente']);
 }
 
 // ---- SEED FIELDS ----
 function seedColombiaFields() {
-  const ss = SpreadsheetApp.openById(AUDIT_SHEET_ID);
-  let sheet = ss.getSheetByName(FIELDS_SHEET_NAME);
-  
-  if (!sheet) {
-    sheet = ss.insertSheet(FIELDS_SHEET_NAME);
-    const headers = ['field_id', 'country_code', 'campaign_type', 'placeholder', 'label_es', 'field_type', 'icon', 'required', 'section', 'validation_rule', 'options', 'default_value', 'tooltip', 'depends_on', 'order', 'group'];
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.getRange(1, 1, 1, headers.length).setBackground('#1F2937').setFontColor('#FFFFFF').setFontWeight('bold');
-    sheet.setFrozenRows(1);
-  }
-  
+  var sheet = _getOrCreateSheet(FIELDS_SHEET_NAME, [
+    'field_id', 'country_code', 'campaign_type', 'placeholder', 'label_es',
+    'field_type', 'icon', 'required', 'section', 'validation_rule',
+    'options', 'default_value', 'tooltip', 'depends_on', 'order', 'group'
+  ]);
+
   if (sheet.getLastRow() > 1) {
     Logger.log('⚠️ Template_Fields ya tiene datos. Saltando seed.');
     return;
@@ -439,14 +463,18 @@ function setupAdminSystem() {
 
   // ──── PASO 1: Crear sheet de equipo ────
   Logger.log('👥 Creando sheet de equipo...');
-  const teamSheet = _getOrCreateSheet(TEAM_SHEET_NAME,
+  var teamSheet = _getOrCreateSheet(TEAM_SHEET_NAME,
     ['email', 'name', 'role', 'added_by', 'added_date', 'status', 'notes']);
 
-  // Seed: Juan como owner
-  const callerEmail = Session.getActiveUser().getEmail();
-  const existingTeam = _sheetToObjects(teamSheet);
-  if (existingTeam.length === 0) {
-    teamSheet.appendRow([callerEmail, 'Juan (Owner)', 'owner', 'system', new Date().toISOString().split('T')[0], 'active', 'Setup inicial']);
+  // Seed: caller (or first configured admin) as owner
+  var callerEmail = getActiveUserEmailSafe() || (ADMIN_EMAILS_LIST && ADMIN_EMAILS_LIST[0]) || '';
+  if (!callerEmail) {
+    Logger.log('⚠️ No se pudo determinar el caller email. Saltando seed del equipo.');
+  } else if (_sheetToObjects(teamSheet).length === 0) {
+    teamSheet.appendRow([
+      callerEmail, callerEmail.split('@')[0] + ' (Owner)', 'owner', 'system',
+      new Date().toISOString().split('T')[0], 'active', 'Setup inicial'
+    ]);
     Logger.log('✅ ' + callerEmail + ' agregado como owner');
   }
 

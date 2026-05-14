@@ -1,23 +1,61 @@
 // =================================================================
-// RAPPIMIND - PANEL DE ADMINISTRACIÓN Y WORKFLOWS
+// RAPPIMIND · PANEL DE ADMINISTRACIÓN Y WORKFLOWS
+// -----------------------------------------------------------------
+// All admin RPCs entered from `google.script.run`. Every public entry
+// point follows the same contract:
+//
+//   1. Validate the caller's role via _requireRole().
+//   2. Parse + sanitise inputs via Security.gs helpers.
+//   3. Mutate state with idempotent UPSERTs against Sheets.
+//   4. Return a JSON-stringified envelope: { status, message?, data? }.
+//
+// Errors are caught at the boundary and reduced to a stable shape so
+// the front-end never receives raw stack traces.
 // =================================================================
 
-function adminGetCurrentUser() {
+/**
+ * Wrap an admin action with the standard try/catch + JSON envelope.
+ * Centralises the "return error as JSON.stringify" pattern that was
+ * repeated dozens of times across this file.
+ *
+ * @param {function(): Object} fn
+ * @return {string} JSON-stringified result.
+ */
+function _adminAction(fn) {
   try {
-    const email = Session.getActiveUser().getEmail();
-    if (!email) return JSON.stringify({ status: 'error', message: 'No se pudo obtener el email. ¿Estás logueado con cuenta Rappi?' });
+    return JSON.stringify(fn());
+  } catch (e) {
+    Logger.log('❌ Admin action error: ' + (e && e.stack ? e.stack : e));
+    return JSON.stringify({ status: 'error', message: (e && e.message) ? e.message : String(e) });
+  }
+}
 
-    const team = _getTeamMembers();
-    const member = team.find(m => m.email.toLowerCase() === email.toLowerCase());
-
-    if (!member) {
-      return JSON.stringify({ status: 'unauthorized', email: email, message: 'No tienes acceso al Panel de Administración. Contacta a un Owner.' });
+/**
+ * Identify the current user and resolve their role / permissions.
+ * @return {string} JSON envelope.
+ */
+function adminGetCurrentUser() {
+  return _adminAction(function() {
+    var email = getActiveUserEmailSafe();
+    if (!email) {
+      return { status: 'error', message: 'No se pudo obtener el email. ¿Estás logueado con cuenta Rappi?' };
     }
 
-    return JSON.stringify({ status: 'ok', email: email, role: member.role, name: member.name, permissions: _getPermissions(member.role) });
-  } catch (e) {
-    return JSON.stringify({ status: 'error', message: e.message });
-  }
+    var team = _getTeamMembers();
+    var member = team.find(function(m) { return emailEquals(m.email, email); });
+    if (!member) {
+      // Owners hard-coded in Config also count, in case the team sheet is empty.
+      if (ADMIN_EMAILS_LIST && ADMIN_EMAILS_LIST.indexOf(email) >= 0) {
+        return { status: 'ok', email: email, role: 'owner', name: email,
+                 permissions: _getPermissions('owner') };
+      }
+      return { status: 'unauthorized', email: email,
+               message: 'No tienes acceso al Panel de Administración. Contacta a un Owner.' };
+    }
+
+    return { status: 'ok', email: email, role: member.role, name: member.name,
+             permissions: _getPermissions(member.role) };
+  });
 }
 
 function _getPermissions(role) {
@@ -34,66 +72,87 @@ function _getPermissions(role) {
 }
 
 function adminGetTeam() {
-  try {
+  return _adminAction(function() {
     _requireRole('viewer');
-    return JSON.stringify({ status: 'ok', team: _getTeamMembers() });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+    return { status: 'ok', team: _getTeamMembers() };
+  });
 }
 
 function adminAddTeamMember(jsonStr) {
-  try {
+  return _adminAction(function() {
     _requireRole('owner');
-    const d = JSON.parse(jsonStr);
-    if (!d.email || !d.role || !d.name) return JSON.stringify({ status: 'error', message: 'Email, nombre y rol son requeridos' });
-    if (!d.email.toLowerCase().endsWith('@rappi.com')) return JSON.stringify({ status: 'error', message: 'Solo se permiten emails @rappi.com' });
-    if (!ROLE_HIERARCHY[d.role]) return JSON.stringify({ status: 'error', message: 'Rol inválido: ' + d.role });
+    var d = parseJsonSafely(jsonStr, 'adminAddTeamMember');
+    if (!d.email || !d.role || !d.name) {
+      return { status: 'error', message: 'Email, nombre y rol son requeridos' };
+    }
+    var email = validateEmail(d.email, { requireDomain: 'rappi.com' });
+    if (!ROLE_HIERARCHY[d.role]) {
+      return { status: 'error', message: 'Rol inválido: ' + d.role };
+    }
+    var name = sheetCellSafe(d.name, 200);
+    var notes = sheetCellSafe(d.notes || '', 1000);
 
-    const sheet = _getOrCreateSheet(TW_CONFIG.SHEET_TEAM, ['email', 'name', 'role', 'added_by', 'added_date', 'status', 'notes']);
-    if (_getTeamMembers().find(m => m.email.toLowerCase() === d.email.toLowerCase())) return JSON.stringify({ status: 'error', message: 'Este email ya está en el equipo' });
+    var sheet = _getOrCreateSheet(TW_CONFIG.SHEET_TEAM,
+      ['email', 'name', 'role', 'added_by', 'added_date', 'status', 'notes']);
 
-    sheet.appendRow([d.email.toLowerCase(), d.name, d.role, Session.getActiveUser().getEmail(), new Date().toISOString().split('T')[0], 'active', d.notes || '']);
-    _shareFolderWithMember(d.email, d.role);
-    _logApprovalAction('team_add', `Agregó a ${d.name} (${d.email}) como ${d.role}`);
-    return JSON.stringify({ status: 'ok', message: `${d.name} agregado como ${d.role}` });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+    if (_getTeamMembers().some(function(m) { return emailEquals(m.email, email); })) {
+      return { status: 'error', message: 'Este email ya está en el equipo' };
+    }
+
+    sheet.appendRow([
+      email, name, d.role, getActiveUserEmailSafe(),
+      new Date().toISOString().split('T')[0], 'active', notes
+    ]);
+    _shareFolderWithMember(email, d.role);
+    _logApprovalAction('team_add', 'Agregó a ' + name + ' (' + email + ') como ' + d.role);
+    return { status: 'ok', message: name + ' agregado como ' + d.role };
+  });
 }
 
 function adminUpdateTeamMember(jsonStr) {
-  try {
+  return _adminAction(function() {
     _requireRole('owner');
-    const d = JSON.parse(jsonStr);
-    const sheet = _getSheet(TW_CONFIG.SHEET_TEAM);
-    if (!sheet) return JSON.stringify({ status: 'error', message: 'Sheet de equipo no existe' });
+    var d = parseJsonSafely(jsonStr, 'adminUpdateTeamMember');
+    var email = validateEmail(d.email, { requireDomain: 'rappi.com' });
+    if (d.role && !ROLE_HIERARCHY[d.role]) {
+      return { status: 'error', message: 'Rol inválido: ' + d.role };
+    }
+    var sheet = _getSheet(TW_CONFIG.SHEET_TEAM);
+    if (!sheet) return { status: 'error', message: 'Sheet de equipo no existe' };
 
-    const data = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]).toLowerCase() === d.email.toLowerCase()) {
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (emailEquals(data[i][0], email)) {
         if (d.role) sheet.getRange(i + 1, 3).setValue(d.role);
-        if (d.status) sheet.getRange(i + 1, 6).setValue(d.status);
-        _logApprovalAction('team_update', `Actualizó rol de ${d.email} a ${d.role || d.status}`);
-        return JSON.stringify({ status: 'ok' });
+        if (d.status) sheet.getRange(i + 1, 6).setValue(sheetCellSafe(d.status, 32));
+        _logApprovalAction('team_update', 'Actualizó ' + email + ' → ' + (d.role || d.status));
+        return { status: 'ok' };
       }
     }
-    return JSON.stringify({ status: 'error', message: 'Miembro no encontrado' });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+    return { status: 'error', message: 'Miembro no encontrado' };
+  });
 }
 
 function adminRemoveTeamMember(email) {
-  try {
+  return _adminAction(function() {
     _requireRole('owner');
-    if (email.toLowerCase() === Session.getActiveUser().getEmail().toLowerCase()) return JSON.stringify({ status: 'error', message: 'No puedes eliminarte a ti mismo' });
+    var clean = validateEmail(email);
+    if (emailEquals(clean, getActiveUserEmailSafe())) {
+      return { status: 'error', message: 'No puedes eliminarte a ti mismo' };
+    }
+    var sheet = _getSheet(TW_CONFIG.SHEET_TEAM);
+    if (!sheet) return { status: 'error', message: 'Sheet de equipo no existe' };
 
-    const sheet = _getSheet(TW_CONFIG.SHEET_TEAM);
-    const data = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]).toLowerCase() === email.toLowerCase()) {
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (emailEquals(data[i][0], clean)) {
         sheet.deleteRow(i + 1);
-        _logApprovalAction('team_remove', `Eliminó a ${email} del equipo`);
-        return JSON.stringify({ status: 'ok' });
+        _logApprovalAction('team_remove', 'Eliminó a ' + clean + ' del equipo');
+        return { status: 'ok' };
       }
     }
-    return JSON.stringify({ status: 'error', message: 'No encontrado' });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+    return { status: 'error', message: 'No encontrado' };
+  });
 }
 
 function _getTeamMembers() {
@@ -103,56 +162,69 @@ function _getTeamMembers() {
 }
 
 function adminGetFolderStructure() {
-  try {
+  return _adminAction(function() {
     _requireRole('viewer');
-    const rootId = PropertiesService.getScriptProperties().getProperty('TEMPLATES_FOLDER_ID');
-    if (!rootId) return JSON.stringify({ status: 'ok', folders: [], rootUrl: null });
+    var rootId = getScriptProperty('TEMPLATES_FOLDER_ID');
+    if (!rootId) return { status: 'ok', folders: [], rootUrl: null };
 
-    const root = DriveApp.getFolderById(rootId);
-    const folders = [];
-    const countryFolders = root.getFolders();
-    
+    var root = DriveApp.getFolderById(rootId);
+    var folders = [];
+    var countryFolders = root.getFolders();
+
     while (countryFolders.hasNext()) {
-      const cf = countryFolders.next();
-      const subFolders = [];
-      const subs = cf.getFolders();
+      var cf = countryFolders.next();
+      var subFolders = [];
+      var subs = cf.getFolders();
       while (subs.hasNext()) {
-        const sf = subs.next();
-        const files = [];
-        const fileIter = sf.getFiles();
+        var sf = subs.next();
+        var files = [];
+        var fileIter = sf.getFiles();
         while (fileIter.hasNext()) {
-          const f = fileIter.next();
+          var f = fileIter.next();
           files.push({ name: f.getName(), id: f.getId(), url: f.getUrl() });
         }
         subFolders.push({ name: sf.getName(), id: sf.getId(), files: files });
       }
       folders.push({ name: cf.getName(), id: cf.getId(), subFolders: subFolders });
     }
-    return JSON.stringify({ status: 'ok', rootId: rootId, rootUrl: root.getUrl(), folders: folders });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+    return { status: 'ok', rootId: rootId, rootUrl: root.getUrl(), folders: folders };
+  });
 }
 
+var _VALID_TEMPLATE_STATUSES = ['draft', 'pending_review', 'approved', 'rejected', 'active', 'inactive'];
+
 function adminToggleTemplate(index, newStatus) {
-  try {
+  return _adminAction(function() {
+    _requireRole('admin');
+    var idx = validateNumber(index, { min: 0, label: 'index' });
+    var status = sheetCellSafe(newStatus, 32);
+    if (_VALID_TEMPLATE_STATUSES.indexOf(status) < 0) {
+      return { status: 'error', message: 'Status inválido: ' + status };
+    }
+
     var sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
+    if (!sheet) return { status: 'error', message: 'Sheet de templates no existe' };
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     var statusCol = headers.indexOf('status') + 1;
     var updatedCol = headers.indexOf('last_updated') + 1;
+    if (!statusCol) return { status: 'error', message: 'Columna status no encontrada en Registry.' };
 
-    sheet.getRange(index + 2, statusCol).setValue(newStatus);
-    if (updatedCol > 0) sheet.getRange(index + 2, updatedCol).setValue(new Date().toISOString().split('T')[0]);
+    var row = idx + 2;
+    if (row > sheet.getLastRow()) return { status: 'error', message: 'Fila fuera de rango.' };
+    sheet.getRange(row, statusCol).setValue(status);
+    if (updatedCol > 0) sheet.getRange(row, updatedCol).setValue(new Date().toISOString().split('T')[0]);
 
-    // V3.1: Si estamos ACTIVANDO, asegurar que el Campaign_Type también esté active
-    if (newStatus === 'active') {
+    if (status === 'active') {
       try {
-        var row = sheet.getRange(index + 2, 1, 1, headers.length).getValues()[0];
-        var campaignType = row[headers.indexOf('campaign_type')];
+        var rowVals = sheet.getRange(row, 1, 1, headers.length).getValues()[0];
+        var campaignType = rowVals[headers.indexOf('campaign_type')];
         _ensureCampaignTypeActive(campaignType);
-      } catch(e) { Logger.log('⚠️ Auto-activate Campaign_Type: ' + e.message); }
+      } catch (e) {
+        Logger.log('⚠️ Auto-activate Campaign_Type: ' + e.message);
+      }
     }
-
-    return JSON.stringify({ status: 'ok' });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+    return { status: 'ok' };
+  });
 }
 
 // V3.1: También activar Campaign_Type cuando se aprueba con activación
@@ -176,11 +248,17 @@ function _ensureCampaignTypeActive(campaignType) {
 }
 
 function adminDeleteTemplate(index) {
-  try {
-    const sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
-    sheet.deleteRow(index + 2);
-    return JSON.stringify({ status: 'ok' });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+  return _adminAction(function() {
+    _requireRole('admin');
+    var idx = validateNumber(index, { min: 0, label: 'index' });
+    var sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
+    if (!sheet) return { status: 'error', message: 'Sheet de templates no existe' };
+    var row = idx + 2;
+    if (row > sheet.getLastRow()) return { status: 'error', message: 'Fila fuera de rango.' };
+    sheet.deleteRow(row);
+    _logApprovalAction('template_delete', 'Template fila #' + row);
+    return { status: 'ok' };
+  });
 }
 
 function adminSaveTemplate(jsonStr, editIndex) {
@@ -212,124 +290,175 @@ function adminSaveTemplate(jsonStr, editIndex) {
 }
 
 function adminSubmitForReview(index) {
-  try {
+  return _adminAction(function() {
     _requireRole('editor');
-    const sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
-    const email = Session.getActiveUser().getEmail();
-    sheet.getRange(index + 2, sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].indexOf('status') + 1).setValue('pending_review');
-    _logApprovalAction('submit_review', `Template #${index} enviado a revisión por ${email}`);
-    _notifyAdmins(index, 'pending_review', email);
-    return JSON.stringify({ status: 'ok', message: 'Enviado a revisión' });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+    var idx = validateNumber(index, { min: 0, label: 'index' });
+    var sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
+    if (!sheet) return { status: 'error', message: 'Sheet de templates no existe' };
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var statusCol = headers.indexOf('status') + 1;
+    if (!statusCol) return { status: 'error', message: 'Columna status no encontrada.' };
+    var row = idx + 2;
+    if (row > sheet.getLastRow()) return { status: 'error', message: 'Fila fuera de rango.' };
+
+    sheet.getRange(row, statusCol).setValue('pending_review');
+    var email = getActiveUserEmailSafe();
+    _logApprovalAction('submit_review', 'Template #' + idx + ' enviado a revisión por ' + email);
+    _notifyAdmins(idx, 'pending_review', email);
+    return { status: 'ok', message: 'Enviado a revisión' };
+  });
 }
 
 function adminApproveTemplate(index, activateNow) {
-  try {
+  return _adminAction(function() {
     _requireRole('admin');
-    const sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
-    const email = Session.getActiveUser().getEmail();
-    const newStatus = activateNow ? 'active' : 'approved';
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var idx = validateNumber(index, { min: 0, label: 'index' });
+    var sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
+    if (!sheet) return { status: 'error', message: 'Sheet de templates no existe' };
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var statusCol = headers.indexOf('status') + 1;
+    if (!statusCol) return { status: 'error', message: 'Columna status no encontrada.' };
+    var row = idx + 2;
+    if (row > sheet.getLastRow()) return { status: 'error', message: 'Fila fuera de rango.' };
 
-    sheet.getRange(index + 2, headers.indexOf('status') + 1).setValue(newStatus);
-    _logApprovalAction('approve', `Template #${index} aprobado por ${email} [${newStatus}]`);
+    var email = getActiveUserEmailSafe();
+    var newStatus = activateNow ? 'active' : 'approved';
+    sheet.getRange(row, statusCol).setValue(newStatus);
+    _logApprovalAction('approve', 'Template #' + idx + ' aprobado por ' + email + ' [' + newStatus + ']');
 
     if (activateNow) {
       try {
-        var row = sheet.getRange(index + 2, 1, 1, headers.length).getValues()[0];
-        var campaignType = row[headers.indexOf('campaign_type')];
+        var rowVals = sheet.getRange(row, 1, 1, headers.length).getValues()[0];
+        var campaignType = rowVals[headers.indexOf('campaign_type')];
         _ensureCampaignTypeActive(campaignType);
       } catch (e) {
         Logger.log('⚠️ Auto-activate Campaign_Type en approve: ' + e.message);
       }
     }
-
-    return JSON.stringify({ status: 'ok', message: 'Template aprobado' });
-  } catch (e) {
-    return JSON.stringify({ status: 'error', message: e.message });
-  }
+    return { status: 'ok', message: 'Template aprobado' };
+  });
 }
 
 function adminRejectTemplate(index, reason) {
-  try {
+  return _adminAction(function() {
     _requireRole('admin');
-    const sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
-    sheet.getRange(index + 2, sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].indexOf('status') + 1).setValue('rejected');
-    _logApprovalAction('reject', `Template #${index} rechazado: ${reason}`);
-    return JSON.stringify({ status: 'ok', message: 'Template rechazado' });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+    var idx = validateNumber(index, { min: 0, label: 'index' });
+    var safeReason = sheetCellSafe(reason || 'Sin motivo especificado', 1000);
+    var sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
+    if (!sheet) return { status: 'error', message: 'Sheet de templates no existe' };
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var statusCol = headers.indexOf('status') + 1;
+    var notesCol  = headers.indexOf('notes') + 1;
+    if (!statusCol) return { status: 'error', message: 'Columna status no encontrada.' };
+    var row = idx + 2;
+    if (row > sheet.getLastRow()) return { status: 'error', message: 'Fila fuera de rango.' };
+
+    sheet.getRange(row, statusCol).setValue('rejected');
+    if (notesCol) sheet.getRange(row, notesCol).setValue('RECHAZADO: ' + safeReason);
+    _logApprovalAction('reject', 'Template #' + idx + ' rechazado: ' + safeReason);
+    return { status: 'ok', message: 'Template rechazado' };
+  });
 }
 
 // --- OTROS GETTERS DEL ADMIN ---
 function adminGetApprovalLog() {
-  try {
+  return _adminAction(function() {
     _requireRole('viewer');
-    const sheet = _getSheet('Approval_Log');
-    if (!sheet) return JSON.stringify({ status: 'ok', logs: [] });
-    const data = sheet.getDataRange().getValues();
-    const logs = [];
-    for (let i = data.length - 1; i >= Math.max(1, data.length - 100); i--) {
-      logs.push({ timestamp: data[i][0] ? new Date(data[i][0]).toLocaleString('es-CO') : '-', actor: data[i][1] || '-', action: data[i][2] || '-', details: data[i][3] || '' });
+    var sheet = _getSheet('Approval_Log');
+    if (!sheet) return { status: 'ok', logs: [] };
+    var data = sheet.getDataRange().getValues();
+    var logs = [];
+    for (var i = data.length - 1; i >= Math.max(1, data.length - 100); i--) {
+      logs.push({
+        timestamp: data[i][0] ? new Date(data[i][0]).toLocaleString('es-CO') : '-',
+        actor: data[i][1] || '-',
+        action: data[i][2] || '-',
+        details: data[i][3] || ''
+      });
     }
-    return JSON.stringify({ status: 'ok', logs: logs });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+    return { status: 'ok', logs: logs };
+  });
 }
 
 function adminGetTemplates() {
-  try {
+  return _adminAction(function() {
     _requireRole('viewer');
-    const sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
-    return JSON.stringify({ status: 'ok', templates: sheet ? _sheetToObjects(sheet) : [] });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+    var sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
+    return { status: 'ok', templates: sheet ? _sheetToObjects(sheet) : [] };
+  });
 }
 
 function adminGetLogs() {
-  try {
+  return _adminAction(function() {
     _requireRole('viewer');
-    const sheet = _getSheet('Respuestas_Audit_V2');
-    if (!sheet) return JSON.stringify({ status: 'ok', logs: [] });
-    const data = sheet.getDataRange().getValues();
-    const logs = [];
-    for (let i = data.length - 1; i >= Math.max(1, data.length - 50); i--) {
-      logs.push({ timestamp: data[i][0] ? new Date(data[i][0]).toLocaleString('es-CO') : '-', email: data[i][1] || '-', docUrl: data[i][2] || '', type: data[i][3] || '-', country: data[i][4] || 'CO', shop: data[i][5] || '-' });
+    var sheet = _getSheet('Respuestas_Audit_V2');
+    if (!sheet) return { status: 'ok', logs: [] };
+    var data = sheet.getDataRange().getValues();
+    var logs = [];
+    for (var i = data.length - 1; i >= Math.max(1, data.length - 50); i--) {
+      logs.push({
+        timestamp: data[i][0] ? new Date(data[i][0]).toLocaleString('es-CO') : '-',
+        email: data[i][1] || '-', docUrl: data[i][2] || '',
+        type: data[i][3] || '-', country: data[i][4] || 'CO', shop: data[i][5] || '-'
+      });
     }
-    return JSON.stringify({ status: 'ok', logs: logs });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+    return { status: 'ok', logs: logs };
+  });
 }
 
 function adminGetFields() {
-  try {
+  return _adminAction(function() {
     _requireRole('viewer');
-    return JSON.stringify({ status: 'ok', fields: _sheetToObjects(_getSheet(TW_CONFIG.SHEET_FIELDS) || []) });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+    return { status: 'ok', fields: _sheetToObjects(_getSheet(TW_CONFIG.SHEET_FIELDS)) };
+  });
 }
 
 function adminGetCampaignTypes() {
-  try {
+  return _adminAction(function() {
     _requireRole('viewer');
-    return JSON.stringify({ status: 'ok', types: _sheetToObjects(_getSheet('Campaign_Types') || []) });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+    return { status: 'ok', types: _sheetToObjects(_getSheet('Campaign_Types')) };
+  });
 }
 
 function adminGetCountrySettings() {
-  try {
+  return _adminAction(function() {
     _requireRole('viewer');
-    return JSON.stringify({ status: 'ok', settings: _sheetToObjects(_getSheet('Country_Settings') || []) });
-  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+    return { status: 'ok', settings: _sheetToObjects(_getSheet('Country_Settings')) };
+  });
 }
 
 // --- HERRAMIENTAS INTERNAS ADMIN ---
+
+/**
+ * Require the caller to hold at least `minRole`. Owners listed in
+ * ADMIN_EMAILS_LIST bypass the team sheet (bootstrap path).
+ *
+ * @param {string} minRole one of 'viewer' | 'editor' | 'admin' | 'owner'
+ * @return {{email:string, role:string, name:string}}
+ */
 function _requireRole(minRole) {
-  const email = Session.getActiveUser().getEmail();
-  const member = _getTeamMembers().find(m => m.email.toLowerCase() === email.toLowerCase());
-  if (!member || ROLE_HIERARCHY[member.role] < ROLE_HIERARCHY[minRole]) throw new Error(`Permiso insuficiente.`);
+  if (!ROLE_HIERARCHY[minRole]) throw new Error('Rol mínimo inválido: ' + minRole);
+  var email = getActiveUserEmailSafe();
+  if (!email) throw new Error('No se pudo identificar al usuario activo.');
+
+  if (ADMIN_EMAILS_LIST && ADMIN_EMAILS_LIST.indexOf(email) >= 0) {
+    return { email: email, role: 'owner', name: email };
+  }
+
+  var member = _getTeamMembers().find(function(m) { return emailEquals(m.email, email); });
+  if (!member || ROLE_HIERARCHY[member.role] < ROLE_HIERARCHY[minRole]) {
+    throw new Error('Permiso insuficiente.');
+  }
   return member;
 }
 
 function _logApprovalAction(action, details) {
   try {
-    _getOrCreateSheet('Approval_Log', ['timestamp', 'actor', 'action', 'details']).appendRow([new Date(), Session.getActiveUser().getEmail(), action, details]);
-  } catch (e) {}
+    _getOrCreateSheet('Approval_Log', ['timestamp', 'actor', 'action', 'details'])
+      .appendRow([new Date(), getActiveUserEmailSafe(), action, safeTruncate(details, 1000)]);
+  } catch (e) {
+    Logger.log('⚠️ _logApprovalAction failed: ' + e.message);
+  }
 }
 
 function _notifyAdmins(templateIndex, status, submitterEmail) {
@@ -337,16 +466,29 @@ function _notifyAdmins(templateIndex, status, submitterEmail) {
   Logger.log(`Notificación enviada a Admins: Template ${templateIndex} en estado ${status}`);
 }
 
+/**
+ * Resolve a user's role without throwing — used for UI gating only.
+ * Returns 'none' when the email is unknown or unauthenticated.
+ */
 function getUserRole(email) {
-  if (!email) return 'none';
-  if (TW_CONFIG.ADMIN_EMAILS.includes(email)) return 'owner';
+  var clean = (email || '').toString().trim().toLowerCase();
+  if (!clean) return 'none';
+  if (TW_CONFIG.ADMIN_EMAILS && TW_CONFIG.ADMIN_EMAILS.indexOf(clean) >= 0) return 'owner';
   try {
-    const data = _getSheet(TW_CONFIG.SHEET_TEAM).getDataRange().getValues();
-    const headers = data[0];
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][headers.indexOf('email')] === email) return data[i][headers.indexOf('role')] || 'viewer';
+    var sheet = _getSheet(TW_CONFIG.SHEET_TEAM);
+    if (!sheet) return 'none';
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 2) return 'none';
+    var headers = data[0];
+    var emailIdx = headers.indexOf('email');
+    var roleIdx = headers.indexOf('role');
+    if (emailIdx < 0 || roleIdx < 0) return 'none';
+    for (var i = 1; i < data.length; i++) {
+      if (emailEquals(data[i][emailIdx], clean)) return data[i][roleIdx] || 'viewer';
     }
-  } catch (e) {}
+  } catch (e) {
+    Logger.log('⚠️ getUserRole failed: ' + e.message);
+  }
   return 'none';
 }
 
@@ -384,80 +526,91 @@ function _moveTemplateToFolder(docId, countryCode, countryName, campaignType) {
 // --- GEMINI Y SMART TEMPLATES WIZARD ---
 function analyzeTextForPlaceholders(payload) {
   try {
-    const prompt = buildAnalysisPrompt(payload.text, payload.countryCode, payload.campaignType);
+    _requireRole('editor');
+    var p = payload && typeof payload === 'object' ? payload : parseJsonSafely(payload, 'analyzeTextForPlaceholders');
+    if (!p.text) return buildResponse(false, 'Texto requerido para análisis.');
+    var cc = p.countryCode ? validateCountryCode(p.countryCode) : 'CO';
+    var ct = sheetCellSafe(p.campaignType || 'Cashback', 80);
+    var prompt = buildAnalysisPrompt(p.text, cc, ct);
     return buildResponse(true, 'Análisis completado', callGeminiForAnalysis(prompt));
-  } catch (e) { return buildResponse(false, 'Error al analizar: ' + e.message); }
+  } catch (e) {
+    return buildResponse(false, 'Error al analizar: ' + (e && e.message ? e.message : e));
+  }
 }
 
 function buildAnalysisPrompt(text, countryCode, campaignType) {
-  const keys = Object.entries(TW_CONFIG.KNOWN_PLACEHOLDERS).map(([k, v]) => `- {{${k}}}: ${v.label}`).join('\n');
-  return `Analiza este T&C para ${countryCode} y detecta variables. Usa estos u otros:\n${keys}\nResponde SOLO JSON: {"detections":[{"original_text":"","suggested_placeholder":"","label":""}]}\n\n${text.substring(0,15000)}`;
+  var keys = Object.keys(TW_CONFIG.KNOWN_PLACEHOLDERS).map(function(k) {
+    return '- {{' + k + '}}: ' + TW_CONFIG.KNOWN_PLACEHOLDERS[k].label;
+  }).join('\n');
+  return 'Analiza este T&C para ' + countryCode + ' (' + campaignType + ') y detecta variables. Usa estos u otros:\n'
+       + keys + '\nResponde SOLO JSON: {"detections":[{"original_text":"","suggested_placeholder":"","label":""}]}\n\n'
+       + String(text || '').substring(0, 15000);
 }
 
+/**
+ * Call the Gemini API for placeholder analysis. The API key is loaded
+ * from Script Properties; raw responses are *not* logged at INFO level
+ * to avoid leaking PII or prompt content into shared execution logs.
+ *
+ * @param {string} prompt
+ * @return {Object} Parsed JSON detection payload returned by Gemini.
+ */
 function callGeminiForAnalysis(prompt) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  var apiKey = getScriptProperty('GEMINI_API_KEY');
   if (!apiKey) {
     throw new Error('No existe GEMINI_API_KEY en Script Properties.');
   }
+  if (!prompt || typeof prompt !== 'string') {
+    throw new Error('Prompt vacío o inválido.');
+  }
 
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + encodeURIComponent(apiKey);
 
-  const response = UrlFetchApp.fetch(url, {
-    method: 'post',
-    contentType: 'application/json',
-    payload: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1 }
-    }),
-    muteHttpExceptions: true
-  });
+  var response;
+  try {
+    response = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1 }
+      }),
+      muteHttpExceptions: true
+    });
+  } catch (e) {
+    throw new Error('Gemini fetch falló: ' + (e && e.message ? e.message : e));
+  }
 
-  const status = response.getResponseCode();
-  const raw = response.getContentText();
+  var status = response.getResponseCode();
+  var raw = response.getContentText();
+  // Log status but NOT the raw response (may contain prompt echo / PII).
+  Logger.log('Gemini status: ' + status + ' (' + (raw ? raw.length : 0) + ' bytes)');
 
-  Logger.log('Gemini status: ' + status);
-  Logger.log('Gemini raw response: ' + raw);
-
-  let parsed;
+  var parsed;
   try {
     parsed = JSON.parse(raw);
   } catch (e) {
-    throw new Error('Gemini devolvió JSON inválido: ' + raw);
+    throw new Error('Gemini devolvió JSON inválido (HTTP ' + status + ').');
   }
 
   if (status < 200 || status >= 300) {
-    const apiMessage =
-      parsed &&
-      parsed.error &&
-      parsed.error.message
-        ? parsed.error.message
-        : raw;
-
+    var apiMessage = (parsed && parsed.error && parsed.error.message)
+      ? parsed.error.message : 'Respuesta no exitosa';
     throw new Error('Gemini HTTP ' + status + ': ' + apiMessage);
   }
 
-  const text =
-    parsed &&
-    parsed.candidates &&
-    parsed.candidates[0] &&
-    parsed.candidates[0].content &&
-    parsed.candidates[0].content.parts &&
-    parsed.candidates[0].content.parts[0] &&
-    parsed.candidates[0].content.parts[0].text;
-
+  var text = parsed && parsed.candidates && parsed.candidates[0]
+    && parsed.candidates[0].content && parsed.candidates[0].content.parts
+    && parsed.candidates[0].content.parts[0] && parsed.candidates[0].content.parts[0].text;
   if (!text) {
-    throw new Error('Gemini no devolvió candidates válidos: ' + raw);
+    throw new Error('Gemini no devolvió candidates válidos.');
   }
 
-  const cleaned = text
-    .replace(/```json\s*/g, '')
-    .replace(/```\s*/g, '')
-    .trim();
-
+  var cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
   try {
     return JSON.parse(cleaned);
   } catch (e) {
-    throw new Error('La respuesta de Gemini no era JSON parseable: ' + cleaned);
+    throw new Error('La respuesta de Gemini no era JSON parseable.');
   }
 }
 // ---INICIO COPIAR---
@@ -797,25 +950,27 @@ function createTemplateFromWizard(payload) {
   }
 }
 
+/**
+ * Read text from a Google Doc URL. Only callers with editor+ role
+ * may fetch arbitrary docs; this protects against IDOR via the Wizard.
+ */
 function fetchGoogleDocContent(payload) {
   try {
-    const match = payload.docUrl.match(/\/d\/([a-zA-Z0-9_-]{25,})/);
-    if (!match) return buildResponse(false, 'URL inválida. Verifica que el link sea de Google Docs.');
+    _requireRole('editor');
+    var p = payload && typeof payload === 'object' ? payload : parseJsonSafely(payload, 'fetchGoogleDocContent');
+    var docId = extractDocId(p.docUrl);
 
-    const doc = DocumentApp.openById(match[1]);
-    const text = doc.getBody().getText();
-
-    var wordCount = text.trim().length > 0 ? text.trim().split(/\s+/).length : 0;
-    var charCount = text.length;
-
+    var doc = DocumentApp.openById(docId);
+    var text = doc.getBody().getText();
+    var trimmed = text.trim();
     return buildResponse(true, 'OK', {
-      docId: match[1],
+      docId: docId,
       docTitle: doc.getName(),
       text: text,
-      wordCount: wordCount,
-      charCount: charCount
+      wordCount: trimmed.length > 0 ? trimmed.split(/\s+/).length : 0,
+      charCount: text.length
     });
   } catch (e) {
-    return buildResponse(false, e.message);
+    return buildResponse(false, e && e.message ? e.message : String(e));
   }
 }

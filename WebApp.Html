@@ -681,15 +681,15 @@
   <!-- ============================================ -->
   <!-- HISTORY MODAL -->
   <!-- ============================================ -->
-  <div id="historyModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div id="historyModal" role="dialog" aria-modal="true" aria-labelledby="historyModalTitle" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-slide-in shadow-2xl">
       <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-black text-gray-900 flex items-center gap-3">
-          <i class="fa-solid fa-clock-rotate-left text-rappi"></i>
+        <h2 id="historyModalTitle" class="text-2xl font-black text-gray-900 flex items-center gap-3">
+          <i class="fa-solid fa-clock-rotate-left text-rappi" aria-hidden="true"></i>
           Historial de Documentos
         </h2>
-        <button onclick="hideHistoryModal()" class="text-gray-400 hover:text-gray-600 text-2xl">
-          <i class="fa-solid fa-xmark"></i>
+        <button type="button" onclick="hideHistoryModal()" aria-label="Cerrar historial" class="text-gray-400 hover:text-gray-600 text-2xl">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
         </button>
       </div>
 
@@ -713,15 +713,15 @@
   <!-- ============================================ -->
   <!-- RESPONSIBILITY MODAL -->
   <!-- ============================================ -->
-  <div id="responsibilityModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div id="responsibilityModal" role="dialog" aria-modal="true" aria-labelledby="responsibilityModalTitle" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-xl w-full max-h-[90vh] overflow-y-auto animate-slide-in shadow-2xl">
       <div class="bg-gradient-to-r from-amber-100 to-amber-200 p-6 rounded-t-3xl border-b-4 border-amber-400">
         <div class="flex items-center gap-4">
-          <div class="w-14 h-14 bg-amber-500 rounded-full flex items-center justify-center shadow-lg">
+          <div class="w-14 h-14 bg-amber-500 rounded-full flex items-center justify-center shadow-lg" aria-hidden="true">
             <i class="fa-solid fa-triangle-exclamation text-white text-2xl"></i>
           </div>
           <div>
-            <h2 class="text-2xl font-black text-amber-900">⚠️ Antes de Empezar</h2>
+            <h2 id="responsibilityModalTitle" class="text-2xl font-black text-amber-900">⚠️ Antes de Empezar</h2>
             <p class="text-amber-700 font-semibold">Confirma que entiendes estas reglas</p>
           </div>
         </div>
@@ -787,15 +787,15 @@
   <!-- ============================================ -->
   <!-- COUNTRY SELECTOR MODAL -->
   <!-- ============================================ -->
-  <div id="countrySelector" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div id="countrySelector" role="dialog" aria-modal="true" aria-labelledby="countrySelectorTitle" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-slide-in shadow-2xl">
       <div class="text-center mb-8">
         <div class="flex justify-center mb-4">
-          <div class="w-16 h-16 animated-gradient rounded-2xl flex items-center justify-center shadow-lg brain-float">
+          <div class="w-16 h-16 animated-gradient rounded-2xl flex items-center justify-center shadow-lg brain-float" aria-hidden="true">
             <i class="fa-solid fa-brain text-white text-2xl"></i>
           </div>
         </div>
-        <h2 class="text-3xl font-black text-gray-900 mb-2">Selecciona tu país</h2>
+        <h2 id="countrySelectorTitle" class="text-3xl font-black text-gray-900 mb-2">Selecciona tu país</h2>
         <p class="text-gray-600">Configuraremos automáticamente la moneda y plantillas legales</p>
       </div>
 
@@ -1566,12 +1566,12 @@
   </div>
 
   <!-- Success Modal -->
-  <div id="resultModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div id="resultModal" role="dialog" aria-modal="true" aria-labelledby="resultModalTitle" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl animate-slide-in max-h-[90vh] overflow-y-auto">
-      <div class="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+      <div class="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl" aria-hidden="true">
         <i class="fa-solid fa-check text-4xl text-white"></i>
       </div>
-      <h2 class="text-3xl font-black text-gray-900 mb-3">¡Documento Generado!</h2>
+      <h2 id="resultModalTitle" class="text-3xl font-black text-gray-900 mb-3">¡Documento Generado!</h2>
       <p class="text-gray-600 mb-6 leading-relaxed font-semibold">
         Los T&C están listos. Hemos enviado una copia a tu correo.
       </p>
@@ -1649,6 +1649,69 @@
 
   <script>
     // ============================================
+    // SECURITY & UTILITY HELPERS
+    // --------------------------------------------
+    // Every dynamic value rendered as HTML must pass through one of
+    // the escape helpers below. The `safeJsonParse` helper guards the
+    // localStorage <-> in-memory boundary so a poisoned payload can't
+    // crash the page or pivot to XSS via crafted property names.
+    // ============================================
+    const _HTML_ESCAPE_MAP = {
+      '&': '&amp;', '<': '&lt;', '>': '&gt;',
+      '"': '&quot;', "'": '&#39;', '`': '&#96;', '/': '&#47;'
+    };
+
+    function escapeHtml(value) {
+      if (value === null || value === undefined) return '';
+      return String(value).replace(/[&<>"'`\/]/g, ch => _HTML_ESCAPE_MAP[ch]);
+    }
+
+    // Same shape as escapeHtml but with a clearer name for attribute context.
+    const escapeAttr = escapeHtml;
+
+    /** Escape a value so it can be safely embedded inside a JS string literal */
+    function escapeJsString(value) {
+      if (value === null || value === undefined) return '';
+      return String(value)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/\r?\n/g, '\\n')
+        .replace(/</g, '\\u003C'); // prevent closing-tag breakouts
+    }
+
+    /** Validate an URL is a plain http/https link; returns '' otherwise */
+    function safeUrl(value) {
+      if (!value) return '';
+      const s = String(value).trim();
+      if (/^javascript:/i.test(s) || /^data:/i.test(s)) return '';
+      if (!/^https?:\/\//i.test(s) && !s.startsWith('/')) return '';
+      return s;
+    }
+
+    /** Parse JSON returning a fallback (default {}) on any failure */
+    function safeJsonParse(raw, fallback) {
+      if (raw === null || raw === undefined || raw === '') return fallback === undefined ? {} : fallback;
+      try {
+        const v = JSON.parse(raw);
+        return (v === null || v === undefined) ? (fallback === undefined ? {} : fallback) : v;
+      } catch (e) {
+        console.warn('safeJsonParse failed:', e);
+        return fallback === undefined ? {} : fallback;
+      }
+    }
+
+    /** Debounce factory — returns a wrapped function that defers execution. */
+    function debounce(fn, wait) {
+      let timer = null;
+      return function() {
+        const args = arguments, ctx = this;
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(ctx, args), wait);
+      };
+    }
+
+    // ============================================
     // GLOBAL STATE
     // ============================================
     let currentCountry = null;
@@ -1717,9 +1780,23 @@
         .getCampaignTypesForUser();
     }
 
+    /** Whitelist a hex/rgb color string. Falls back to brand orange. */
+    function _safeCssColor(value) {
+      const s = (value || '').toString().trim();
+      if (/^#[0-9a-fA-F]{3,8}$/.test(s)) return s;
+      if (/^rgb(a)?\([0-9,\s.]+\)$/i.test(s)) return s;
+      return '#FF4500';
+    }
+
+    /** Whitelist a Font Awesome icon class. */
+    function _safeIconClass(value) {
+      const s = (value || '').toString().trim();
+      return /^[a-zA-Z0-9_\-\s]+$/.test(s) ? s : 'fa-circle';
+    }
+
     function renderCampaignTypeCards(types) {
       const grid = document.getElementById('dynamicPromoGrid');
-      if (!types.length) {
+      if (!Array.isArray(types) || !types.length) {
         grid.innerHTML = '<div class="col-span-full text-center py-4 text-gray-400 text-sm">No hay dinámicas activas configuradas.</div>';
         return;
       }
@@ -1731,27 +1808,34 @@
         return countries === 'ALL' || countries.includes(country);
       });
 
-      grid.innerHTML = filtered.map(t => `
+      grid.innerHTML = filtered.map(t => {
+        const color = _safeCssColor(t.color);
+        const icon = _safeIconClass(t.icon);
+        const typeName = escapeHtml(t.type_name);
+        const typeNameJs = escapeJsString(t.type_name);
+        const typeId = escapeAttr(t.type_id);
+        const description = escapeHtml(t.description);
+        return `
         <button type="button"
-          onclick="selectCampaignType('${t.type_name}')"
-          id="typeCard_${t.type_id}"
+          onclick="selectCampaignType('${typeNameJs}')"
+          id="typeCard_${typeId}"
           class="campaign-type-card group relative p-4 border-2 border-gray-200 rounded-xl transition-all duration-200 hover:border-gray-300 hover:shadow-md text-left"
-          data-type-name="${t.type_name}"
+          data-type-name="${typeName}"
         >
           <div class="flex items-center gap-3">
             <div class="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
-                 style="background: ${t.color}15;">
-              <i class="fa-solid ${t.icon} text-lg" style="color: ${t.color};"></i>
+                 style="background: ${color}15;">
+              <i class="fa-solid ${icon} text-lg" style="color: ${color};"></i>
             </div>
             <div class="min-w-0">
-              <div class="font-bold text-gray-900 text-sm truncate">${t.type_name}</div>
-              <div class="text-xs text-gray-500 truncate">${t.description}</div>
+              <div class="font-bold text-gray-900 text-sm truncate">${typeName}</div>
+              <div class="text-xs text-gray-500 truncate">${description}</div>
             </div>
           </div>
           <div class="absolute top-2 right-2 w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity type-card-check">
           </div>
-        </button>
-      `).join('');
+        </button>`;
+      }).join('');
     }
 
     function selectCampaignType(typeName) {
@@ -2027,22 +2111,30 @@
     // HISTORY MANAGEMENT
     // ============================================
     function getHistory() {
-      const history = localStorage.getItem('motorLegal_history');
-      return history ? JSON.parse(history) : [];
+      const raw = safeJsonParse(localStorage.getItem('motorLegal_history'), []);
+      if (!Array.isArray(raw)) return [];
+      // Only keep entries with a plausible shape.
+      return raw.filter(it => it && typeof it === 'object' && it.docUrl);
     }
 
     function addToHistory(docName, docUrl, type, shop) {
+      const url = safeUrl(docUrl);
+      if (!url) return; // refuse to persist bogus URLs
       const history = getHistory();
       history.unshift({
         id: Date.now(),
-        docName,
-        docUrl,
-        type,
-        shop,
+        docName: String(docName || '').slice(0, 250),
+        docUrl: url,
+        type: String(type || '').slice(0, 80),
+        shop: String(shop || '').slice(0, 200),
         date: new Date().toISOString()
       });
       if (history.length > 20) history.pop();
-      localStorage.setItem('motorLegal_history', JSON.stringify(history));
+      try {
+        localStorage.setItem('motorLegal_history', JSON.stringify(history));
+      } catch (e) {
+        console.warn('No se pudo guardar el historial:', e);
+      }
     }
 
     function renderHistory() {
@@ -2061,23 +2153,29 @@
 
       listEl.innerHTML = history.map(item => {
         const date = new Date(item.date);
-        const dateStr = date.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
-        const timeStr = date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+        const dateStr = !isNaN(date.getTime())
+          ? date.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
+          : '';
+        const timeStr = !isNaN(date.getTime())
+          ? date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
+          : '';
         const typeIcon = item.type === 'Cashback' ? '💰' : '🏆';
-        
+        const safeUrlStr = safeUrl(item.docUrl);
+        const safeShop = escapeHtml(item.shop || 'Sin tienda');
+        const safeType = escapeHtml(item.type || '');
         return `
-          <a href="${item.docUrl}" target="_blank" class="history-item block">
+          <a href="${escapeAttr(safeUrlStr)}" target="_blank" rel="noopener noreferrer" class="history-item block">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <span class="text-2xl">${typeIcon}</span>
+                <span class="text-2xl" aria-hidden="true">${typeIcon}</span>
                 <div>
-                  <div class="font-bold text-gray-900 text-sm">${item.shop || 'Sin tienda'}</div>
-                  <div class="text-xs text-gray-500">${item.type}</div>
+                  <div class="font-bold text-gray-900 text-sm">${safeShop}</div>
+                  <div class="text-xs text-gray-500">${safeType}</div>
                 </div>
               </div>
               <div class="text-right">
-                <div class="text-xs text-gray-500">${dateStr}</div>
-                <div class="text-xs text-gray-400">${timeStr}</div>
+                <div class="text-xs text-gray-500">${escapeHtml(dateStr)}</div>
+                <div class="text-xs text-gray-400">${escapeHtml(timeStr)}</div>
               </div>
             </div>
           </a>
@@ -2124,16 +2222,18 @@
     }
 
     function loadDraft() {
-      const draft = localStorage.getItem('motorLegal_draft');
-      if (!draft) return false;
-      
-      const data = JSON.parse(draft);
-      
+      const raw = localStorage.getItem('motorLegal_draft');
+      if (!raw) return false;
+
+      const data = safeJsonParse(raw, null);
+      if (!data || typeof data !== 'object' || typeof data.timestamp !== 'number') {
+        clearDraft();
+        return false;
+      }
       if (Date.now() - data.timestamp > 24 * 60 * 60 * 1000) {
         clearDraft();
         return false;
       }
-      
       return data;
     }
 
@@ -2213,37 +2313,39 @@
     function updatePreview() {
       const previewEl = document.getElementById('previewContent');
       const type = document.getElementById('dynamicType').value;
-      
+
       if (!type) {
-        previewEl.innerHTML = '<p class="text-gray-400 text-center py-8"><i class="fa-solid fa-file-lines text-4xl mb-2 block"></i>Selecciona un tipo de campaña para ver la vista previa</p>';
+        previewEl.innerHTML = '<p class="text-gray-400 text-center py-8"><i class="fa-solid fa-file-lines text-4xl mb-2 block" aria-hidden="true"></i>Selecciona un tipo de campaña para ver la vista previa</p>';
         return;
       }
 
       const getValue = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
-      const placeholder = (text) => '<span class="preview-placeholder">' + text + '</span>';
+      const placeholder = (text) => '<span class="preview-placeholder">' + escapeHtml(text) + '</span>';
 
-      // Campos base (siempre presentes)
-      const campaignName = getValue('campaignName') || getValue('shopName') || placeholder('NOMBRE');
-      const territory = getValue('territory') || placeholder('TERRITORIO');
-      const startDate = getValue('startDate') ? formatDatePreview(getValue('startDate')) : placeholder('FECHA INICIO');
-      const endDate = getValue('endDate') ? formatDatePreview(getValue('endDate')) : placeholder('FECHA FIN');
-      const shop = getValue('shopName') || placeholder('TIENDA');
+      // Campos base (siempre presentes). Raw values are escaped or wrapped in placeholders.
+      const campaignName = getValue('campaignName') || getValue('shopName')
+        ? escapeHtml(String(getValue('campaignName') || getValue('shopName')).toUpperCase())
+        : placeholder('NOMBRE');
+      const territory = getValue('territory') ? escapeHtml(getValue('territory')) : placeholder('TERRITORIO');
+      const startDate = getValue('startDate') ? escapeHtml(formatDatePreview(getValue('startDate'))) : placeholder('FECHA INICIO');
+      const endDate = getValue('endDate') ? escapeHtml(formatDatePreview(getValue('endDate'))) : placeholder('FECHA FIN');
+      const shop = getValue('shopName') ? escapeHtml(getValue('shopName')) : placeholder('TIENDA');
 
       // Campos dinámicos (de sección 3)
       let dynamicSummary = '';
       document.querySelectorAll('#dynamicSection3 .dynamic-input').forEach(function(input) {
         const wrapper = input.closest('[data-field-id]');
         if (wrapper && wrapper.style.display === 'none') return;
-        const label = input.placeholder || input.name || '';
+        const label = (input.placeholder || input.name || '').replace(' *', '');
         const val = input.value;
         if (val && label) {
-          dynamicSummary += '<p><strong>' + label.replace(' *', '') + ':</strong> ' + val + '</p>';
+          dynamicSummary += '<p><strong>' + escapeHtml(label) + ':</strong> ' + escapeHtml(val) + '</p>';
         }
       });
 
       previewEl.innerHTML =
-        '<h1>TÉRMINOS Y CONDICIONES – "' + String(campaignName).toUpperCase() + '"</h1>' +
-        '<h2>Tipo: ' + type + '</h2>' +
+        '<h1>TÉRMINOS Y CONDICIONES – "' + campaignName + '"</h1>' +
+        '<h2>Tipo: ' + escapeHtml(type) + '</h2>' +
         '<h2>Territorio:</h2><p>' + territory + '</p>' +
         '<h2>Vigencia:</h2><p>Del <strong>' + startDate + '</strong> al <strong>' + endDate + '</strong></p>' +
         '<h2>Tienda:</h2><p><strong>' + shop + '</strong></p>' +
@@ -2279,12 +2381,18 @@
         return;
       }
 
-      dropdown.innerHTML = matches.map(shop => `
-        <div class="autocomplete-item" onmousedown="selectShop('${shop.name}', '${shop.legalName}')">
-          <strong>${shop.name}</strong>
-          <div class="text-xs text-gray-500">${shop.legalName}</div>
-        </div>
-      `).join('');
+      dropdown.innerHTML = matches.map(shop => {
+        const nameEsc = escapeHtml(shop.name);
+        const legalEsc = escapeHtml(shop.legalName);
+        const nameJs = escapeJsString(shop.name);
+        const legalJs = escapeJsString(shop.legalName);
+        return `
+          <div class="autocomplete-item" onmousedown="selectShop('${nameJs}', '${legalJs}')">
+            <strong>${nameEsc}</strong>
+            <div class="text-xs text-gray-500">${legalEsc}</div>
+          </div>
+        `;
+      }).join('');
 
       dropdown.classList.remove('hidden');
     }
@@ -2321,12 +2429,17 @@
         return;
       }
 
-      dropdown.innerHTML = matches.map(shop => `
-        <div class="autocomplete-item" onmousedown="selectOrganizer('${shop.legalName}')">
-          <strong>${shop.legalName}</strong>
-          <div class="text-xs text-gray-500">${shop.name}</div>
-        </div>
-      `).join('');
+      dropdown.innerHTML = matches.map(shop => {
+        const legalEsc = escapeHtml(shop.legalName);
+        const nameEsc = escapeHtml(shop.name);
+        const legalJs = escapeJsString(shop.legalName);
+        return `
+          <div class="autocomplete-item" onmousedown="selectOrganizer('${legalJs}')">
+            <strong>${legalEsc}</strong>
+            <div class="text-xs text-gray-500">${nameEsc}</div>
+          </div>
+        `;
+      }).join('');
 
       dropdown.classList.remove('hidden');
     }
@@ -2972,9 +3085,7 @@
       google.script.run
         .withSuccessHandler((response) => {
           removeMessage(loadingId);
-          // Negritas simples de Markdown a HTML
-          const formatted = response.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-          addMessage(formatted, 'bot');
+          addMessage(response, 'bot');
           input.disabled = false;
           input.focus();
         })
@@ -2986,32 +3097,43 @@
         .askGemini(msg);
     }
 
+    /**
+     * Render a chat message safely. The escape happens *before* the
+     * Markdown bold pass so injected tags cannot survive into HTML.
+     */
+    function _renderChatBody(text) {
+      const escaped = escapeHtml(text);
+      // Allow only **bold** Markdown after escaping; everything else stays literal.
+      return escaped.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+    }
+
     function addMessage(text, sender) {
       const container = document.getElementById('chatMessages');
       const div = document.createElement('div');
-      
+      const bodyHtml = _renderChatBody(text);
+
       if (sender === 'user') {
         div.className = "flex gap-3 flex-row-reverse animate-slide-in";
         div.innerHTML = `
-          <div class="w-8 h-8 bg-gradient-to-br from-rappi-coral to-rappi-dark rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+          <div class="w-8 h-8 bg-gradient-to-br from-rappi-coral to-rappi-dark rounded-full flex items-center justify-center flex-shrink-0 shadow-md" aria-hidden="true">
             <i class="fa-solid fa-user text-white text-xs"></i>
           </div>
           <div class="bg-gradient-to-r from-rappi-coral to-rappi-dark text-white p-3.5 rounded-2xl rounded-tr-none shadow-md text-sm leading-relaxed">
-            ${text}
+            ${bodyHtml}
           </div>
         `;
       } else {
         div.className = "flex gap-3 animate-slide-in";
         div.innerHTML = `
-          <div class="w-8 h-8 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full flex items-center justify-center flex-shrink-0 border border-purple-200">
+          <div class="w-8 h-8 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full flex items-center justify-center flex-shrink-0 border border-purple-200" aria-hidden="true">
             <i class="fa-solid fa-robot text-purple-600 text-xs"></i>
           </div>
           <div class="bg-white p-3.5 rounded-2xl rounded-tl-none shadow-sm border border-gray-100 text-sm text-gray-700 leading-relaxed">
-            ${text}
+            ${bodyHtml}
           </div>
         `;
       }
-      
+
       container.appendChild(div);
       container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
       return div.id;
@@ -3042,6 +3164,25 @@
       const el = document.getElementById(id);
       if (el) el.remove();
     }
+    /**
+     * Close any non-admin modal currently open. Returns true if at least
+     * one modal was closed (so callers can decide whether to swallow the
+     * Escape keystroke).
+     */
+    function closeOpenModals() {
+      const ids = ['historyModal', 'responsibilityModal', 'countrySelector',
+                   'dataTransferModal', 'resultModal'];
+      let closed = false;
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el.classList.contains('hidden')) {
+          el.classList.add('hidden');
+          closed = true;
+        }
+      });
+      return closed;
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
       // Listeners estáticos (secciones 1 y 2)
       document.getElementById('userEmail').addEventListener('input', updateProgress);
@@ -3050,18 +3191,23 @@
       document.getElementById('startDate').addEventListener('change', updateProgress);
       document.getElementById('endDate').addEventListener('change', updateProgress);
 
+      // a11y: Escape closes the topmost open dialog.
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeOpenModals();
+      });
+
       // GOD MODE: Cargar tipos de campaña desde la BD
       loadCampaignTypes();
 
       updateProgress();
     });
   </script>
-  <button onclick="toggleChat()" class="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-rappi-coral to-purple-700 rounded-full shadow-2xl flex items-center justify-center z-50 hover:scale-110 transition-transform duration-300 group border-4 border-white">
-    <i class="fa-solid fa-sparkles text-white text-2xl group-hover:hidden"></i>
-    <i class="fa-solid fa-robot text-white text-2xl hidden group-hover:block animate-bounce"></i>
+  <button type="button" onclick="toggleChat()" aria-label="Abrir asistente IA" aria-controls="geminiChatWindow" class="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-rappi-coral to-purple-700 rounded-full shadow-2xl flex items-center justify-center z-50 hover:scale-110 transition-transform duration-300 group border-4 border-white">
+    <i class="fa-solid fa-sparkles text-white text-2xl group-hover:hidden" aria-hidden="true"></i>
+    <i class="fa-solid fa-robot text-white text-2xl hidden group-hover:block animate-bounce" aria-hidden="true"></i>
   </button>
 
-  <div id="geminiChatWindow" class="hidden fixed bottom-24 right-6 w-80 md:w-96 bg-white rounded-3xl shadow-2xl z-50 flex flex-col border border-gray-100 overflow-hidden transition-all duration-300 origin-bottom-right scale-75 opacity-0 h-[500px] max-h-[80vh]">
+  <div id="geminiChatWindow" role="dialog" aria-modal="false" aria-label="Asistente IA RappiMind" class="hidden fixed bottom-24 right-6 w-80 md:w-96 bg-white rounded-3xl shadow-2xl z-50 flex flex-col border border-gray-100 overflow-hidden transition-all duration-300 origin-bottom-right scale-75 opacity-0 h-[500px] max-h-[80vh]">
     
     <div class="bg-gradient-to-r from-rappi-coral to-purple-700 p-5 flex justify-between items-center relative overflow-hidden">
       <div class="absolute top-0 right-0 -mt-2 -mr-2 w-20 h-20 bg-white opacity-10 rounded-full blur-xl"></div>
@@ -4176,27 +4322,43 @@ function _renderTemplates(templates, container) {
     const typeIcon = tpl.campaign_type === 'Cashback' ? '💰' : '🏆';
     const isPending = tpl.status === 'pending_review';
 
+    // Sanitised values (everything in template_doc_id / campaign_type / status
+    // is admin-controlled but still flows from Sheets cells that humans edit).
+    const safeDocId = /^[a-zA-Z0-9_-]+$/.test(tpl.template_doc_id || '') ? tpl.template_doc_id : '';
+    const safeCountryName = escapeHtml(COUNTRY_NAMES[tpl.country_code] || tpl.country_code || '');
+    const safeCampaignType = escapeHtml(tpl.campaign_type || '');
+    const safeStatusLabel = escapeHtml(s.label || '');
+    const safeStatusIcon = _safeIconClass(s.icon);
+    const safeStatusCls = /^[a-zA-Z0-9_\-\s]+$/.test(s.cls || '') ? s.cls : '';
+    const safeVersion = escapeHtml(tpl.version || '1.0');
+    const safeOwner = escapeHtml(tpl.legal_owner || '');
+    const safeUpdated = escapeHtml(tpl.last_updated || '');
+    const safeSubmittedBy = escapeHtml(tpl.submitted_by || '');
+    const safeApprovedBy = escapeHtml(tpl.approved_by || '');
+
     // Build action buttons based on status & permissions
     let actions = '';
 
-    // Always: open doc
-    actions += `<a href="https://docs.google.com/document/d/${tpl.template_doc_id}/edit" target="_blank" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition text-xs" title="Abrir Doc"><i class="fa-solid fa-external-link"></i></a>`;
+    // Always: open doc (only if we have a valid-looking ID)
+    if (safeDocId) {
+      actions += `<a href="https://docs.google.com/document/d/${encodeURIComponent(safeDocId)}/edit" target="_blank" rel="noopener noreferrer" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition text-xs" title="Abrir Doc"><i class="fa-solid fa-external-link" aria-hidden="true"></i></a>`;
+    }
 
     // Edit (editor+)
     if (p.canCreateTemplates) {
-      actions += `<button onclick="editTemplate(${realIdx})" class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition text-xs" title="Editar"><i class="fa-solid fa-pen"></i></button>`;
+      actions += `<button type="button" onclick="editTemplate(${realIdx})" class="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition text-xs" title="Editar"><i class="fa-solid fa-pen" aria-hidden="true"></i></button>`;
     }
 
     // Submit for review (editor+, only draft/rejected)
     if (p.canCreateTemplates && (tpl.status === 'draft' || tpl.status === 'rejected')) {
-      actions += `<button onclick="submitForReview(${realIdx})" class="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition text-xs" title="Enviar a revisión"><i class="fa-solid fa-paper-plane"></i></button>`;
+      actions += `<button type="button" onclick="submitForReview(${realIdx})" class="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition text-xs" title="Enviar a revisión"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i></button>`;
     }
 
     // Approve/Reject (admin+, only pending_review)
     if (p.canApproveTemplates && isPending) {
-      actions += `<button onclick="approveTemplate(${realIdx}, false)" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition text-xs" title="Aprobar"><i class="fa-solid fa-check"></i></button>`;
-      actions += `<button onclick="approveTemplate(${realIdx}, true)" class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition text-xs" title="Aprobar y Activar"><i class="fa-solid fa-check-double"></i></button>`;
-      actions += `<button onclick="showRejectModal(${realIdx})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition text-xs" title="Rechazar"><i class="fa-solid fa-xmark"></i></button>`;
+      actions += `<button type="button" onclick="approveTemplate(${realIdx}, false)" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition text-xs" title="Aprobar"><i class="fa-solid fa-check" aria-hidden="true"></i></button>`;
+      actions += `<button type="button" onclick="approveTemplate(${realIdx}, true)" class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition text-xs" title="Aprobar y Activar"><i class="fa-solid fa-check-double" aria-hidden="true"></i></button>`;
+      actions += `<button type="button" onclick="showRejectModal(${realIdx})" class="p-2 text-red-500 hover:bg-red-50 rounded-lg transition text-xs" title="Rechazar"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>`;
     }
 
     // Activate/Deactivate (admin+, approved or active/inactive)
@@ -4204,18 +4366,18 @@ function _renderTemplates(templates, container) {
       const targetStatus = tpl.status === 'active' ? 'inactive' : 'active';
       const toggleIcon = tpl.status === 'active' ? 'fa-pause' : 'fa-play';
       const toggleColor = tpl.status === 'active' ? 'text-gray-500' : 'text-green-600';
-      actions += `<button onclick="toggleStatus(${realIdx},'${targetStatus}')" class="p-2 ${toggleColor} hover:bg-gray-50 rounded-lg transition text-xs" title="${tpl.status === 'active' ? 'Desactivar' : 'Activar'}"><i class="fa-solid ${toggleIcon}"></i></button>`;
+      actions += `<button type="button" onclick="toggleStatus(${realIdx},'${targetStatus}')" class="p-2 ${toggleColor} hover:bg-gray-50 rounded-lg transition text-xs" title="${tpl.status === 'active' ? 'Desactivar' : 'Activar'}"><i class="fa-solid ${toggleIcon}" aria-hidden="true"></i></button>`;
     }
 
     // Delete (admin+)
     if (p.canDeleteTemplates) {
-      actions += `<button onclick="deleteTemplate(${realIdx})" class="p-2 text-red-400 hover:bg-red-50 rounded-lg transition text-xs" title="Eliminar"><i class="fa-solid fa-trash"></i></button>`;
+      actions += `<button type="button" onclick="deleteTemplate(${realIdx})" class="p-2 text-red-400 hover:bg-red-50 rounded-lg transition text-xs" title="Eliminar"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>`;
     }
 
     // Rejection note
     let rejectionNote = '';
     if (tpl.status === 'rejected' && tpl.notes && tpl.notes.startsWith('RECHAZADO:')) {
-      rejectionNote = `<div class="mt-2 bg-red-50 border border-red-200 rounded-lg p-2 text-xs text-red-700"><i class="fa-solid fa-comment-dots mr-1"></i>${tpl.notes}</div>`;
+      rejectionNote = `<div class="mt-2 bg-red-50 border border-red-200 rounded-lg p-2 text-xs text-red-700"><i class="fa-solid fa-comment-dots mr-1" aria-hidden="true"></i>${escapeHtml(tpl.notes)}</div>`;
     }
 
     return `
@@ -4223,18 +4385,18 @@ function _renderTemplates(templates, container) {
         <div class="flex flex-col sm:flex-row justify-between gap-3">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap mb-1.5">
-              <span class="text-lg">${flag}</span>
-              <span class="font-extrabold text-gray-900 text-sm">${COUNTRY_NAMES[tpl.country_code] || tpl.country_code}</span>
+              <span class="text-lg" aria-hidden="true">${flag}</span>
+              <span class="font-extrabold text-gray-900 text-sm">${safeCountryName}</span>
               <span class="text-gray-300">·</span>
-              <span class="text-sm">${typeIcon} ${tpl.campaign_type}</span>
-              <span class="sts ${s.cls}"><i class="fa-solid ${s.icon} text-[9px]"></i> ${s.label}</span>
-              <span class="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-[10px] font-bold">v${tpl.version||'1.0'}</span>
+              <span class="text-sm">${typeIcon} ${safeCampaignType}</span>
+              <span class="sts ${safeStatusCls}"><i class="fa-solid ${safeStatusIcon} text-[9px]" aria-hidden="true"></i> ${safeStatusLabel}</span>
+              <span class="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-[10px] font-bold">v${safeVersion}</span>
             </div>
             <div class="flex items-center gap-3 text-[11px] text-gray-400">
-              ${tpl.legal_owner ? `<span><i class="fa-solid fa-user mr-1"></i>${tpl.legal_owner}</span>` : ''}
-              ${tpl.last_updated ? `<span><i class="fa-solid fa-calendar mr-1"></i>${tpl.last_updated}</span>` : ''}
-              ${tpl.submitted_by ? `<span><i class="fa-solid fa-paper-plane mr-1"></i>${tpl.submitted_by}</span>` : ''}
-              ${tpl.approved_by ? `<span><i class="fa-solid fa-check mr-1"></i>${tpl.approved_by}</span>` : ''}
+              ${safeOwner ? `<span><i class="fa-solid fa-user mr-1" aria-hidden="true"></i>${safeOwner}</span>` : ''}
+              ${safeUpdated ? `<span><i class="fa-solid fa-calendar mr-1" aria-hidden="true"></i>${safeUpdated}</span>` : ''}
+              ${safeSubmittedBy ? `<span><i class="fa-solid fa-paper-plane mr-1" aria-hidden="true"></i>${safeSubmittedBy}</span>` : ''}
+              ${safeApprovedBy ? `<span><i class="fa-solid fa-check mr-1" aria-hidden="true"></i>${safeApprovedBy}</span>` : ''}
             </div>
             ${rejectionNote}
           </div>
@@ -4427,25 +4589,30 @@ function _renderFields(fields, container) {
     const flag = f.country_code === 'ALL' ? '🌎' : (FLAG_MAP[f.country_code] || '');
     const typeLabel = f.campaign_type === 'ALL' ? 'Todos' : (f.campaign_type === 'Cashback' ? '💰' : '🏆');
     const req = (f.required === 'TRUE' || f.required === true);
+    const safeFieldId = escapeHtml(f.field_id || '');
+    const safeLabel = escapeHtml(f.label_es || f.field_id || '');
+    const safeCountry = escapeHtml(f.country_code || '');
+    const safeType = escapeHtml(f.field_type || '');
+    const safePlaceholder = escapeHtml(f.placeholder || '');
     return `
       <div class="adm-card p-4" style="animation: fadeIn .3s ease ${i*0.03}s both;">
         <div class="flex justify-between items-start mb-2">
           <div>
-            <code class="bg-gray-100 text-rappi px-2 py-0.5 rounded text-[11px] font-bold">${f.field_id}</code>
+            <code class="bg-gray-100 text-rappi px-2 py-0.5 rounded text-[11px] font-bold">${safeFieldId}</code>
             <span class="ml-1 text-[10px] font-bold ${req ? 'text-red-500' : 'text-gray-400'}">${req ? 'REQ' : 'OPT'}</span>
           </div>
           ${canEdit ? `
           <div class="flex gap-0.5">
-            <button onclick="editField(${i})" class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><i class="fa-solid fa-pen text-[10px]"></i></button>
-            <button onclick="deleteField(${i})" class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"><i class="fa-solid fa-trash text-[10px]"></i></button>
+            <button type="button" onclick="editField(${i})" class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" aria-label="Editar campo"><i class="fa-solid fa-pen text-[10px]" aria-hidden="true"></i></button>
+            <button type="button" onclick="deleteField(${i})" class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" aria-label="Eliminar campo"><i class="fa-solid fa-trash text-[10px]" aria-hidden="true"></i></button>
           </div>` : ''}
         </div>
-        <p class="font-bold text-gray-800 text-sm mb-2">${f.label_es || f.field_id}</p>
+        <p class="font-bold text-gray-800 text-sm mb-2">${safeLabel}</p>
         <div class="flex flex-wrap gap-1.5 text-[10px]">
-          <span class="bg-gray-50 px-2 py-0.5 rounded-lg font-semibold">${flag} ${f.country_code}</span>
+          <span class="bg-gray-50 px-2 py-0.5 rounded-lg font-semibold">${flag} ${safeCountry}</span>
           <span class="bg-gray-50 px-2 py-0.5 rounded-lg">${typeLabel}</span>
-          <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg">${f.field_type}</span>
-          ${f.placeholder ? `<code class="bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded-lg">${f.placeholder}</code>` : ''}
+          <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg">${safeType}</span>
+          ${safePlaceholder ? `<code class="bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded-lg">${safePlaceholder}</code>` : ''}
         </div>
       </div>
     `;
@@ -4537,27 +4704,31 @@ function loadFolders() {
 
       tree.classList.remove('hidden');
       tree.innerHTML = data.folders
-        .sort((a,b) => a.name.localeCompare(b.name))
+        .sort((a,b) => (a.name || '').localeCompare(b.name || ''))
         .map(cf => {
-          const code = cf.name.split('_')[0];
+          const safeFolderName = escapeHtml(cf.name || '');
+          const code = (cf.name || '').split('_')[0];
           const flag = FLAG_MAP[code] || '📁';
-          const countryName = cf.name.split('_').slice(1).join('_') || cf.name;
-          const isSpecial = cf.name.startsWith('_');
+          const countryName = escapeHtml((cf.name || '').split('_').slice(1).join('_') || cf.name || '');
+          const isSpecial = (cf.name || '').startsWith('_');
 
-          let subsHtml = cf.subFolders.map(sf => {
+          let subsHtml = (cf.subFolders || []).map(sf => {
             const typeIcon = sf.name === 'Cashback' ? '💰' : (sf.name === 'Concurso' ? '🏆' : '📁');
-            const filesHtml = sf.files.map(f =>
-              `<div class="folder-file flex items-center gap-2 mt-1">
-                <i class="fa-solid fa-file-lines text-blue-500 text-xs"></i>
-                <a href="${f.url}" target="_blank" class="text-xs text-blue-600 hover:underline font-medium truncate">${f.name}</a>
-              </div>`
-            ).join('');
+            const safeSubName = escapeHtml(sf.name || '');
+            const filesHtml = (sf.files || []).map(f => {
+              const u = safeUrl(f.url);
+              if (!u) return '';
+              return `<div class="folder-file flex items-center gap-2 mt-1">
+                <i class="fa-solid fa-file-lines text-blue-500 text-xs" aria-hidden="true"></i>
+                <a href="${escapeAttr(u)}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-600 hover:underline font-medium truncate">${escapeHtml(f.name || '')}</a>
+              </div>`;
+            }).join('');
             return `
               <div class="ml-6 mt-2">
                 <div class="flex items-center gap-2 text-sm text-gray-600">
-                  <span>${typeIcon}</span>
-                  <span class="font-semibold">${sf.name}</span>
-                  <span class="text-[10px] text-gray-400">(${sf.files.length} archivos)</span>
+                  <span aria-hidden="true">${typeIcon}</span>
+                  <span class="font-semibold">${safeSubName}</span>
+                  <span class="text-[10px] text-gray-400">(${(sf.files||[]).length} archivos)</span>
                 </div>
                 ${filesHtml}
               </div>
@@ -4567,9 +4738,9 @@ function loadFolders() {
           return `
             <div class="folder-item" style="animation: fadeIn .3s ease;">
               <div class="flex items-center gap-2">
-                <span class="text-xl">${isSpecial ? '📦' : flag}</span>
-                <span class="font-bold text-gray-900">${isSpecial ? cf.name : countryName}</span>
-                <span class="text-[10px] text-gray-400">${cf.subFolders.length} subcarpetas</span>
+                <span class="text-xl" aria-hidden="true">${isSpecial ? '📦' : flag}</span>
+                <span class="font-bold text-gray-900">${isSpecial ? safeFolderName : countryName}</span>
+                <span class="text-[10px] text-gray-400">${(cf.subFolders||[]).length} subcarpetas</span>
               </div>
               ${subsHtml}
             </div>
@@ -4644,34 +4815,40 @@ function _renderTeam(team, container) {
   const isOwner = currentUser.permissions.canManageTeam;
   const roleIcons = { owner:'fa-crown', admin:'fa-shield-halved', editor:'fa-pen-nib', viewer:'fa-eye' };
   const roleColors = { owner:'text-purple-600 bg-purple-50', admin:'text-blue-600 bg-blue-50', editor:'text-green-600 bg-green-50', viewer:'text-gray-500 bg-gray-50' };
+  const validRoles = { owner: 1, admin: 1, editor: 1, viewer: 1 };
 
   container.innerHTML = team.map((m, i) => {
-    const icon = roleIcons[m.role] || 'fa-user';
-    const color = roleColors[m.role] || 'text-gray-500 bg-gray-50';
-    const isMe = m.email.toLowerCase() === currentUser.email.toLowerCase();
+    const role = validRoles[m.role] ? m.role : 'viewer';
+    const icon = roleIcons[role];
+    const color = roleColors[role];
+    const isMe = (m.email || '').toLowerCase() === (currentUser.email || '').toLowerCase();
+    const safeName = escapeHtml(m.name || '');
+    const safeEmail = escapeHtml(m.email || '');
+    const emailJs = escapeJsString(m.email || '');
+    const nameJs = escapeJsString(m.name || '');
 
     return `
       <div class="adm-card p-4 flex items-center gap-4" style="animation: fadeIn .3s ease ${i*0.05}s both;">
-        <div class="w-10 h-10 rounded-xl ${color} flex items-center justify-center flex-shrink-0">
+        <div class="w-10 h-10 rounded-xl ${color} flex items-center justify-center flex-shrink-0" aria-hidden="true">
           <i class="fa-solid ${icon}"></i>
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
-            <p class="font-bold text-gray-900 text-sm truncate">${m.name}</p>
+            <p class="font-bold text-gray-900 text-sm truncate">${safeName}</p>
             ${isMe ? '<span class="text-[10px] bg-rappi/10 text-rappi px-2 py-0.5 rounded font-bold">Tú</span>' : ''}
           </div>
-          <p class="text-xs text-gray-500 truncate">${m.email}</p>
+          <p class="text-xs text-gray-500 truncate">${safeEmail}</p>
         </div>
-        <span class="sts role-${m.role} capitalize">${m.role}</span>
+        <span class="sts role-${role} capitalize">${role}</span>
         ${isOwner && !isMe ? `
         <div class="flex gap-1">
-          <select onchange="changeMemberRole('${m.email}',this.value)" class="adm-select text-[11px] py-1 px-2">
+          <select onchange="changeMemberRole('${emailJs}',this.value)" class="adm-select text-[11px] py-1 px-2" aria-label="Cambiar rol de ${safeName}">
             <option value="" disabled selected>Cambiar rol</option>
             <option value="admin">Admin</option>
             <option value="editor">Editor</option>
             <option value="viewer">Viewer</option>
           </select>
-          <button onclick="removeMember('${m.email}','${m.name}')" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Eliminar"><i class="fa-solid fa-trash text-xs"></i></button>
+          <button type="button" onclick="removeMember('${emailJs}','${nameJs}')" class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Eliminar" aria-label="Eliminar miembro ${safeName}"><i class="fa-solid fa-trash text-xs" aria-hidden="true"></i></button>
         </div>` : ''}
       </div>
     `;
@@ -4751,7 +4928,16 @@ function loadGenerationLogs() {
       table.classList.remove('hidden');
       table.innerHTML = `<div class="adm-card overflow-hidden"><div class="overflow-x-auto"><table class="w-full">
         <thead><tr class="bg-gray-50 border-b"><th class="px-3 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Fecha</th><th class="px-3 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Email</th><th class="px-3 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Tipo</th><th class="px-3 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Tienda</th><th class="px-3 py-2.5 text-center text-[10px] font-bold text-gray-500 uppercase">Doc</th></tr></thead>
-        <tbody>${data.logs.map(l => `<tr class="hover:bg-gray-50 border-b border-gray-50"><td class="px-3 py-2 text-[11px] text-gray-500">${l.timestamp}</td><td class="px-3 py-2 text-xs font-medium">${l.email}</td><td class="px-3 py-2 text-xs">${l.type==='Cashback'?'💰':'🏆'} ${l.type}</td><td class="px-3 py-2 text-xs text-gray-600">${l.shop}</td><td class="px-3 py-2 text-center">${l.docUrl?`<a href="${l.docUrl}" target="_blank" class="text-blue-600"><i class="fa-solid fa-external-link text-[10px]"></i></a>`:'-'}</td></tr>`).join('')}</tbody>
+        <tbody>${data.logs.map(l => {
+          const safeUrlStr = safeUrl(l.docUrl);
+          return `<tr class="hover:bg-gray-50 border-b border-gray-50">
+            <td class="px-3 py-2 text-[11px] text-gray-500">${escapeHtml(l.timestamp)}</td>
+            <td class="px-3 py-2 text-xs font-medium">${escapeHtml(l.email)}</td>
+            <td class="px-3 py-2 text-xs">${l.type==='Cashback'?'💰':'🏆'} ${escapeHtml(l.type)}</td>
+            <td class="px-3 py-2 text-xs text-gray-600">${escapeHtml(l.shop)}</td>
+            <td class="px-3 py-2 text-center">${safeUrlStr?`<a href="${escapeAttr(safeUrlStr)}" target="_blank" rel="noopener noreferrer" class="text-blue-600" aria-label="Abrir documento"><i class="fa-solid fa-external-link text-[10px]" aria-hidden="true"></i></a>`:'-'}</td>
+          </tr>`;
+        }).join('')}</tbody>
       </table></div></div>`;
     })
     .withFailureHandler(() => { loading.classList.add('hidden'); })
@@ -4779,10 +4965,10 @@ function loadApprovalLogs() {
       };
       table.innerHTML = `<div class="space-y-2">${data.logs.map((l,i) => `
         <div class="adm-card p-3 flex items-center gap-3" style="animation:fadeIn .2s ease ${i*0.03}s both;">
-          <span class="text-lg">${actionIcons[l.action]||'📋'}</span>
+          <span class="text-lg" aria-hidden="true">${actionIcons[l.action]||'📋'}</span>
           <div class="flex-1 min-w-0">
-            <p class="text-xs font-bold text-gray-800">${l.details}</p>
-            <p class="text-[10px] text-gray-400">${l.actor} · ${l.timestamp}</p>
+            <p class="text-xs font-bold text-gray-800">${escapeHtml(l.details)}</p>
+            <p class="text-[10px] text-gray-400">${escapeHtml(l.actor)} · ${escapeHtml(l.timestamp)}</p>
           </div>
         </div>
       `).join('')}</div>`;
@@ -4925,14 +5111,19 @@ async function twRunAnalysis() {
 function twRenderMappings() {
   const tbody = document.getElementById('tw-mappings-tbody');
   const filtered = TW.mappings.filter(m => TW.currentFilter === 'all' || m.confidence === TW.currentFilter);
-  tbody.innerHTML = filtered.map(m => `
-    <tr id="row-${m.id}" class="${m.confirmed ? 'bg-green-50' : ''}">
-      <td><button class="tw-confirm-toggle ${m.confirmed ? 'confirmed' : ''}" id="toggle-${m.id}" onclick="twToggleConfirm('${m.id}')"></button></td>
+  tbody.innerHTML = filtered.map(m => {
+    const safeId = /^[a-zA-Z0-9_\-]+$/.test(m.id || '') ? m.id : '';
+    const safeIdJs = escapeJsString(safeId);
+    const safeConfidence = /^[A-Z]+$/.test(m.confidence || '') ? m.confidence : 'LOW';
+    return `
+    <tr id="row-${safeId}" class="${m.confirmed ? 'bg-green-50' : ''}">
+      <td><button type="button" class="tw-confirm-toggle ${m.confirmed ? 'confirmed' : ''}" id="toggle-${safeId}" onclick="twToggleConfirm('${safeIdJs}')" aria-label="Confirmar mapeo"></button></td>
       <td><span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded">${escapeHtml(m.original_text)}</span>${m.context ? `<p class="text-xs text-gray-400 mt-1 truncate max-w-xs">...${escapeHtml(m.context)}...</p>` : ''}</td>
-      <td><div class="tw-placeholder-chip" id="chip-${m.id}" onclick="twEditPlaceholder('${m.id}')">{{<span id="ph-text-${m.id}">${m.placeholder}</span>}}<i class="fa-solid fa-pen-to-square text-xs opacity-50 ml-1"></i></div><p class="text-[10px] text-gray-400 mt-1">${m.label}</p></td>
-      <td><span class="badge badge-${m.confidence} text-xs px-2 py-0.5 rounded-full font-bold">${m.confidence}</span></td>
-      <td><button onclick="twRemoveMapping('${m.id}')" class="text-gray-300 hover:text-red-400"><i class="fa-solid fa-xmark"></i></button></td>
-    </tr>`).join('');
+      <td><div class="tw-placeholder-chip" id="chip-${safeId}" onclick="twEditPlaceholder('${safeIdJs}')">{{<span id="ph-text-${safeId}">${escapeHtml(m.placeholder)}</span>}}<i class="fa-solid fa-pen-to-square text-xs opacity-50 ml-1" aria-hidden="true"></i></div><p class="text-[10px] text-gray-400 mt-1">${escapeHtml(m.label)}</p></td>
+      <td><span class="badge badge-${safeConfidence} text-xs px-2 py-0.5 rounded-full font-bold">${safeConfidence}</span></td>
+      <td><button type="button" onclick="twRemoveMapping('${safeIdJs}')" class="text-gray-300 hover:text-red-400" aria-label="Eliminar mapeo"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></td>
+    </tr>`;
+  }).join('');
   twUpdateSummary();
 }
 
@@ -5159,7 +5350,9 @@ function twCallBackend(action, data) {
   });
 }
 
-function escapeHtml(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+// escapeHtml() is now defined once in the main script block above; this
+// admin-block re-declaration was less strict (missed ', `, /). Reusing
+// the global one keeps escaping consistent across both blocks.
 
 // ============================================
     // ADMIN ACCESS BUTTON (Real Validation)
