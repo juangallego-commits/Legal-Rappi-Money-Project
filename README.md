@@ -1,11 +1,10 @@
-# RappiMind — Generador Legal de T&C · Legal Team Tracker
+# RappiMind — Motor Legal Rappi (Generador de T&C)
 
 > Plataforma de **Legal Operations** de Rappi construida sobre **Google Apps
 > Script**. Genera Términos & Condiciones de campañas promocionales (cashback,
 > concursos) a partir de plantillas legales por país, con un panel de
 > administración, flujo de aprobación de plantillas e importación asistida por
-> **IA (Gemini)**. Incluye además un **Legal Team Tracker** (gestión de
-> proyectos/tareas del equipo legal).
+> **IA (Gemini)**.
 
 **Estado:** Prototipo funcional en producción interna · Piloto multi-país en
 preparación · Hoy operativo solo para **Colombia**.
@@ -16,23 +15,20 @@ preparación · Hoy operativo solo para **Colombia**.
 
 ---
 
-## ⚠️ Avisos críticos (léelos antes de tocar nada)
+## ⚠️ Avisos importantes
 
-1. **Este repositorio es un SNAPSHOT PARCIAL del proyecto real.** Faltan
-   funciones que el frontend usa y que viven solo en el servidor:
-   `processWebPayload` (genera el documento), `getCampaignTypesForUser`,
-   `getFieldsForUserForm`, `askGemini`, `saveFeedback`. **El código de este repo,
-   por sí solo, no puede generar documentos.**
-2. **No hagas `clasp push` todavía.** Como elegimos el modelo *GitHub → Apps
-   Script*, un push con `--force` haría que el servidor sea igual al repo y
-   **borraría** las funciones de arriba, rompiendo el generador en vivo. Primero
-   hay que reconciliar con `clasp pull` → ver **[docs/DEPLOY_CLASP.md](docs/DEPLOY_CLASP.md)**.
-3. **El `doGet` del repo sirve el tracker, no el generador.** `Codigo.gs` sirve
-   un archivo `Dashboard` titulado *"Legal Tracker · Rappi"*. El generador de T&C
-   (`WebApp.Html`) se sirve por un `doGet` que **no está en el repo**. Confirma en
-   el editor cuál es el punto de entrada real antes del piloto.
-4. **Multi-país: los datos están listos para 9 países, pero solo Colombia está
+1. **El repo ya está sincronizado con el servidor.** Se hizo `clasp pull` y el
+   repo contiene el código real y actual de Apps Script (`Código.js`,
+   `Admin.gs.js`, `Config.gs.js`, `Helpers.gs.js`, `Setup.gs.js`, `WebApp.Html`,
+   `appsscript.json`). A partir de aquí, **GitHub → Apps Script (`clasp push`) es
+   seguro** → ver **[docs/DEPLOY_CLASP.md](docs/DEPLOY_CLASP.md)**.
+2. **Multi-país: los datos están listos para 9 países, pero solo Colombia está
    sembrado y probado.** Ver [§7 Multi-país](#7-multi-país--localización-crítico-para-el-piloto).
+3. **El chatbot y el feedback están a medias.** El frontend llama a `askGemini` y
+   `saveFeedback`, pero esas funciones **no existen en el backend** → esos dos
+   botones fallarían. (La generación de documentos sí funciona.)
+4. **Hay funciones admin sin control de rol** y los T&C generados quedan públicos
+   por enlace. Ver [§11 Seguridad](#11-seguridad-y-permisos).
 
 ---
 
@@ -64,16 +60,15 @@ formulario dinámico, y el motor rellena una **plantilla legal de Google Docs** 
 los valores (fechas en letras, montos en palabras, jurisdicción, ley aplicable,
 etc.) y entrega un Doc listo para publicar.
 
-El proyecto en realidad contiene **dos subsistemas** que comparten el mismo
-proyecto de Apps Script:
+El backend vive en estos archivos de Apps Script (nombres tal como están en el
+servidor): **`Código.js`** (core/motor + `doGet`), **`Admin.gs.js`** (panel admin
++ IA), **`Config.gs.js`** (configuración), **`Helpers.gs.js`** (utilidades) y
+**`Setup.gs.js`** (instalación/migración). La base de datos es **un único
+Spreadsheet**: `AUDIT_SHEET_ID = 1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI`.
 
-| Subsistema | Archivos | Spreadsheet | Qué hace |
-|---|---|---|---|
-| **A. Generador de T&C (RappiMind)** | `Admin.gs`, `Helper.gs`, `Config.gs`, `Setupg.gs`, `WebApp.Html` | `1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI` | Genera T&C, panel admin, plantillas por país, IA Gemini. **El producto principal.** |
-| **B. Legal Team Tracker** | `Codigo.gs`, `Helper.gs` | `19eR-pXzVLTSEdCADeBZ8fsd5x4f2t0GowUJiJm2X6ms` | Dashboard de proyectos/tareas del equipo legal, KPIs, SLA, handlers de Slack. |
-
-> Son dos apps distintas con **dos spreadsheets distintos**. El `doGet` actual del
-> repo sirve el **Tracker (B)**. Documentar esto evita confusiones en el piloto.
+> Nota: una versión vieja del repo incluía además un "Legal Team Tracker"
+> (`Codigo.gs`, otro spreadsheet) que **no existe en este proyecto de Apps
+> Script** — era código obsoleto y se eliminó al sincronizar con el servidor.
 
 ---
 
@@ -83,25 +78,24 @@ proyecto de Apps Script:
 ┌─────────────────────────────────────────────────────────────────┐
 │                      Google Apps Script (V8)                      │
 │                                                                   │
-│  doGet(e)  ──►  HtmlService.createTemplateFromFile('Dashboard')   │
+│  doGet(e)  ──►  HtmlService.createTemplateFromFile('WebApp')       │
+│                 (título "Motor Legal Rappi")                       │
 │                                                                   │
 │   Frontend (WebApp.Html, SPA)                                     │
-│   ── google.script.run ──►  Funciones servidor (.gs)              │
+│   ── google.script.run ──►  Funciones servidor (.js)              │
 │                                                                   │
-│   Backend (.gs):                                                  │
-│     • Admin.gs    → panel admin, roles, workflow, IA Gemini       │
-│     • Helper.gs   → utilidades (fechas ES, números a letras…)     │
-│     • Config.gs   → constantes, mapas país, DERIVED_FIELDS        │
-│     • Setupg.gs   → funciones de instalación/seed/migración       │
-│     • Codigo.gs   → Legal Team Tracker (subsistema B)             │
-│     • [SERVIDOR]  → processWebPayload, getCampaignTypesForUser,   │
-│                     getFieldsForUserForm, askGemini, saveFeedback │
-│                     (NO están en este repo)                       │
+│   Backend:                                                        │
+│     • Código.js     → core/motor: doGet, processWebPayload,      │
+│                       getCampaignTypesForUser, getFieldsForUserForm│
+│     • Admin.gs.js   → panel admin, roles, workflow, IA Gemini     │
+│     • Config.gs.js  → constantes, mapas país, DERIVED_FIELDS      │
+│     • Helpers.gs.js → utilidades (fechas ES, números a letras…)   │
+│     • Setup.gs.js   → instalación/seed/migración                  │
 └───────────────┬───────────────────────┬─────────────────────────┘
                 │                       │
         ┌───────▼───────┐       ┌───────▼────────┐      ┌──────────────┐
         │ Google Sheets │       │  Google Drive  │      │  Gemini API  │
-        │ (2 spreadshts)│       │ plantillas/Docs│      │ (UrlFetchApp)│
+        │ (1 spreadsheet)│      │ plantillas/Docs│      │ (UrlFetchApp)│
         └───────────────┘       └────────────────┘      └──────────────┘
 ```
 
@@ -122,16 +116,16 @@ proyecto de Apps Script:
 
 | Archivo | Líneas aprox. | Descripción |
 |---|---|---|
-| `Codigo.gs` | ~560 | **Subsistema B (Tracker).** `doGet`, `getTrackerData`, CRUD de proyectos/tareas, KPIs/SLA, handlers de Slack (`handleCloseTask`/`handleBlockTask`). |
-| `Admin.gs` | ~822 | **Panel admin** del generador: equipo/roles, workflow de plantillas, carpetas Drive, e **IA Gemini** (`analyzeTextForPlaceholders`, `createTemplateFromWizard`, `fetchGoogleDocContent`). |
-| `Config.gs` | ~440 | Constantes globales, `TW_CONFIG`, mapas país (`COUNTRY_FOLDERS`), `DERIVED_FIELDS` (~50 funciones de placeholders), `LEGAL_DEFAULTS_MAP`, `MESES_ES`. |
-| `Setupg.gs` | ~1127 | Funciones de **instalación/seed/migración** (crear hojas, plantillas CO, carpetas, `migrateV33`…). |
-| `Helper.gs` | ~190 | Utilidades: fechas/horas en español, `numeroALetras`, `_getOrCreateSheet`, `_sheetToObjects`, `setPublicViewPermissions`, etc. |
+| `Código.js` | ~745 | **Core/motor.** `doGet` (sirve `WebApp`), `processWebPayload` (genera el documento), `getCampaignTypesForUser`, `getFieldsForUserForm`, `coreEngineV2`, `mapWebToEngine`. |
+| `Admin.gs.js` | ~1156 | **Panel admin**: equipo/roles, workflow de plantillas, carpetas Drive, e **IA Gemini** (`analyzeTextForPlaceholders`, `createTemplateFromWizard`, `fetchGoogleDocContent`). |
+| `Config.gs.js` | ~438 | Constantes globales, `TW_CONFIG`, mapas país (`COUNTRY_FOLDERS`), `DERIVED_FIELDS` (~50 funciones de placeholders), `LEGAL_DEFAULTS_MAP`, `MESES_ES`. |
+| `Setup.gs.js` | ~1276 | Funciones de **instalación/seed/migración** (crear hojas, plantillas CO, carpetas, `migrateV33`…). |
+| `Helpers.gs.js` | ~152 | Utilidades: fechas/horas en español, `numeroALetras`, `_getOrCreateSheet`, `_sheetToObjects`, `setPublicViewPermissions`, etc. |
 | `WebApp.Html` | ~5192 | **SPA del generador de T&C** (UI usuario + panel admin + wizard IA). Título "RappiMind \| Generador de T&C". |
 | `Propuesta de ajuste del front` | ~4146 | **Rediseño propuesto (NO desplegar).** Borrador con 2 errores de sintaxis JS que lo dejan no funcional. Ver [§14](#14-roadmap-y-propuesta-de-rediseño). |
-| `appsscript.json` | — | Manifiesto (placeholder hasta reconciliar con `clasp pull`). |
+| `appsscript.json` | — | Manifiesto real del servidor (timezone, runtime V8, web app `executeAs: USER_DEPLOYING` / `access: DOMAIN`). |
 | `.clasp.json`, `.claspignore`, `package.json`, `.gitignore` | — | Tooling de sincronización clasp. |
-| `.github/workflows/clasp-push.yml` | — | Push automático a Apps Script (inerte hasta configurar el secret). |
+| `.github/workflows/clasp-push.yml` | — | Push automático a Apps Script (se activa al configurar el secret `CLASPRC_JSON`). |
 | `docs/DEPLOY_CLASP.md` | — | **Runbook de sincronización GitHub ⇄ Apps Script.** |
 
 ---
@@ -249,15 +243,10 @@ y registra campos en `Template_Fields`).
 Plantillas (Google Docs) creadas por el setup: `Template_CO_Cashback`,
 `Template_CO_Concurso` (prosa legal colombiana con tokens `{{PLACEHOLDER}}`).
 
-### Spreadsheet B — Legal Team Tracker (`SHEET_ID = 19eR-pXzVLTSEdCADeBZ8fsd5x4f2t0GowUJiJm2X6ms`, en `Codigo.gs`)
-
-| Hoja | Para qué |
-|---|---|
-| `Tracking Activo` | Tareas activas (16 columnas, datos desde fila 4) |
-| `Historial` | Tareas completadas |
-| `Proyectos` | Proyectos (15 columnas) |
-| `Equipos` | Equipos por país (code, country, leader, members, slackChannel…) |
-| `Config` | Pares clave/valor |
+> El "Legal Team Tracker" (otro spreadsheet `19eR-…` y un `Codigo.gs` con hojas
+> `Tracking Activo`/`Historial`/`Proyectos`/`Equipos`) que aparecía en versiones
+> viejas del repo **no pertenece a este proyecto de Apps Script** y se eliminó al
+> sincronizar. Si ese tracker sigue vivo, está en otro proyecto/Script ID aparte.
 
 ---
 
@@ -371,18 +360,15 @@ npm install                 # instala clasp (fijado en package.json)
 npx clasp login             # autenticación OAuth (token en ~/.clasprc.json)
 npx clasp status            # verifica el scriptId
 
-# ⚠️ PRIMERO reconciliar (el repo está incompleto):
-npx clasp pull              # trae el estado real del servidor → commit
-
-# Después del reconcile:
-npm run push:force          # GitHub → Apps Script (clasp push --force)
+npx clasp pull              # traer cambios Apps Script → repo (luego commit + git push)
+npm run push:force          # subir cambios repo → Apps Script (clasp push --force)
 ```
 
-- **Modelo elegido:** GitHub → Apps Script (push), con **GitHub Action**
-  automático en merge a `main` (`.github/workflows/clasp-push.yml`).
-- 🚦 **El Action está inerte** hasta que: (a) reconcilies el repo con `clasp
-  pull`, y (b) cargues el secret `CLASPRC_JSON`. Hasta entonces, no lo
-  habilites: pisaría el servidor con un repo incompleto.
+- **Modelo:** GitHub → Apps Script (push), con **GitHub Action** automático en
+  merge a `main` (`.github/workflows/clasp-push.yml`). El repo ya está
+  reconciliado con el servidor, así que el push es seguro.
+- Para activar el automático: carga el secret `CLASPRC_JSON` en el repo (ver el
+  runbook). Mientras no exista el secret, el Action falla sin tocar nada.
 
 ---
 
@@ -410,12 +396,12 @@ npm run push:force          # GitHub → Apps Script (clasp push --force)
 
 ## 12. Problemas conocidos y riesgos
 
-**Bloqueantes / arquitectura**
-- **Repo incompleto:** faltan `processWebPayload`, `getCampaignTypesForUser`,
-  `getFieldsForUserForm`, `askGemini`, `saveFeedback` (solo en el servidor).
-- **`doGet` sirve el Tracker, no el generador**; el punto de entrada real del
-  generador no está en el repo.
-- **Dos spreadsheets / dos apps** en un mismo proyecto: fácil de confundir.
+**Backend / arquitectura**
+- **Chatbot y feedback rotos:** el frontend llama a `askGemini` y `saveFeedback`,
+  pero esas funciones **no están definidas en el backend** → fallan en runtime.
+- **Nombres de archivo del servidor poco limpios** (`Admin.gs.js`, `Setup.gs.js`,
+  `Código.js` con acento): funcionan, pero conviene normalizarlos a futuro.
+- **Sin tests ni ambientes (dev/prod) separados;** un único Spreadsheet de datos.
 
 **Multi-país**
 - Solo CO sembrado y probado; supuestos colombianos hardcodeados; sin portugués

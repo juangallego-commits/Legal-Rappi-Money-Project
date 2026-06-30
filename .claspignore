@@ -1,19 +1,18 @@
 # .claspignore — controla QUÉ se sube a Apps Script con `clasp push`.
 #
-# ⚠️  IMPORTANTE: este repo es un SNAPSHOT PARCIAL del proyecto real.
-#     Antes del primer push hay que hacer `clasp pull` y reconciliar
-#     (ver docs/DEPLOY_CLASP.md). Un push sobre un repo incompleto BORRA
-#     en el servidor el código que no esté aquí.
+# Estrategia a prueba de balas: ignorar TODO por defecto y permitir SOLO los
+# 7 archivos reales del proyecto (los que existen en el servidor). Así NUNCA
+# se sube node_modules/, el README, docs/, "Propuesta de ajuste del front", etc.
 #
-# Estrategia segura: ignorar TODO por defecto y permitir solo los
-# archivos reales del proyecto Apps Script (código .gs, HTML y manifiesto).
-# Así nunca subimos por error node_modules/, documentos de trabajo
-# (p. ej. "Propuesta de ajuste del front"), el README, etc.
+# Si en el futuro agregas un archivo nuevo al proyecto Apps Script, recuerda
+# añadirlo también aquí con `!nombre`.
 
 **/**
 
-# --- Permitir SOLO los archivos del proyecto Apps Script ---
 !appsscript.json
-!*.gs
-!*.html
-!*.Html
+!Admin.gs.js
+!Config.gs.js
+!Código.js
+!Helpers.gs.js
+!Setup.gs.js
+!WebApp.Html

@@ -9,34 +9,24 @@ Line Apps Script Projects).
 
 ---
 
-## ⛔ LEE ESTO PRIMERO — el repo está incompleto
+## ✅ Estado actual: repo ya reconciliado con el servidor
 
-Una revisión exhaustiva del código encontró que **este repositorio es un snapshot
-PARCIAL del proyecto real en Apps Script**. Faltan funciones que el frontend
-invoca y que solo existen en el servidor:
+Originalmente este repo era un snapshot **viejo** del proyecto (le faltaba código
+real, como `processWebPayload`). Ya se hizo `clasp pull` y se reconcilió: el repo
+ahora contiene los **7 archivos reales del servidor**:
 
-| Función ausente en el repo | Para qué sirve |
-|---|---|
-| `processWebPayload` | **Genera el documento T&C** (la acción principal del botón "GENERAR DOCUMENTO") |
-| `getCampaignTypesForUser` | Carga las tarjetas de tipo de campaña en el formulario |
-| `getFieldsForUserForm` | Carga los campos dinámicos del formulario ("GOD MODE") |
-| `askGemini` | Chatbot de soporte (IA) |
-| `saveFeedback` | Guarda el feedback del usuario |
+```
+Código.js · Admin.gs.js · Config.gs.js · Helpers.gs.js · Setup.gs.js · WebApp.Html · appsscript.json
+```
 
-Además, el único `doGet` del repo (en `Codigo.gs`) sirve un archivo llamado
-`Dashboard` titulado *"Legal Tracker · Rappi"* — que es **otro producto** (un
-tracker de tareas legales), no el generador de T&C que está en `WebApp.Html`.
+Por eso, a partir de ahora **`clasp push` (GitHub → Apps Script) es seguro**: el
+repo y el servidor coinciden.
 
-### Qué implica esto para la sincronización
-
-> **`clasp push` hace que el servidor sea IGUAL al repo (con `--force` borra lo
-> que sobre).** Si haces push de este repo incompleto, **se eliminarán del
-> servidor `processWebPayload` y las demás funciones, y el generador en vivo
-> dejará de funcionar.**
-
-Por eso **el primer paso obligatorio es `clasp pull`**, NO `push`. Primero
-traemos el estado real del servidor, reconciliamos con git, y solo cuando el
-repo esté COMPLETO activamos el push automático.
+> ⚠️ Regla de oro del modelo "GitHub = fuente de verdad": el repo debe contener
+> SIEMPRE el proyecto COMPLETO (esos 7 archivos). Si alguna vez borras o dejas
+> incompleto un archivo aquí, el siguiente `push --force` lo borra del servidor.
+> Si tienes dudas, corre `clasp pull` antes de pushear para confirmar que estás
+> al día.
 
 ---
 
