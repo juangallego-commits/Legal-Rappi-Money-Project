@@ -36,7 +36,9 @@ function coreEngineV2(payload, submitterEmail) {
   try {
     const typeConfig = _getCampaignTypeConfig(campaignType);
     const registry = _getTemplateRegistry();
-    let template = registry.find(r => r.country_code === countryCode && r.campaign_type === campaignType && r.status === 'active' && (r.vertical === vertical || r.vertical === 'ALL' || !r.vertical));
+    // Precedencia: match exacto de país; si no hay, comodín global country_code === 'ALL'
+    const _matchTpl = (cc) => registry.find(r => r.country_code === cc && r.campaign_type === campaignType && r.status === 'active' && (r.vertical === vertical || r.vertical === 'ALL' || !r.vertical));
+    let template = _matchTpl(countryCode) || _matchTpl('ALL');
     
     if (template) {
       if (typeConfig && typeConfig.processing_mode === 'template_only') {
