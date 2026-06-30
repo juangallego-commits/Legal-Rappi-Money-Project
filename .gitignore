@@ -1,0 +1,11 @@
+# Dependencias
+node_modules/
+
+# Credenciales de clasp — NUNCA deben subirse al repo.
+# El login de clasp guarda el token OAuth aquí; va como secret en CI, no en git.
+.clasprc.json
+**/.clasprc.json
+
+# Logs / temporales
+*.log
+.DS_Store
