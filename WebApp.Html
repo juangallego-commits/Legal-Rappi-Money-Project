@@ -4247,6 +4247,22 @@ function showAddTemplateModal() {
 }
 function hideAddTemplateModal() { document.getElementById('addTemplateModal').classList.add('hidden'); }
 
+// Llena el autocompletado (<datalist>) con los Campaign_Types existentes; permite escribir uno nuevo.
+// Falla en silencio: nunca debe impedir que el modal se abra.
+function populateTemplateTypeList() {
+  try {
+    google.script.run.withSuccessHandler(function(r) {
+      try {
+        var res = JSON.parse(r);
+        var dl = document.getElementById('tpl_type_list');
+        if (dl && res && res.types) {
+          dl.innerHTML = res.types.map(function(t) { return '<option value="' + t.type_name + '"></option>'; }).join('');
+        }
+      } catch (e) {}
+    }).adminGetCampaignTypes();
+  } catch (e) {}
+}
+
 function editTemplate(index) {
   const tpl = adminTemplates[index]; if (!tpl) return;
   populateTemplateTypeList();
