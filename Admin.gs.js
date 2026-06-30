@@ -384,14 +384,90 @@ function _moveTemplateToFolder(docId, countryCode, countryName, campaignType) {
 // --- GEMINI Y SMART TEMPLATES WIZARD ---
 function analyzeTextForPlaceholders(payload) {
   try {
-    const prompt = buildAnalysisPrompt(payload.text, payload.countryCode, payload.campaignType);
-    return buildResponse(true, 'Análisis completado', callGeminiForAnalysis(prompt));
-  } catch (e) { return buildResponse(false, 'Error al analizar: ' + e.message); }
+    Logger.log('🧠 V3.4 analyzeText: país=' + payload.countryCode + ', tipo=' + payload.campaignType + ', textLen=' + (payload.text || '').length);
+
+    var prompt = buildAnalysisPrompt(payload.text, payload.countryCode, payload.campaignType);
+    Logger.log('🧠 Prompt generado: ' + prompt.length + ' caracteres');
+
+    var rawResult = callGeminiForAnalysis(prompt);
+    Logger.log('🧠 Gemini respondió: ' + JSON.stringify(rawResult).substring(0, 500));
+
+    // V3.4: Normalizar detecciones ANTES de enviar al frontend
+    if (rawResult && rawResult.detections && Array.isArray(rawResult.detections)) {
+      rawResult.detections = _normalizeDetections(rawResult.detections, payload.countryCode, payload.campaignType);
+      Logger.log('✅ V3.4: ' + rawResult.detections.length + ' detecciones normalizadas');
+    }
+
+    return buildResponse(true, 'Análisis completado', rawResult);
+  } catch (e) {
+    Logger.log('❌ analyzeTextForPlaceholders ERROR: ' + e.message + '\n' + e.stack);
+    return buildResponse(false, 'Error al analizar: ' + e.message);
+  }
 }
 
 function buildAnalysisPrompt(text, countryCode, campaignType) {
-  const keys = Object.entries(TW_CONFIG.KNOWN_PLACEHOLDERS).map(([k, v]) => `- {{${k}}}: ${v.label}`).join('\n');
-  return `Analiza este T&C para ${countryCode} y detecta variables. Usa estos u otros:\n${keys}\nResponde SOLO JSON: {"detections":[{"original_text":"","suggested_placeholder":"","label":""}]}\n\n${text.substring(0,15000)}`;
+  // V3.4: Prompt exhaustivo que obliga a Gemini a mapear a placeholders conocidos
+  var catalog = '';
+
+  // 1. BASE_FIELD_MAP (section=0 — formulario estático, NUNCA preguntar de nuevo)
+  catalog += '\n## CAMPOS BASE (el sistema YA los pregunta en el formulario principal):\n';
+  if (typeof BASE_FIELD_MAP !== 'undefined') {
+    var baseKeys = Object.keys(BASE_FIELD_MAP);
+    for (var b = 0; b < baseKeys.length; b++) {
+      catalog += '- {{' + baseKeys[b] + '}} → campo: ' + BASE_FIELD_MAP[baseKeys[b]].canonical + '\n';
+    }
+  }
+
+  // 2. DERIVED_FIELDS (calculados automáticamente del payload — NO crear nuevos)
+  catalog += '\n## CAMPOS DERIVADOS (el sistema los calcula automáticamente, usar estos EXACTOS):\n';
+  if (typeof DERIVED_FIELDS !== 'undefined') {
+    var derivedKeys = Object.keys(DERIVED_FIELDS);
+    for (var d = 0; d < derivedKeys.length; d++) {
+      catalog += '- {{' + derivedKeys[d] + '}}\n';
+    }
+  }
+
+  // 3. LEGAL_DEFAULTS_MAP (section=L — se resuelven del país, NUNCA preguntar)
+  catalog += '\n## CAMPOS LEGALES (se resuelven automáticamente por país, NUNCA pedir al usuario):\n';
+  if (typeof LEGAL_DEFAULTS_MAP !== 'undefined') {
+    var legalKeys = Object.keys(LEGAL_DEFAULTS_MAP);
+    for (var l = 0; l < legalKeys.length; l++) {
+      catalog += '- {{' + legalKeys[l] + '}} → columna: ' + LEGAL_DEFAULTS_MAP[legalKeys[l]].column + '\n';
+    }
+  }
+
+  // 4. KNOWN_PLACEHOLDERS (específicos de campaña)
+  catalog += '\n## CAMPOS ESPECÍFICOS DE CAMPAÑA (solo si no está arriba):\n';
+  var knownEntries = Object.entries(TW_CONFIG.KNOWN_PLACEHOLDERS);
+  for (var k = 0; k < knownEntries.length; k++) {
+    catalog += '- {{' + knownEntries[k][0] + '}}: ' + knownEntries[k][1].label + ' (' + knownEntries[k][1].type + ')\n';
+  }
+
+  var prompt = 'Eres un asistente legal experto en Términos y Condiciones de campañas de marketing en Latinoamérica.\n\n';
+  prompt += 'TAREA: Analiza el siguiente documento de T&C para ' + countryCode + ' (tipo de campaña: ' + (campaignType || 'general') + '). ';
+  prompt += 'Identifica TODOS los valores que son variables (cambian entre campañas) y DEBEN ser reemplazados por placeholders.\n\n';
+  prompt += '═══════════════════════════════════════\n';
+  prompt += 'CATÁLOGO COMPLETO DE PLACEHOLDERS CONOCIDOS:\n';
+  prompt += catalog;
+  prompt += '\n═══════════════════════════════════════\n\n';
+  prompt += 'REGLAS OBLIGATORIAS (violarlas es un error grave):\n\n';
+  prompt += '1. MAPEAR PRIMERO: Antes de crear CUALQUIER placeholder nuevo, busca en el catálogo anterior. Si existe uno que coincide semánticamente, ÚSALO con su nombre exacto.\n\n';
+  prompt += '2. NUNCA CREAR PLACEHOLDERS LITERALES: Si el texto dice "Nacional", NO crees {{Nacional}}. Mapea a {{TEXTO_TERRITORIO}}. Si dice "24 de marzo de 2026", NO crees {{24 de marzo de 2026}}. Mapea a {{FECHA_INICIO}} o {{FECHA_FIN}}.\n\n';
+  prompt += '3. NUNCA CREAR PLACEHOLDERS PARA CAMPOS LEGALES: Textos como "Superintendencia de Industria y Comercio", "Ley 1480 de 2011", "Tribunales de Bogotá" son cláusulas legales fijas. Mapea a {{JURISDICCION}}, {{LEY_APLICABLE}}, {{ENTIDAD_VIGILANCIA}}, {{PAIS_LEGAL}}, {{URL_BASES}} o {{MONEDA_TEXTO}}.\n\n';
+  prompt += '4. NUNCA CREAR PLACEHOLDERS PARA VALORES COMPUESTOS QUE YA EXISTEN: "veinte por ciento (20%)" → {{TEXTO_PORCENTAJE}}. "cincuenta mil (50.000)" → {{TOPE_LETRAS}} o {{PRESUPUESTO_LETRAS}}. El sistema calcula estos automáticamente.\n\n';
+  prompt += '5. FORMATO OBLIGATORIO: Todos los placeholders deben ser MAYUSCULAS_CON_UNDERSCORES. Ejemplo: NOMBRE_CAMPANA, no nombreCampaña ni Nombre-Campaña.\n\n';
+  prompt += '6. SIN DUPLICADOS: Cada placeholder aparece UNA SOLA VEZ en las detecciones, incluso si el valor aparece múltiples veces en el texto. Usa el campo "occurrences" para indicar cuántas veces aparece.\n\n';
+  prompt += '7. SOLO CREAR NUEVOS para conceptos que genuinamente NO existen en el catálogo (ej: una mecánica muy particular de una campaña específica).\n\n';
+  prompt += '8. CONFIANZA:\n';
+  prompt += '   - HIGH = mapeó a un placeholder del catálogo\n';
+  prompt += '   - MEDIUM = placeholder nuevo pero el patrón es claro\n';
+  prompt += '   - LOW = incierto, requiere revisión humana\n\n';
+  prompt += 'FORMATO DE RESPUESTA — Responde SOLO con este JSON, sin texto adicional, sin markdown:\n';
+  prompt += '{"detections":[{"original_text":"texto EXACTO del documento","suggested_placeholder":"NOMBRE_PLACEHOLDER","label":"Descripción corta en español","confidence":"HIGH"}]}\n\n';
+  prompt += 'DOCUMENTO A ANALIZAR:\n═══════════════════════════════════════\n';
+  prompt += text.substring(0, 15000);
+
+  return prompt;
 }
 
 function callGeminiForAnalysis(prompt) {
@@ -628,8 +704,9 @@ function createTemplateFromWizard(payload) {
       mappings.forEach(function(m, idx) {
         if (!m.confirmed) return;
 
-        // V3.3: Limpiar antes de envolver (evita {{{{X}}}})
+        // V3.4: Limpiar y normalizar formato UPPER_CASE
         var rawPh = m.placeholder.replace(/^\{\{/, '').replace(/\}\}$/, '');
+        rawPh = rawPh.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
         var placeholderStr = '{{' + rawPh + '}}';
 
         // Buscar si ya existe este field
@@ -682,12 +759,16 @@ function createTemplateFromWizard(payload) {
           var i = fieldHeaders.indexOf(col);
           if (i >= 0) fieldRow[i] = val || '';
         };
-        // V3.3: Limpiar placeholder para lookup correcto en BASE_FIELD_MAP
+        // V3.4: Safety net — normalizar placeholder antes del lookup
         var cleanPhForMap = m.placeholder.replace(/^\{\{/, '').replace(/\}\}$/, '');
+        cleanPhForMap = cleanPhForMap.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+
         var baseMapping = (typeof BASE_FIELD_MAP !== 'undefined') ? BASE_FIELD_MAP[cleanPhForMap] : null;
         var isBaseField = !!baseMapping;
         // V3.3: Detectar si es un campo legal auto-resuelto
         var isLegalDefault = (typeof LEGAL_DEFAULTS_MAP !== 'undefined') ? !!LEGAL_DEFAULTS_MAP[cleanPhForMap] : false;
+        // V3.4: Detectar si es un campo derivado (calculado automáticamente)
+        var isDerivedField = (typeof DERIVED_FIELDS !== 'undefined') ? !!DERIVED_FIELDS[cleanPhForMap] : false;
         setFieldVal('field_id', fieldId);
         setFieldVal('country_code', countryCode);
         setFieldVal('campaign_type', campaignType);
@@ -696,9 +777,17 @@ function createTemplateFromWizard(payload) {
         setFieldVal('field_type', fieldType);
         setFieldVal('icon', '');
         setFieldVal('required', isRequired);
-        setFieldVal('section', isBaseField ? '0' : (isLegalDefault ? 'L' : '3'));
+        // V3.4: Campos derivados también van a section=0 (el KAM NO los ve)
+        setFieldVal('section', isBaseField ? '0' : (isLegalDefault ? 'L' : (isDerivedField ? '0' : '3')));
         if (fieldHeaders.indexOf('canonical_field_id') >= 0) {
-        setFieldVal('canonical_field_id', isBaseField ? baseMapping.canonical : '');
+          if (isBaseField) {
+            setFieldVal('canonical_field_id', baseMapping.canonical);
+          } else if (isDerivedField) {
+            // V3.4: Marcar derivados con prefijo para que getFieldsForUserForm los excluya
+            setFieldVal('canonical_field_id', 'derived:' + cleanPhForMap);
+          } else {
+            setFieldVal('canonical_field_id', '');
+          }
         }
         setFieldVal('options', '');
         setFieldVal('default_value', '');
@@ -796,7 +885,254 @@ function createTemplateFromWizard(payload) {
     return buildResponse(false, 'Error al crear template: ' + e.message);
   }
 }
+// =================================================================
+// V3.4: NORMALIZACIÓN DE DETECCIONES (Safety Net post-Gemini)
+// Corrige placeholders que Gemini pudo haber generado mal.
+// Se ejecuta DESPUÉS de Gemini y ANTES de mostrar al usuario.
+// =================================================================
+function _normalizeDetections(detections, countryCode, campaignType) {
+  if (!detections || !Array.isArray(detections)) return detections;
 
+  // ─── 1. CONSTRUIR CATÁLOGO COMPLETO DE PLACEHOLDERS CONOCIDOS ───
+  var knownMap = {}; // key → { tier: 'base'|'derived'|'legal'|'known', section: '0'|'L'|'3' }
+
+  if (typeof BASE_FIELD_MAP !== 'undefined') {
+    var bKeys = Object.keys(BASE_FIELD_MAP);
+    for (var i = 0; i < bKeys.length; i++) knownMap[bKeys[i]] = { tier: 'base', section: '0' };
+  }
+  if (typeof DERIVED_FIELDS !== 'undefined') {
+    var dKeys = Object.keys(DERIVED_FIELDS);
+    for (var i = 0; i < dKeys.length; i++) {
+      if (!knownMap[dKeys[i]]) knownMap[dKeys[i]] = { tier: 'derived', section: '0' };
+    }
+  }
+  if (typeof LEGAL_DEFAULTS_MAP !== 'undefined') {
+    var lKeys = Object.keys(LEGAL_DEFAULTS_MAP);
+    for (var i = 0; i < lKeys.length; i++) knownMap[lKeys[i]] = { tier: 'legal', section: 'L' };
+  }
+  var kpEntries = Object.keys(TW_CONFIG.KNOWN_PLACEHOLDERS);
+  for (var i = 0; i < kpEntries.length; i++) {
+    if (!knownMap[kpEntries[i]]) knownMap[kpEntries[i]] = { tier: 'known', section: '3' };
+  }
+
+  // ─── 2. DICCIONARIO DE SINÓNIMOS Y PATRONES ───
+  // Mapea patrones comunes a placeholder correcto
+  var SYNONYM_RULES = [
+    // --- Fechas ---
+    { test: function(orig, ph) { return /^\d{1,2}\s+de\s+\w+\s+de\s+\d{4}$/i.test(orig); },
+      resolve: function(orig, ph, idx, all) {
+        // Primera fecha → FECHA_INICIO, segunda → FECHA_FIN, tercera → FECHA_ANUNCIO
+        var dateDetections = all.filter(function(d) { return /^\d{1,2}\s+de\s+\w+\s+de\s+\d{4}$/i.test(d.original_text); });
+        var myPos = -1;
+        for (var i = 0; i < dateDetections.length; i++) {
+          if (dateDetections[i].original_text === orig) { myPos = i; break; }
+        }
+        if (myPos === 0) return 'FECHA_INICIO';
+        if (myPos === 1) return 'FECHA_FIN';
+        if (myPos === 2) return 'FECHA_ANUNCIO';
+        return 'FECHA_INICIO';
+      }
+    },
+    // --- Territorio ---
+    { test: function(orig, ph) {
+        return /^nacional$/i.test(orig) || /^nacional$/i.test(ph) ||
+               ph === 'Nacional' || ph === 'NACIONAL' ||
+               /territorio/i.test(ph) || /ciudad(es)?/i.test(ph);
+      },
+      resolve: function() { return 'TEXTO_TERRITORIO'; }
+    },
+    // --- Porcentajes ---
+    { test: function(orig, ph) {
+        return /\d+\s*%/.test(orig) || /por\s+ciento/i.test(orig) ||
+               /porcentaje/i.test(ph) || /cashback/i.test(ph);
+      },
+      resolve: function() { return 'TEXTO_PORCENTAJE'; }
+    },
+    // --- Montos en letras (tope) ---
+    { test: function(orig, ph) {
+        return (/tope/i.test(ph) || /tope/i.test(orig)) && (/letras/i.test(ph) || /\(\s*[\d.,]+\s*\)/i.test(orig));
+      },
+      resolve: function() { return 'TOPE_LETRAS'; }
+    },
+    // --- Montos numéricos (tope) ---
+    { test: function(orig, ph) {
+        return (/tope/i.test(ph) && /num/i.test(ph));
+      },
+      resolve: function() { return 'TOPE_NUM'; }
+    },
+    // --- Presupuesto ---
+    { test: function(orig, ph) {
+        return /presupuesto/i.test(ph) || /existencias/i.test(ph);
+      },
+      resolve: function(orig, ph) {
+        return /letras/i.test(ph) ? 'PRESUPUESTO_LETRAS' : 'PRESUPUESTO_NUM';
+      }
+    },
+    // --- Jurisdicción ---
+    { test: function(orig, ph) {
+        return /jurisdicci[oó]n/i.test(orig) || /jurisdicci[oó]n/i.test(ph) ||
+               /tribunales?\s+de/i.test(orig) || /juzgados?\s+de/i.test(orig);
+      },
+      resolve: function() { return 'JURISDICCION'; }
+    },
+    // --- Ley aplicable ---
+    { test: function(orig, ph) {
+        return /ley\s+(aplicable|\d+)/i.test(orig) || /ley\s+aplicable/i.test(ph) ||
+               /legislaci[oó]n/i.test(orig) || /c[oó]digo\s+civil/i.test(orig) ||
+               /estatuto\s+del\s+consumidor/i.test(orig);
+      },
+      resolve: function() { return 'LEY_APLICABLE'; }
+    },
+    // --- Entidad de vigilancia ---
+    { test: function(orig, ph) {
+        return /superintendencia/i.test(orig) || /entidad.*vigilancia/i.test(ph) ||
+               /sic\b/i.test(orig) || /protecci[oó]n.*consumidor/i.test(orig);
+      },
+      resolve: function() { return 'ENTIDAD_VIGILANCIA'; }
+    },
+    // --- Moneda ---
+    { test: function(orig, ph) {
+        return /moneda/i.test(ph) || /pesos?\s+(colombianos?|mexicanos?)/i.test(orig) ||
+               /moneda\s+legal/i.test(orig);
+      },
+      resolve: function() { return 'MONEDA_TEXTO'; }
+    },
+    // --- País legal ---
+    { test: function(orig, ph) {
+        return /pa[ií]s\s+legal/i.test(ph) || /rep[uú]blica\s+de/i.test(orig);
+      },
+      resolve: function() { return 'PAIS_LEGAL'; }
+    },
+    // --- URL bases ---
+    { test: function(orig, ph) {
+        return /url.*bases/i.test(ph) || /promos\.rappi\.com/i.test(orig) ||
+               /https?:\/\/.*rappi/i.test(orig);
+      },
+      resolve: function() { return 'URL_BASES'; }
+    },
+    // --- Nombre de campaña ---
+    { test: function(orig, ph) {
+        return ph === 'NOMBRE_CAMPANA' || /nombre.*campa[ñn]a/i.test(ph);
+      },
+      resolve: function() { return 'NOMBRE_CAMPANA'; }
+    },
+    // --- Tienda ---
+    { test: function(orig, ph) {
+        return /tienda.*participante/i.test(ph) || /aliado.*comercial/i.test(ph) ||
+               /marca.*aliada/i.test(ph);
+      },
+      resolve: function() { return 'TIENDA_BASE'; }
+    },
+    // --- Segmento ---
+    { test: function(orig, ph) {
+        return /segmento/i.test(ph) || /usuarios?\s+participantes/i.test(orig);
+      },
+      resolve: function() { return 'TEXTO_SEGMENTO'; }
+    },
+    // --- Método de pago ---
+    { test: function(orig, ph) {
+        return /m[eé]todo.*pago/i.test(ph) || /medios?\s+de\s+pago/i.test(orig);
+      },
+      resolve: function() { return 'TEXTO_METODO_PAGO'; }
+    },
+    // --- Lugar redención ---
+    { test: function(orig, ph) {
+        return /lugar.*redenci[oó]n/i.test(ph) || /redimir.*cr[eé]ditos/i.test(orig);
+      },
+      resolve: function() { return 'TEXTO_LUGAR_REDENCION'; }
+    },
+    // --- Vigencia créditos ---
+    { test: function(orig, ph) {
+        return /vigencia.*cr[eé]ditos/i.test(ph);
+      },
+      resolve: function() { return 'TEXTO_VIGENCIA_CREDITOS'; }
+    },
+    // --- Carga de créditos ---
+    { test: function(orig, ph) {
+        return /carga.*cr[eé]ditos/i.test(ph) || /momento.*carga/i.test(ph);
+      },
+      resolve: function() { return 'TEXTO_CARGA'; }
+    },
+    // --- Número de ganadores ---
+    { test: function(orig, ph) {
+        return /ganador(es)?/i.test(ph) && /n[uú]mero|cantidad|num/i.test(ph);
+      },
+      resolve: function() { return 'NUM_GANADORES'; }
+    },
+    // --- Criterio ganador ---
+    { test: function(orig, ph) {
+        return /criterio.*ganador/i.test(ph) || /mayor\s+(valor|cantidad)/i.test(orig);
+      },
+      resolve: function() { return 'CRITERIO_GANADOR'; }
+    },
+    // --- Organizador ---
+    { test: function(orig, ph) {
+        return /organizador/i.test(ph) || /raz[oó]n\s+social/i.test(ph);
+      },
+      resolve: function() { return 'ORGANIZADOR'; }
+    }
+  ];
+
+  // ─── 3. PROCESAR CADA DETECCIÓN ───
+  var seen = {}; // Para deduplicar
+  var normalized = [];
+
+  for (var idx = 0; idx < detections.length; idx++) {
+    var det = detections[idx];
+    var origText = det.original_text || '';
+    var rawPh = (det.suggested_placeholder || '').replace(/^\{\{/, '').replace(/\}\}$/, '');
+
+    // 3a. Si ya está en el catálogo conocido → perfecto, mantener
+    if (knownMap[rawPh]) {
+      det.suggested_placeholder = rawPh;
+      det._tier = knownMap[rawPh].tier;
+      det._section = knownMap[rawPh].section;
+    } else {
+      // 3b. Intentar resolver con sinónimos/patrones
+      var resolved = false;
+      for (var r = 0; r < SYNONYM_RULES.length; r++) {
+        if (SYNONYM_RULES[r].test(origText, rawPh)) {
+          var newPh = SYNONYM_RULES[r].resolve(origText, rawPh, idx, detections);
+          if (newPh && knownMap[newPh]) {
+            det.suggested_placeholder = newPh;
+            det._tier = knownMap[newPh].tier;
+            det._section = knownMap[newPh].section;
+            det.confidence = 'HIGH'; // Elevamos confianza porque lo reconocimos
+            resolved = true;
+            break;
+          }
+        }
+      }
+
+      // 3c. Si no se resolvió, normalizar el formato al menos
+      if (!resolved) {
+        rawPh = rawPh.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '');
+        if (rawPh.length < 3) rawPh = 'CAMPO_' + (idx + 1); // Evitar placeholders vacíos
+        det.suggested_placeholder = rawPh;
+        det._tier = 'specific';
+        det._section = '3';
+        det.confidence = det.confidence || 'MEDIUM';
+      }
+    }
+
+    // 3d. Deduplicar por placeholder final
+    if (!seen[det.suggested_placeholder]) {
+      seen[det.suggested_placeholder] = true;
+      normalized.push(det);
+    } else {
+      // Ya existe — incrementar occurrences del primero
+      for (var n = 0; n < normalized.length; n++) {
+        if (normalized[n].suggested_placeholder === det.suggested_placeholder) {
+          normalized[n].occurrences = (normalized[n].occurrences || 1) + 1;
+          break;
+        }
+      }
+    }
+  }
+
+  Logger.log('🔄 Normalización V3.4: ' + detections.length + ' detecciones → ' + normalized.length + ' únicas');
+  return normalized;
+}
 function fetchGoogleDocContent(payload) {
   try {
     const match = payload.docUrl.match(/\/d\/([a-zA-Z0-9_-]{25,})/);

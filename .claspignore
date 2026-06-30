@@ -1,0 +1,18 @@
+# .claspignore — controla QUÉ se sube a Apps Script con `clasp push`.
+#
+# Estrategia a prueba de balas: ignorar TODO por defecto y permitir SOLO los
+# 7 archivos reales del proyecto (los que existen en el servidor). Así NUNCA
+# se sube node_modules/, el README, docs/, "Propuesta de ajuste del front", etc.
+#
+# Si en el futuro agregas un archivo nuevo al proyecto Apps Script, recuerda
+# añadirlo también aquí con `!nombre`.
+
+**/**
+
+!appsscript.json
+!Admin.gs.js
+!Config.gs.js
+!Código.js
+!Helpers.gs.js
+!Setup.gs.js
+!WebApp.Html

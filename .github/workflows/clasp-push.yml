@@ -1,0 +1,54 @@
+name: Deploy to Apps Script (clasp push)
+
+# Sincroniza GitHub -> Google Apps Script.
+# Se dispara al hacer push a main sobre archivos del proyecto, y también
+# manualmente desde la pestaña Actions (workflow_dispatch).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.js"
+      - "**.gs"
+      - "**.html"
+      - "**.Html"
+      - "appsscript.json"
+      - ".clasp.json"
+      - ".claspignore"
+      - ".github/workflows/clasp-push.yml"
+  workflow_dispatch: {}
+
+# Evita pushes simultáneos pisándose entre sí.
+concurrency:
+  group: clasp-push
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install clasp
+        run: npm install -g @google/clasp@2.4.2
+
+      - name: Write clasp credentials (~/.clasprc.json)
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          if [ -z "$CLASPRC_JSON" ]; then
+            echo "::error::Falta el secret CLASPRC_JSON. Corre 'clasp login' en tu equipo y pega el contenido de ~/.clasprc.json en el secret del repo CLASPRC_JSON."
+            exit 1
+          fi
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+
+      - name: Show clasp target (sanity check)
+        run: clasp status || true
+
+      - name: Push to Apps Script
+        run: clasp push --force

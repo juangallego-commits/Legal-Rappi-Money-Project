@@ -1124,3 +1124,154 @@ function verifyV33() {
   Logger.log('');
   Logger.log('🔍 Verificación completa');
 }
+function emergencyRestoreCashback() {
+  var doc = DocumentApp.create('Template_CO_Cashback_RESTORED');
+  var body = doc.getBody();
+  
+  var lines = [
+    {text: 'TÉRMINOS Y CONDICIONES – CAMPAÑA "{{NOMBRE_CAMPANA_UPPER}}"', bold: true, center: true},
+    {text: ''},
+    {text: 'Por medio del presente documento se dan a conocer los términos y condiciones de la campaña denominada "{{NOMBRE_CAMPANA}}" (en adelante la "Campaña"). La participación en la Campaña constituye la aceptación total e incondicional de los presentes Términos y Condiciones.'},
+    {text: ''},
+    {text: 'I. Territorio:', bold: true},
+    {text: 'La Campaña será válida únicamente para las órdenes realizadas dentro de las zonas de cobertura de {{REF_TIENDA}} en la Plataforma Rappi, en {{TEXTO_TERRITORIO}}.'},
+    {text: ''},
+    {text: 'II. Vigencia:', bold: true},
+    {text: 'Campaña válida desde las {{HORA_INICIO}} del {{FECHA_INICIO}} hasta las {{HORA_FIN}} del {{FECHA_FIN}} y/o hasta agotar existencias, lo que primero ocurra. Para efectos de la Campaña, se ha establecido un valor total máximo de {{PRESUPUESTO_LETRAS}} ({{PRESUPUESTO_NUM}}) de Créditos a ser entregados como Cashback a los Usuarios/Consumidores que participen en la Campaña ("Existencias").'},
+    {text: ''},
+    {text: 'III. Tipo de Usuarios Participantes:', bold: true},
+    {text: '{{TEXTO_SEGMENTO}}'},
+    {text: ''},
+    {text: 'IV. Tienda Participante:', bold: true},
+    {text: 'Participarán todas las tiendas virtuales de {{TIENDA_DISPLAY}} {{DEFINICION_TIENDA}} al interior de la Plataforma Rappi ubicadas dentro del Territorio.'},
+    {text: ''},
+    {text: 'V. Productos Participantes:', bold: true},
+    {text: 'Participarán todos los productos que hacen parte del catálogo de {{REF_TIENDA}} al interior de la Plataforma Rappi.'},
+    {text: ''},
+    {text: 'VI. Beneficio:', bold: true},
+    {text: 'Los Usuarios/Consumidores Participantes que durante la Vigencia de la Campaña compren cualquiera de los Productos Participantes de {{REF_TIENDA}} recibirán en Créditos el {{TEXTO_PORCENTAJE}} del valor de dichos Productos Participantes (en adelante el "Cashback"). Dichos Créditos serán cargados a su cuenta al interior de la Plataforma Rappi. Se aclara que el monto máximo del Cashback que se otorgará en Créditos es de {{TOPE_LETRAS}} ({{TOPE_NUM}}) Créditos. Por lo tanto, en caso de que el Usuario/Consumidor realice una compra en {{REF_TIENDA}} por un valor superior a los {{UMBRAL_LETRAS}} pesos M/Cte (${{UMBRAL_NUM}}), recibirá un monto máximo en Créditos de {{TOPE_LETRAS}} ({{TOPE_NUM}}). Los Créditos serán cargados a la cuenta de los Usuarios/Consumidores Participantes {{TEXTO_CARGA}}. Los Créditos {{TEXTO_VIGENCIA_CREDITOS}}, entendiéndose que si el Usuario/Consumidor no hace uso de ellos dentro del término estipulado los perderá, sin poder hacer uso de ellos posteriormente.'},
+    {text: ''},
+    {text: 'VII. Condiciones y Restricciones:', bold: true},
+    {text: 'Podrán participar gratuitamente todas las personas naturales que sean Usuarios/Consumidores de la Plataforma Rappi que se encuentren en el Territorio y que cumplan las siguientes condiciones:'},
+  ];
+  
+  var restrictions = [
+    'Campaña válida únicamente para órdenes realizadas a través de {{REF_TIENDA}}, al interior de la Plataforma Rappi.',
+    'La presente Campaña se encuentra sujeta a los horarios de operación de los puntos de venta de {{REF_TIENDA}}.',
+    'Los descuentos de los productos y/o servicios objeto de la Campaña no son intercambiables ni transferibles.',
+    'Campaña válida para todas las órdenes que cumplan las condiciones y restricciones establecidas en los presentes Términos y Condiciones.',
+    'Campaña válida durante la Vigencia y/o hasta agotar existencias, lo que primero ocurra.',
+    'El Beneficio obtenido en virtud de la presente Campaña no es acumulable con otras promociones exhibidas en la Plataforma Rappi.',
+    'Máximo {{LIMITE_ORDENES}} {{TEXTO_ORDENES}} por Usuario/Consumidor.',
+    'Se aclara que el monto máximo de Créditos a recibir por el Usuario/Consumidor Participante es de {{TOPE_LETRAS}} ({{TOPE_NUM}}), de acuerdo con lo indicado en la sección VI (Beneficio).',
+    'En caso de cancelación total o parcial de la orden, el Usuario/Consumidor Participante no tendrá derecho al Beneficio.',
+    '{{TEXTO_LUGAR_REDENCION}}',
+    'Se aclara que los Créditos no tienen algún valor monetario, ni constituyen un medio de pago, instrumento crediticio o financiero.',
+    'Se aclara que los Créditos no pueden ser utilizados en las secciones denominadas "Cajero ATM" y "RappiFavor" de la Plataforma Rappi, ni tampoco pueden ser utilizados para pagar el valor del costo de envío, la tarifa de servicio de un pedido o la propina.',
+    '{{CONDICIONES_ESPECIALES}}'
+  ];
+  
+  var closing = [
+    {text: ''},
+    {text: 'VIII. Medio de Pago:', bold: true},
+    {text: '{{TEXTO_METODO_PAGO}}'},
+    {text: ''},
+    {text: 'IX. Modificaciones e Interpretación:', bold: true},
+    {text: 'Rappi se reserva el derecho de cancelar órdenes si detecta un comportamiento irregular por parte del Usuario/Consumidor en la Plataforma Rappi. Rappi se reserva el derecho de rechazar y cancelar cualquier orden que, por sus características, Rappi determine que no aplica para el Beneficio de la presente Campaña, sin previo aviso al Usuario/Consumidor.'},
+    {text: ''},
+    {text: 'X. Declaración:', bold: true},
+    {text: 'El Usuario/Consumidor reconoce y acepta que quien exhibe, ofrece, promociona y comercializa los productos adquiridos a través de la Plataforma Rappi {{DECLARACION_TIENDA}}. Rappi no comercializa productos puesto que es solo una plataforma tecnológica de contacto.'},
+    {text: ''},
+    {text: 'Se aclara que los presentes Términos y Condiciones se encuentran sujetos a los Términos y Condiciones de Uso de la Plataforma Rappi, los cuales se encuentran en la siguiente dirección electrónica: https://legal.rappi.com.co/colombia/terminos-y-condiciones-de-uso-de-plataforma-rappi-2/.'},
+    {text: ''},
+    {text: 'XI. Jurisdicción y Solución de conflictos:', bold: true},
+    {text: 'Los presentes Términos y Condiciones se regirán por las leyes de Colombia. Toda controversia surgida en razón de la Campaña o de los presentes Términos y Condiciones intentará ser resuelta por arreglo directo de las partes y/o a través de la conciliación como mecanismo alternativo de solución de conflictos. Si lo anterior no fuere posible, la controversia se someterá a la justicia ordinaria.'}
+  ];
+  
+  // Escribir párrafos principales
+  lines.forEach(function(line) {
+    var para = body.appendParagraph(line.text);
+    if (line.bold) para.setBold(true);
+    if (line.center) para.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    if (!line.bold && !line.center && line.text.length > 0) para.setAlignment(DocumentApp.HorizontalAlignment.JUSTIFY);
+  });
+  
+  // Escribir restricciones como lista
+  restrictions.forEach(function(r) {
+    body.appendListItem(r).setGlyphType(DocumentApp.GlyphType.BULLET);
+  });
+  
+  // Escribir cierre
+  closing.forEach(function(line) {
+    var para = body.appendParagraph(line.text);
+    if (line.bold) para.setBold(true);
+    if (!line.bold && line.text.length > 0) para.setAlignment(DocumentApp.HorizontalAlignment.JUSTIFY);
+  });
+  
+  doc.saveAndClose();
+  
+  var docId = doc.getId();
+  Logger.log('✅ Template Cashback restaurado');
+  Logger.log('📋 Doc ID: ' + docId);
+  Logger.log('🔗 URL: https://docs.google.com/document/d/' + docId + '/edit');
+  Logger.log('');
+  Logger.log('👉 SIGUIENTE: Ve al Admin Panel → Templates → Nueva Plantilla');
+  Logger.log('   País: CO | Tipo: Cashback | Doc ID: ' + docId + ' | Status: Activo');
+  
+  return docId;
+}
+function registerGlobalTemplate() {
+  var sheet = _getSheet(REGISTRY_SHEET_NAME);
+  if (!sheet) { Logger.log('❌ Template_Registry no existe'); return; }
+  
+  // El Doc ID de tu template global v2 — REEMPLAZA CON EL TUYO
+  var GLOBAL_DOC_ID = '1tes5Vd8Ga7PCEaCpSl_PZ5gYtlQTX-os-VTQDQhvm1s';
+  
+  var countries = [
+    {code:'MX', name:'México', currency:'MXN', symbol:'$'},
+    {code:'PE', name:'Perú', currency:'PEN', symbol:'S/'},
+    {code:'CL', name:'Chile', currency:'CLP', symbol:'$'},
+    {code:'AR', name:'Argentina', currency:'ARS', symbol:'$'},
+    {code:'EC', name:'Ecuador', currency:'USD', symbol:'$'},
+    {code:'UY', name:'Uruguay', currency:'UYU', symbol:'$'},
+    {code:'CR', name:'Costa Rica', currency:'CRC', symbol:'₡'}
+  ];
+  
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var today = new Date().toISOString().split('T')[0];
+  var email = Session.getActiveUser().getEmail();
+  
+  countries.forEach(function(c) {
+    // Verificar si ya existe
+    var data = sheet.getDataRange().getValues();
+    var exists = false;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === c.code && String(data[i][2]) === 'Cashback') {
+        exists = true; break;
+      }
+    }
+    if (exists) { Logger.log('⏭️ ' + c.code + ' ya tiene Cashback registrado'); return; }
+    
+    var row = new Array(headers.length).fill('');
+    var set = function(col, val) { var idx = headers.indexOf(col); if (idx >= 0) row[idx] = val || ''; };
+    
+    set('country_code', c.code);
+    set('country_name', c.name);
+    set('campaign_type', 'Cashback');
+    set('template_doc_id', GLOBAL_DOC_ID);
+    set('version', '2.0');
+    set('status', 'active');
+    set('currency_code', c.currency);
+    set('currency_symbol', c.symbol);
+    set('legal_owner', email);
+    set('last_updated', today);
+    set('notes', 'Template global v2 — mismo Doc para todos los países');
+    set('submitted_by', email);
+    set('vertical', 'ALL');
+    
+    sheet.appendRow(row);
+    Logger.log('✅ ' + c.code + ' — ' + c.name + ' registrado');
+  });
+  
+  Logger.log('🎉 Registro completo');
+}
