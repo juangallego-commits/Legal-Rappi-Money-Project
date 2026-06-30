@@ -175,6 +175,36 @@ function _ensureCampaignTypeActive(campaignType) {
   }
 }
 
+// Crea el Campaign_Type si no existe (reutilizado por el Wizard y por adminSaveTemplate).
+// Si ya existe, NO lo toca. Misma lógica/llave (type_name) y status que el template.
+function _ensureCampaignTypeExists(campaignType, countryCode, userEmail, initialStatus) {
+  try {
+    var ctSheet = _getSheet(CAMPAIGN_TYPES_SHEET);
+    if (!ctSheet) return;
+    var existingType = _sheetToObjects(ctSheet).find(function(t) { return t.type_name === campaignType; });
+    if (existingType) return; // ya existe → no lo tocamos
+    var ctHeaders = ctSheet.getRange(1, 1, 1, ctSheet.getLastColumn()).getValues()[0];
+    var ctRow = new Array(ctHeaders.length).fill('');
+    var setCtVal = function(col, val) { var i = ctHeaders.indexOf(col); if (i >= 0) ctRow[i] = val || ''; };
+    var typeId = String(campaignType).toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    setCtVal('type_id', typeId);
+    setCtVal('type_name', campaignType);
+    setCtVal('description', 'Creado al registrar plantilla');
+    setCtVal('parent_type', '');
+    setCtVal('processing_mode', 'template_only');
+    setCtVal('icon', 'fa-file-lines');
+    setCtVal('color', '#3B82F6');
+    setCtVal('status', initialStatus); // mismo status que el template → no exponer prematuramente
+    setCtVal('countries', countryCode);
+    setCtVal('created_by', userEmail);
+    setCtVal('created_date', new Date().toISOString().split('T')[0]);
+    ctSheet.appendRow(ctRow);
+    Logger.log('🆕 Campaign_Type creado: ' + campaignType + ' [' + initialStatus + ']');
+  } catch (e) {
+    Logger.log('⚠️ Campaign_Types check/create error: ' + e.message);
+  }
+}
+
 function adminDeleteTemplate(index) {
   try {
     const sheet = _getSheet(TW_CONFIG.SHEET_REGISTRY);
@@ -198,9 +228,25 @@ function adminSaveTemplate(jsonStr, editIndex) {
     setValue('country_code', d.country_code); setValue('country_name', d.country_name);
     setValue('campaign_type', d.campaign_type); setValue('template_doc_id', d.template_doc_id);
     setValue('version', d.version || '1.0'); setValue('status', initialStatus);
-    setValue('currency_code', d.currency_code || 'COP'); setValue('currency_symbol', d.currency_symbol || '$');
+
+    // Moneda: derivar de Country_Settings del país. Si país = 'ALL', dejar vacío
+    // (se resuelve por país en generación vía LEGAL_DEFAULTS_MAP/Country_Settings).
+    var curCode = '', curSym = '';
+    if (d.country_code && d.country_code !== 'ALL') {
+      try {
+        var csSheet = _getSheet(COUNTRY_SETTINGS_SHEET);
+        if (csSheet) {
+          var csRow = _sheetToObjects(csSheet).find(function(c) { return c.country_code === d.country_code; });
+          if (csRow) { curCode = csRow.currency_code || ''; curSym = csRow.currency_symbol || ''; }
+        }
+      } catch (e) {}
+    }
+    setValue('currency_code', curCode); setValue('currency_symbol', curSym);
     setValue('legal_owner', d.legal_owner || callerEmail); setValue('last_updated', new Date().toISOString().split('T')[0]);
     setValue('notes', d.notes || ''); setValue('submitted_by', callerEmail);
+
+    // Crear el Campaign_Type si no existe (mismo status que el template)
+    _ensureCampaignTypeExists(d.campaign_type, d.country_code, callerEmail, initialStatus);
 
     if (editIndex >= 0) sheet.getRange(editIndex + 2, 1, 1, row.length).setValues([row]);
     else sheet.appendRow(row);
@@ -818,47 +864,8 @@ function createTemplateFromWizard(payload) {
       });
     }
 
-    // ─── 7. UPSERT EN Campaign_Types ───
-    // Llave: type_name
-    // V3.1: Si el template es draft, el Campaign_Type también debe ser draft
-    try {
-      var ctSheet = _getSheet(CAMPAIGN_TYPES_SHEET);
-      if (ctSheet) {
-        var ctData = _sheetToObjects(ctSheet);
-        var existingType = ctData.find(function(t) { return t.type_name === campaignType; });
-
-        if (!existingType) {
-          // Nuevo tipo: crearlo con el MISMO status que el template
-          var ctHeaders = ctSheet.getRange(1, 1, 1, ctSheet.getLastColumn()).getValues()[0];
-          var ctRow = new Array(ctHeaders.length).fill('');
-          var setCtVal = function(col, val) {
-            var i = ctHeaders.indexOf(col);
-            if (i >= 0) ctRow[i] = val || '';
-          };
-
-          var typeId = campaignType.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-
-          setCtVal('type_id', typeId);
-          setCtVal('type_name', campaignType);
-          setCtVal('description', 'Creado desde el Template Wizard');
-          setCtVal('parent_type', '');
-          setCtVal('processing_mode', 'template_only');
-          setCtVal('icon', 'fa-file-lines');
-          setCtVal('color', '#3B82F6');
-          // V3.1 CLAVE: Mismo status que el template → no exponer al comercial prematuramente
-          setCtVal('status', initialStatus);
-          setCtVal('countries', countryCode);
-          setCtVal('created_by', userEmail);
-          setCtVal('created_date', new Date().toISOString().split('T')[0]);
-
-          ctSheet.appendRow(ctRow);
-          Logger.log('🆕 Campaign_Type creado: ' + campaignType + ' [' + initialStatus + ']');
-        }
-        // Si ya existe, no lo tocamos (el Admin puede gestionarlo desde Dinámicas)
-      }
-    } catch(e) {
-      Logger.log('⚠️ Campaign_Types check/create error: ' + e.message);
-    }
+    // ─── 7. UPSERT EN Campaign_Types ─── (reutiliza _ensureCampaignTypeExists)
+    _ensureCampaignTypeExists(campaignType, countryCode, userEmail, initialStatus);
 
     // ─── 8. LOG DE AUDITORÍA ───
     _logApprovalAction('wizard_create',

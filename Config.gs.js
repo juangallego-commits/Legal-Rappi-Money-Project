@@ -189,8 +189,13 @@ const DERIVED_FIELDS = {
       var pe = p.redemptionEnd.split('-');
       if (pe.length === 3) finRed = parseInt(pe[2]) + ' de ' + MESES_ES[parseInt(pe[1])-1] + ' de ' + pe[0];
     }
+    // Determinismo: si no hay fecha fin de redención, NO emitir corchetes.
+    // Caer al wording por días (cláusula legal completa); nunca un literal entre corchetes.
+    if (!finRed) {
+      var diasFb = p.validityDays || '30';
+      return 'tendrán una vigencia de ' + numeroALetras(Number(diasFb)) + ' (' + diasFb + ') días calendario contados a partir de su carga';
+    }
     iniRed = iniRed || 'el momento en que sean cargados';
-    finRed = finRed || '[FECHA FIN PENDIENTE]';
     return 'podrán ser utilizados entre ' + iniRed + ' y el ' + finRed;
   },
 

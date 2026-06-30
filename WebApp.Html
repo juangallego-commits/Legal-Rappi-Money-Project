@@ -3718,6 +3718,7 @@
           <label class="adm-label">País *</label>
           <select id="tpl_country" required class="adm-input">
             <option value="">Seleccionar...</option>
+            <option value="ALL">🌎 Todos los países (Global)</option>
             <option value="CO">🇨🇴 Colombia</option>
             <option value="MX">🇲🇽 México</option>
             <option value="PE">🇵🇪 Perú</option>
@@ -3731,33 +3732,17 @@
         </div>
         <div>
           <label class="adm-label">Tipo de Campaña *</label>
-          <select id="tpl_type" required class="adm-input">
-            <option value="">Seleccionar...</option>
-            <option value="Cashback">💰 Cashback</option>
-            <option value="Concurso Mayor Comprador">🏆 Concurso</option>
-          </select>
+          <input list="tpl_type_list" id="tpl_type" required class="adm-input" placeholder="Escribe uno nuevo o elige existente…" autocomplete="off">
+          <datalist id="tpl_type_list"></datalist>
         </div>
       </div>
       <div>
         <label class="adm-label">Google Doc ID del Template *</label>
         <input type="text" id="tpl_docId" required class="adm-input font-mono text-xs" placeholder="1ABC…xyz (la parte entre /d/ y /edit)">
       </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="adm-label">Moneda</label>
-          <select id="tpl_currency" class="adm-input">
-            <option value="COP">COP ($)</option>
-            <option value="MXN">MXN ($)</option>
-            <option value="CRC">CRC (₡)</option>
-            <option value="BRL">BRL (R$)</option>
-            <option value="ARS">ARS ($)</option>
-            <option value="USD">USD ($)</option>
-          </select>
-        </div>
-        <div>
-          <label class="adm-label">Versión</label>
-          <input type="text" id="tpl_version" class="adm-input" value="1.0">
-        </div>
+      <div>
+        <label class="adm-label">Versión</label>
+        <input type="text" id="tpl_version" class="adm-input" value="1.0">
       </div>
       <div>
         <label class="adm-label">Notas internas</label>
@@ -4251,6 +4236,7 @@ function showAddTemplateModal() {
   document.getElementById('tpl_editIndex').value = '-1';
   document.getElementById('templateForm').reset();
   document.getElementById('tpl_version').value = '1.0';
+  populateTemplateTypeList();
 
   // Show status control only for admin+
   const isAdmin = currentUser.permissions.canApproveTemplates;
@@ -4263,12 +4249,12 @@ function hideAddTemplateModal() { document.getElementById('addTemplateModal').cl
 
 function editTemplate(index) {
   const tpl = adminTemplates[index]; if (!tpl) return;
+  populateTemplateTypeList();
   document.getElementById('templateModalTitle').textContent = 'Editar Plantilla';
   document.getElementById('tpl_editIndex').value = index;
   document.getElementById('tpl_country').value = tpl.country_code;
   document.getElementById('tpl_type').value = tpl.campaign_type;
   document.getElementById('tpl_docId').value = tpl.template_doc_id;
-  document.getElementById('tpl_currency').value = tpl.currency_code || 'COP';
   document.getElementById('tpl_version').value = tpl.version || '1.0';
   document.getElementById('tpl_notes').value = tpl.notes || '';
 
@@ -4284,20 +4270,17 @@ function saveTemplate(event) {
   event.preventDefault();
   const editIndex = parseInt(document.getElementById('tpl_editIndex').value);
   const cc = document.getElementById('tpl_country').value;
-  const currCode = document.getElementById('tpl_currency').value;
 
   const d = {
     country_code: cc,
     country_name: COUNTRY_NAMES[cc] || cc,
-    campaign_type: document.getElementById('tpl_type').value,
+    campaign_type: document.getElementById('tpl_type').value.trim(),
     template_doc_id: (function() {
       var raw = document.getElementById('tpl_docId').value.trim();
       var match = raw.match(/\/d\/([a-zA-Z0-9_-]{25,})/);
       return match ? match[1] : raw;
     })(),
     version: document.getElementById('tpl_version').value || '1.0',
-    currency_code: currCode,
-    currency_symbol: CURRENCY_SYMBOLS[currCode] || '$',
     notes: document.getElementById('tpl_notes').value
   };
 
