@@ -1566,6 +1566,28 @@
   </div>
 
   <!-- Success Modal -->
+  <!-- 6c — Pantalla de confirmación (última barrera antes de generar) -->
+  <div id="confirmModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl animate-slide-in max-h-[90vh] overflow-y-auto">
+      <div class="text-center mb-5">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl" style="background:linear-gradient(135deg,#FF441F,#7e22ce);">
+          <i class="fa-solid fa-clipboard-check text-3xl text-white"></i>
+        </div>
+        <h2 class="text-2xl font-black text-gray-900">Revisa antes de generar</h2>
+        <p class="text-gray-500 text-sm mt-1">Es la última barrera antes de publicar. Verifica que todo esté correcto.</p>
+      </div>
+      <div id="confirmSummary" class="mb-6"></div>
+      <div class="flex gap-3">
+        <button type="button" onclick="hideConfirmModal()" class="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-bold hover:bg-gray-50 transition">
+          <i class="fa-solid fa-pen mr-1.5"></i>Editar
+        </button>
+        <button type="button" onclick="hideConfirmModal(); submitForm();" class="flex-1 py-3 rounded-xl text-white font-black shadow-lg transition hover:opacity-90" style="background:linear-gradient(135deg,#FF441F,#7e22ce);">
+          <i class="fa-solid fa-check mr-1.5"></i>Confirmar y generar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div id="resultModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl p-8 max-w-lg w-full text-center shadow-2xl animate-slide-in max-h-[90vh] overflow-y-auto">
       <div class="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
@@ -2429,7 +2451,7 @@
     function confirmDataTransferAgreement() {
       document.getElementById('dataTransferConfirmed').value = 'true';
       hideDataTransferModal();
-      submitForm();
+      showConfirmationModal();
     }
 
     // ============================================
@@ -2753,47 +2775,77 @@
         }
       }
       
-      submitForm();
+      showConfirmationModal();
     }
 
-    function submitForm() {
+    // Construye el payload desde campos estáticos + dinámicos visibles + globales.
+    function buildPayload() {
       const form = document.getElementById('legalForm');
-      const loading = document.getElementById('loading');
-      const btn = document.getElementById('btnSubmit');
-      
-      btn.disabled = true;
-      loading.classList.remove('hidden');
-      
-      // GOD MODE: Construir payload desde campos estáticos + dinámicos
       const payload = {};
-      
-      // 1. Campos estáticos del form (secciones 1 y 2)
-      const formDataObj = new FormData(form);
-      formDataObj.forEach((value, key) => payload[key] = value);
-      
-      // 2. Campos dinámicos (secciones 3 y 4)
+      // 1. Campos estáticos (secciones 1 y 2)
+      new FormData(form).forEach((value, key) => payload[key] = value);
+      // 2. Campos dinámicos visibles (secciones 3 y 4)
       document.querySelectorAll('.dynamic-input').forEach(input => {
-        // Solo incluir si está visible
         const wrapper = input.closest('[data-field-id]');
         if (wrapper && wrapper.style.display === 'none') return;
         const name = input.name || input.id;
         if (name) payload[name] = input.value;
       });
-      
       // 3. Variables globales
       payload.countryCode = currentCountry || 'CO';
       payload.currencyCode = currentCurrency || 'COP';
       payload.currencySymbol = currentCurrencySymbol || '$';
-      
-      // V3.3: Los campos derivados (prizes, etc.) se calculan en el backend
-      // por DERIVED_FIELDS. Ya no necesitamos calcularlos aquí.
-      // Se mantiene solo para retrocompatibilidad temporal:
+      // Retrocompat: prizes (los derivados reales los calcula el backend via DERIVED_FIELDS)
       if (payload.dynamicType === 'Concurso Mayor Comprador' && payload.prizeType) {
-        payload.prizes = payload.prizeType === 'credits' 
+        payload.prizes = payload.prizeType === 'credits'
           ? (payload.creditsAmount || '') + ' Créditos Rappi'
           : payload.physicalPrizeDescription || '';
       }
-      
+      return payload;
+    }
+
+    // 6c — Pantalla de confirmación: resumen de lo ingresado (última barrera antes de publicar).
+    function showConfirmationModal() {
+      const p = buildPayload();
+      const rows = [];
+      const add = (label, val) => {
+        if (val === undefined || val === null || String(val).trim() === '') return;
+        rows.push('<div class="flex justify-between gap-4 py-2 border-b border-gray-100"><span class="text-gray-500 text-sm">' + label + '</span><span class="font-bold text-gray-900 text-sm text-right">' + String(val) + '</span></div>');
+      };
+      const paisEl = document.getElementById('selectedCountryName');
+      add('País', paisEl ? paisEl.textContent : (p.countryCode || ''));
+      add('Tipo de campaña', p.dynamicType || '');
+      add('Nombre interno', p.campaignName || '');
+      add('Comercio / Tienda', p.shopName || '');
+      add('Territorio', p.territory || '');
+      add('Organizador (razón social)', p.organizerLegalName || '');
+      add('ID fiscal del organizador', p.organizerTaxId || '');
+      if (p.makerBrand) add('Marca (Maker)', p.makerBrand);
+      if (p.startDate || p.endDate) add('Vigencia', (p.startDate || '—') + '  →  ' + (p.endDate || '—'));
+      // Campos dinámicos restantes (con sus labels), evitando duplicar lo ya mostrado
+      const yaMostrados = ['organizerLegalName', 'organizerTaxId', 'makerBrand', 'campaignName', 'shopName', 'territory', 'startDate', 'endDate', 'userEmail', 'dynamicType'];
+      (currentFieldsCache || []).forEach(f => {
+        if (yaMostrados.indexOf(f.field_id) >= 0) return;
+        const el = document.getElementById(f.field_id);
+        if (!el) return;
+        const w = el.closest('[data-field-id]');
+        if (w && w.style.display === 'none') return;
+        if (el.value && String(el.value).trim() !== '') add(f.label || f.field_id, el.value);
+      });
+      document.getElementById('confirmSummary').innerHTML = rows.join('') || '<p class="text-gray-400 text-sm text-center">Sin datos.</p>';
+      document.getElementById('confirmModal').classList.remove('hidden');
+    }
+    function hideConfirmModal() {
+      document.getElementById('confirmModal').classList.add('hidden');
+    }
+
+    function submitForm() {
+      const loading = document.getElementById('loading');
+      const btn = document.getElementById('btnSubmit');
+      btn.disabled = true;
+      loading.classList.remove('hidden');
+      const payload = buildPayload();
+
       google.script.run
         .withSuccessHandler(response => {
           const res = JSON.parse(response);
