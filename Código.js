@@ -32,7 +32,14 @@ function coreEngineV2(payload, submitterEmail) {
   const countryCode = payload.countryCode || 'CO';
   const campaignType = vars['Tipo de Dinámica'] || 'Cashback';
   const vertical = payload.vertical || 'ALL';
-  
+
+  // FASE A1 — Guardarraíl de país: no generar si la config legal está incompleta.
+  // Va ANTES del try para que el mensaje llegue al usuario (el catch de abajo traga errores).
+  const _cval = _validateCountryLegal(countryCode);
+  if (!_cval.ok) {
+    throw new Error('País no habilitado para generar (' + countryCode + '). ' + _cval.message + ' Contacta a Legal.');
+  }
+
   try {
     const typeConfig = _getCampaignTypeConfig(campaignType);
     const registry = _getTemplateRegistry();
@@ -63,6 +70,35 @@ function coreEngineV2(payload, submitterEmail) {
   } catch (e) { Logger.log('⚠️ Engine falló: ' + e.message); }
   
   throw new Error("No se encontró una plantilla de documento activa para este tipo de dinámica en este país.");
+}
+
+// FASE A1 — Valida que el país esté habilitado legalmente antes de generar.
+// Aborta si: no hay fila en Country_Settings, alguna columna legal requerida está vacía,
+// o cualquier celda de la fila contiene el marcador "[VERIFICAR". Evita emitir un T&C con
+// jurisdicción/ley en blanco o corchetes crudos (BUG M2). Devuelve {ok, message}.
+function _validateCountryLegal(countryCode) {
+  try {
+    const csSheet = _getSheet(COUNTRY_SETTINGS_SHEET);
+    if (!csSheet) return { ok: false, message: 'No existe la hoja Country_Settings.' };
+    const cc = String(countryCode || '').trim();
+    const row = _sheetToObjects(csSheet).find(function(c) { return String(c.country_code).trim() === cc; });
+    if (!row) return { ok: false, message: 'No hay configuración legal para el país ' + cc + '.' };
+
+    const problemas = [];
+    const requeridas = (typeof REQUIRED_LEGAL_COLUMNS !== 'undefined') ? REQUIRED_LEGAL_COLUMNS : [];
+    requeridas.forEach(function(col) {
+      const val = (row[col] === undefined || row[col] === null) ? '' : String(row[col]).trim();
+      if (val === '') problemas.push('columna legal vacía: ' + col);
+    });
+    Object.keys(row).forEach(function(col) {
+      if (String(row[col]).indexOf('[VERIFICAR') >= 0) problemas.push('pendiente de Legal: ' + col);
+    });
+
+    if (problemas.length) return { ok: false, message: 'Config legal incompleta (' + problemas.join('; ') + ').' };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: 'Error validando país: ' + e.message };
+  }
 }
 // ---INICIO COPIAR---
 // -----------------------------------------------------------------

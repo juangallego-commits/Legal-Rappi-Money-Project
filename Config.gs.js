@@ -433,6 +433,14 @@ const LEGAL_DEFAULTS_MAP = {
   'NOMBRE_POLITICA_PRIVACIDAD': { column: 'nombre_politica_privacidad' },
   'EDAD_MINIMA':               { column: 'edad_minima' }
 };
+
+// FASE A1 — Guardarraíl de país. Columnas legales de Country_Settings que DEBEN estar
+// completas (no vacías, sin marcador "[VERIFICAR") para permitir generar un documento.
+// Hoy solo Colombia (CO) las tiene sembradas; el resto de países quedan bloqueados hasta
+// que Legal complete su fila. Se eligieron estas 3 porque son la señal confirmada de
+// "país vetado por Legal" (CO las tiene; MX/PE/CL/AR/EC/UY/CR/BR las tienen vacías).
+const REQUIRED_LEGAL_COLUMNS = ['jurisdiction_text', 'applicable_law', 'legal_url'];
+
 const BASE_FIELD_MAP = {
   'NOMBRE_CAMPANA':  { canonical: 'campaignName', format_as: '' },
   'FECHA_INICIO':    { canonical: 'startDate',    format_as: 'date_legal' },
