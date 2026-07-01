@@ -582,6 +582,56 @@ function callGeminiForAnalysis(prompt) {
     throw new Error('La respuesta de Gemini no era JSON parseable: ' + cleaned);
   }
 }
+//==FASE_C_PURE_START== (marcador para tests node; no remover)
+// FASE C — Motor DETERMINISTA de derivación de campos (PREPARADO, sin conectar al flujo).
+// Extrae los {{PLACEHOLDERS}} de un texto y los clasifica contra FIELD_CATALOG. NO usa Gemini
+// y NO escribe en la hoja: devuelve el PLAN de filas Template_Fields. Se conectará a
+// createTemplateFromWizard SOLO tras aprobación (ver plan FASE C).
+function _extractPlaceholders(text) {
+  var out = [], seen = {}, re = /\{\{\s*([A-Z0-9_]+)\s*\}\}/g, m;
+  while ((m = re.exec(String(text || ''))) !== null) {
+    var tok = m[1];
+    if (!seen[tok]) { seen[tok] = true; out.push(tok); }
+  }
+  return out;
+}
+function _classifyPlaceholder(token) {
+  if (typeof FIELD_CATALOG !== 'undefined' && FIELD_CATALOG[token]) {
+    var e = FIELD_CATALOG[token];
+    return { token: token, category: e.category, required: !!e.required, meta: e, known: true };
+  }
+  // Desconocido → default SEGURO: input opcional, marcado para revisión humana (nunca IA).
+  return { token: token, category: 'input', required: false, meta: { field_id: token.toLowerCase(), label_es: token, field_type: 'text' }, known: false };
+}
+// Plan determinista de filas Template_Fields: SOLO la categoría 'input' genera campo.
+// base/derived/legal NO generan campo (se resuelven en el motor/Country_Settings).
+function deriveFieldRowsForTemplate(templateText, campaignType, countryCode) {
+  var tokens = _extractPlaceholders(templateText);
+  var rows = [], skipped = [], unknown = [];
+  tokens.forEach(function(tok) {
+    var c = _classifyPlaceholder(tok);
+    if (!c.known) unknown.push(tok);
+    if (c.category === 'input') {
+      rows.push({
+        field_id: (c.meta && c.meta.field_id) || tok.toLowerCase(),
+        country_code: countryCode || 'ALL',
+        campaign_type: campaignType,
+        placeholder: '{{' + tok + '}}',
+        label_es: (c.meta && c.meta.label_es) || tok,
+        field_type: (c.meta && c.meta.field_type) || 'text',
+        required: c.required ? 'TRUE' : 'FALSE',
+        section: (c.meta && c.meta.section) || '3',
+        group: (c.meta && c.meta.group) || 'Variables',
+        needs_review: c.known ? 'FALSE' : 'TRUE'
+      });
+    } else {
+      skipped.push({ token: tok, category: c.category });
+    }
+  });
+  return { rows: rows, skipped: skipped, unknown: unknown };
+}
+//==FASE_C_PURE_END==
+
 // ---INICIO COPIAR---
 // =================================================================
 // WIZARD PASO 4: Crear template desde el Wizard (V3.1)

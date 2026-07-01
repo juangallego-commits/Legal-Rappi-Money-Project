@@ -450,3 +450,66 @@ const BASE_FIELD_MAP = {
   'TERRITORIO':      { canonical: 'territory',    format_as: '' },
   'TIENDA_BASE':     { canonical: 'shopName',     format_as: '' },
 };
+
+//==FASE_C_CATALOG_START== (marcador para tests node; no remover)
+// FASE C — CATÁLOGO MAESTRO DE PLACEHOLDERS (FIELD_CATALOG).
+// Fuente ÚNICA y determinista para clasificar cada {{TOKEN}} de una plantilla y decidir si
+// genera un campo de formulario y si es obligatorio. Reemplaza la detección por IA (Gemini)
+// en la ESCRITURA de campos. 'required' SOLO lo define este catálogo, nunca la IA.
+// Categorías:
+//   'base'    → input base ya presente en el formulario estático (canonical). No re-generar.
+//   'input'   → lo diligencia el CAM. Genera fila en Template_Fields con 'required' del catálogo.
+//   'derived' → lo calcula DERIVED_FIELDS. No genera campo (no se pregunta).
+//   'legal'   → se resuelve de Country_Settings (LEGAL_DEFAULTS_MAP). No genera campo; lo cubre A1.
+const FIELD_CATALOG = {
+  // ---- INPUTS de negocio (se preguntan al CAM) ----
+  // Organizador: por la REGLA LEGAL, Rappi NUNCA es el organizador → SIEMPRE obligatorio.
+  'ORGANIZADOR':       { category: 'input', required: true,  field_id: 'organizerLegalName', label_es: 'Razón social del Organizador', field_type: 'text',   section: '1', group: 'Organizador', tooltip: 'El aliado/marca que fondea la campaña. Rappi nunca es el organizador.' },
+  'ID_ORGANIZADOR':    { category: 'input', required: true,  field_id: 'organizerTaxId',     label_es: 'ID fiscal del Organizador',    field_type: 'text',   section: '1', group: 'Organizador', tooltip: 'Identificación tributaria del organizador (NIT en CO, RUC en PE, RFC en MX, CUIT en AR, CNPJ en BR).' },
+  'TELEFONO_CONTACTO': { category: 'input', required: true,  field_id: 'organizerPhone',     label_es: 'Teléfono de contacto',         field_type: 'text',   section: '1', group: 'Organizador' },
+  'EMAIL_CONTACTO':    { category: 'input', required: true,  field_id: 'organizerEmail',     label_es: 'Email de contacto',            field_type: 'text',   section: '1', group: 'Organizador' },
+  'NUM_GANADORES':     { category: 'input', required: true,  field_id: 'numberOfWinners',    label_es: 'Número de ganadores',          field_type: 'number', section: '3', group: 'Concurso' },
+  'CRITERIO_GANADOR':  { category: 'input', required: true,  field_id: 'winnerCriteria',     label_es: 'Criterio del ganador',         field_type: 'select', section: '3', group: 'Concurso' },
+  'FECHA_ANUNCIO':     { category: 'input', required: true,  field_id: 'announcementDate',   label_es: 'Fecha de anuncio de ganadores',field_type: 'date',   section: '3', group: 'Concurso' },
+  'VERTICALES':               { category: 'input', required: false, field_id: 'verticals',             label_es: 'Verticales/Secciones',    field_type: 'text',     section: '3', group: 'Concurso' },
+  'PRODUCTOS_PARTICIPANTES':  { category: 'input', required: false, field_id: 'participatingProducts', label_es: 'Productos participantes',  field_type: 'text',     section: '3', group: 'Concurso' },
+  'CONDICIONES_ESPECIALES':   { category: 'input', required: false, field_id: 'specialConditions',     label_es: 'Condiciones especiales',  field_type: 'textarea', section: '4', group: 'Restricciones' },
+
+  // ---- BASE (ya en el form estático; no re-generar como dinámicos) ----
+  'NOMBRE_CAMPANA':  { category: 'base', required: false, canonical: 'campaignName' },
+  'TIENDA_BASE':     { category: 'base', required: true,  canonical: 'shopName' },
+  'TERRITORIO':      { category: 'base', required: true,  canonical: 'territory' },
+  'FECHA_INICIO':    { category: 'base', required: true,  canonical: 'startDate' },
+  'FECHA_FIN':       { category: 'base', required: true,  canonical: 'endDate' },
+  'HORA_INICIO':     { category: 'base', required: false, canonical: 'startTime' },
+  'HORA_FIN':        { category: 'base', required: false, canonical: 'endTime' },
+  'TOPE_NUM':        { category: 'base', required: true,  canonical: 'cap' },
+  'PRESUPUESTO_NUM': { category: 'base', required: true,  canonical: 'budget' },
+  'LIMITE_ORDENES':  { category: 'base', required: false, canonical: 'maxOrders' },
+
+  // ---- DERIVED (los calcula DERIVED_FIELDS; no se preguntan) ----
+  'NOMBRE_CAMPANA_UPPER':    { category: 'derived' },
+  'TEXTO_TERRITORIO':        { category: 'derived' },
+  'REF_TIENDA':              { category: 'derived' },
+  'PRESUPUESTO_LETRAS':      { category: 'derived' },
+  'TOPE_LETRAS':             { category: 'derived' },
+  'TEXTO_SEGMENTO':          { category: 'derived' },
+  'TEXTO_METODO_PAGO':       { category: 'derived' },
+  'TEXTO_PORCENTAJE':        { category: 'derived' },
+  'TEXTO_ORDENES':           { category: 'derived' },
+  'TEXTO_CARGA':             { category: 'derived' },
+  'TEXTO_VIGENCIA_CREDITOS': { category: 'derived' },
+  'TEXTO_LUGAR_REDENCION':   { category: 'derived' },
+
+  // ---- LEGAL (Country_Settings vía LEGAL_DEFAULTS_MAP; cubierto por el guardarraíl A1) ----
+  'JURISDICCION':               { category: 'legal', column: 'jurisdiction_text' },
+  'LEY_APLICABLE':              { category: 'legal', column: 'applicable_law' },
+  'ENTIDAD_VIGILANCIA':         { category: 'legal', column: 'legal_entity' },
+  'ENTIDAD_LEGAL':              { category: 'legal', column: 'entidad_legal_nombre' },
+  'PAIS_LEGAL':                 { category: 'legal', column: 'legal_country' },
+  'URL_TC_CREDITOS':            { category: 'legal', column: 'url_tc_creditos' },
+  'URL_TC_PLATAFORMA':          { category: 'legal', column: 'url_tc_plataforma' },
+  'URL_PRIVACIDAD':             { category: 'legal', column: 'url_privacidad' },
+  'NOMBRE_POLITICA_PRIVACIDAD': { category: 'legal', column: 'nombre_politica_privacidad' }
+};
+//==FASE_C_CATALOG_END==
