@@ -1714,7 +1714,7 @@
               <span class="text-sm">Error al cargar las dinámicas</span>
             </div>`;
         })
-        .getCampaignTypesForUser();
+        .getCampaignTypesForUser(currentCountry || '');
     }
 
     function renderCampaignTypeCards(types) {
@@ -2371,6 +2371,10 @@
       document.getElementById('selectedCurrency').textContent = currency;
 
       updateCurrencyPlaceholders();
+
+      // Recargar los tipos de campaña filtrados por el país elegido: solo se muestran
+      // los que tienen una plantilla activa para este país (o global). Se actualiza solo.
+      loadCampaignTypes();
 
       document.getElementById('landingPage').classList.add('hidden');
       document.getElementById('countrySelector').classList.add('hidden');
@@ -5094,27 +5098,29 @@ async function twCreateTemplate() {
   }
 }
 function twLoadCampaignTypes() {
+  // El Wizard es una herramienta admin para CREAR plantillas, así que sugiere TODOS
+  // los tipos del catálogo (no solo los que ya tienen plantilla activa). Por eso usa
+  // adminGetCampaignTypes y no getCampaignTypesForUser (que sí filtra por el usuario).
   google.script.run
     .withSuccessHandler(function(raw) {
       try {
-        var types = JSON.parse(raw);
+        var res = JSON.parse(raw);
+        var types = (res && res.types) ? res.types : (Array.isArray(res) ? res : []);
         var dl = document.getElementById('tw-campaign-list');
         if (!dl) return;
         dl.innerHTML = '';
-        if (Array.isArray(types)) {
-          types.forEach(function(t) {
-            var opt = document.createElement('option');
-            opt.value = t.type_name;
-            opt.textContent = t.type_name + (t.description ? ' — ' + t.description : '');
-            dl.appendChild(opt);
-          });
-        }
+        types.forEach(function(t) {
+          var opt = document.createElement('option');
+          opt.value = t.type_name;
+          opt.textContent = t.type_name + (t.description ? ' — ' + t.description : '');
+          dl.appendChild(opt);
+        });
       } catch(e) { console.error('twLoadCampaignTypes parse error:', e); }
     })
     .withFailureHandler(function(err) {
       console.error('twLoadCampaignTypes failed:', err);
     })
-    .getCampaignTypesForUser();
+    .adminGetCampaignTypes();
 }
 function twReset() {
   TW.step = 1; TW.source = 'text'; TW.originalText = ''; TW.docId = null; TW.mappings = []; TW.metadata = {};

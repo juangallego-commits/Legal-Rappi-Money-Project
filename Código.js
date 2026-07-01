@@ -679,12 +679,32 @@ function _getTemplateRegistry() {
 // -----------------------------------------------------------------
 // ENDPOINTS PARA FRONTEND DINÁMICO (GOD MODE)
 // -----------------------------------------------------------------
-function getCampaignTypesForUser() {
+function getCampaignTypesForUser(countryCode) {
   try {
     const sheet = _getSheet(CAMPAIGN_TYPES_SHEET);
     if (!sheet) return JSON.stringify([]);
     const all = _sheetToObjects(sheet);
-    const active = all.filter(t => String(t.status).toLowerCase() === 'active');
+
+    // Fuente de verdad = plantillas ACTIVAS, no el flag de Campaign_Types (que se
+    // queda "pegado" en active). Un tipo se ofrece al usuario solo si tiene al menos
+    // UNA plantilla activa que lo respalde. Así el listado se actualiza solo:
+    // activar/desactivar/eliminar una plantilla cambia de inmediato lo que ve el
+    // usuario, sin sincronización manual.
+    const cc = countryCode ? String(countryCode).trim() : '';
+    const typesWithActiveTemplate = {};
+    _getTemplateRegistry().forEach(r => {
+      if (String(r.status).toLowerCase() !== 'active') return;
+      // Precedencia de país: coincide país exacto o comodín global 'ALL'.
+      // Sin país (carga inicial), cuenta cualquier plantilla activa.
+      const rc = String(r.country_code || '').trim();
+      const countryOk = !cc || rc === cc || rc === 'ALL';
+      if (countryOk && r.campaign_type) typesWithActiveTemplate[r.campaign_type] = true;
+    });
+
+    const active = all.filter(t =>
+      String(t.status).toLowerCase() === 'active' &&
+      typesWithActiveTemplate[t.type_name] === true
+    );
     return JSON.stringify(active.map(t => ({
       type_id:    t.type_id,
       type_name:  t.type_name,
