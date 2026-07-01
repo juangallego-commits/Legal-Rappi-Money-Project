@@ -32,7 +32,14 @@ function coreEngineV2(payload, submitterEmail) {
   const countryCode = payload.countryCode || 'CO';
   const campaignType = vars['Tipo de Dinámica'] || 'Cashback';
   const vertical = payload.vertical || 'ALL';
-  
+
+  // FASE A1 — Guardarraíl de país: no generar si la config legal está incompleta.
+  // Va ANTES del try para que el mensaje llegue al usuario (el catch de abajo traga errores).
+  const _cval = _validateCountryLegal(countryCode);
+  if (!_cval.ok) {
+    throw new Error('País no habilitado para generar (' + countryCode + '). ' + _cval.message + ' Contacta a Legal.');
+  }
+
   try {
     const typeConfig = _getCampaignTypeConfig(campaignType);
     const registry = _getTemplateRegistry();
@@ -46,6 +53,7 @@ function coreEngineV2(payload, submitterEmail) {
         try {
           return _generateSmartTemplate(template, payload, vars, submitterEmail);
         } catch (smartErr) {
+          if (/^A2_ABORT/.test(smartErr.message)) throw smartErr; // abort A2: no reintentar legacy (daría el mismo doc inválido)
           Logger.log('⚠️ Smart Template falló, intentando legacy: ' + smartErr.message);
           // Solo intentar legacy si el tipo tiene lógica legacy (Cashback o Concurso)
           var campaignTypeName = vars['Tipo de Dinámica'] || campaignType;
@@ -60,9 +68,93 @@ function coreEngineV2(payload, submitterEmail) {
         return _generateWithTemplate(template, vars, submitterEmail);
       }
     }
-  } catch (e) { Logger.log('⚠️ Engine falló: ' + e.message); }
-  
+  } catch (e) {
+    if (e && /^(A2_ABORT|País no habilitado)/.test(e.message)) throw e; // aborts intencionales → mensaje al usuario
+    Logger.log('⚠️ Engine falló: ' + e.message);
+  }
+
   throw new Error("No se encontró una plantilla de documento activa para este tipo de dinámica en este país.");
+}
+
+// FASE A1 — Valida que el país esté habilitado legalmente antes de generar.
+// Aborta si: no hay fila en Country_Settings, alguna columna legal requerida está vacía,
+// o cualquier celda de la fila contiene el marcador "[VERIFICAR". Evita emitir un T&C con
+// jurisdicción/ley en blanco o corchetes crudos (BUG M2). Devuelve {ok, message}.
+function _validateCountryLegal(countryCode) {
+  try {
+    const csSheet = _getSheet(COUNTRY_SETTINGS_SHEET);
+    if (!csSheet) return { ok: false, message: 'No existe la hoja Country_Settings.' };
+    const cc = String(countryCode || '').trim();
+    const row = _sheetToObjects(csSheet).find(function(c) { return String(c.country_code).trim() === cc; });
+    if (!row) return { ok: false, message: 'No hay configuración legal para el país ' + cc + '.' };
+
+    const problemas = [];
+    const requeridas = (typeof REQUIRED_LEGAL_COLUMNS !== 'undefined') ? REQUIRED_LEGAL_COLUMNS : [];
+    requeridas.forEach(function(col) {
+      const val = (row[col] === undefined || row[col] === null) ? '' : String(row[col]).trim();
+      if (val === '') problemas.push('columna legal vacía: ' + col);
+    });
+    Object.keys(row).forEach(function(col) {
+      if (String(row[col]).indexOf('[VERIFICAR') >= 0) problemas.push('pendiente de Legal: ' + col);
+    });
+
+    if (problemas.length) return { ok: false, message: 'Config legal incompleta (' + problemas.join('; ') + ').' };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, message: 'Error validando país: ' + e.message };
+  }
+}
+
+//==FASE_B_OPT_START== (marcador para tests node; no remover)
+// FASE B — Motor de BLOQUES OPCIONALES (sentinelas). Determinista, sin heurística de gramática.
+// Convención para Legal en el template: envolver el texto opcional como
+//     [[?TOKEN]]...texto que solo aplica si {{TOKEN}} tiene valor...[[/?]]
+// Si {{TOKEN}} va vacío → se borra el bloque COMPLETO (markers incluidos); si tiene valor → se
+// quitan solo los markers y queda el contenido. Así un opcional vacío NUNCA deja restos
+// ("por , identificada con ."), porque comas/preposiciones quedan DENTRO del bloque marcado.
+// isEmpty(token) debe devolver true si ese placeholder resolvió vacío.
+function _stripOptionalBlocks(text, isEmpty) {
+  return String(text == null ? '' : text).replace(/\[\[\?([A-Z0-9_]+)\]\]([\s\S]*?)\[\[\/\?\]\]/g, function(_m, tok, inner) {
+    return isEmpty(tok) ? '' : inner;
+  });
+}
+//==FASE_B_OPT_END==
+
+// Aplica los bloques opcionales sobre el body del Doc (preserva formato vía replaceText).
+// placeholders: mapa '{{TOKEN}}' -> valor; vacío o ausente => bloque borrado.
+function _applyOptionalBlocksToBody(body, placeholders) {
+  try {
+    var txt = body.getText();
+    if (txt.indexOf('[[?') < 0) return; // no hay bloques → no-op (template actual)
+    var re = /\[\[\?([A-Z0-9_]+)\]\]/g, m, seen = {};
+    while ((m = re.exec(txt)) !== null) seen[m[1]] = true;
+    Object.keys(seen).forEach(function(tok) {
+      var val = placeholders['{{' + tok + '}}'];
+      var empty = (val === undefined || val === null || String(val) === '');
+      if (empty) body.replaceText('\\[\\[\\?' + tok + '\\]\\][^\\[]*\\[\\[\\/\\?\\]\\]', '');
+    });
+    // Quitar markers residuales de los bloques que SÍ tenían valor.
+    body.replaceText('\\[\\[\\?[A-Z0-9_]+\\]\\]', '');
+    body.replaceText('\\[\\[\\/\\?\\]\\]', '');
+  } catch (e) { Logger.log('⚠️ Bloques opcionales: ' + e.message); }
+}
+
+//==FASE_A2_START== (marcador para tests node; no remover)
+// FASE A2 — Detecta marcadores SIN resolver en el texto final: placeholders {{...}} o
+// corchetes [ ... ] (p. ej. [VERIFICAR ...]). Devuelve la lista; vacía = documento limpio.
+function _findResidualMarkers(text) {
+  var t = String(text == null ? '' : text), out = [];
+  var a = t.match(/\{\{[^}]+\}\}/g); if (a) out = out.concat(a);
+  var b = t.match(/\[[^\]]+\]/g);    if (b) out = out.concat(b);
+  return out;
+}
+//==FASE_A2_END==
+
+// A2 se activa con la Script Property RAPPIMIND_A2='on' (se enciende DESPUÉS de poblar el
+// organizador, para no rechazar el único flujo que funciona). Off por defecto = comportamiento previo.
+function _a2Enabled() {
+  try { return String(PropertiesService.getScriptProperties().getProperty('RAPPIMIND_A2') || '').toLowerCase() === 'on'; }
+  catch (e) { return false; }
 }
 // ---INICIO COPIAR---
 // -----------------------------------------------------------------
@@ -186,6 +278,9 @@ function _generateSmartTemplate(template, payload, vars, submitterEmail) {
   var doc = DocumentApp.openById(newFile.getId());
   var body = doc.getBody();
 
+  // FASE B — Resolver bloques opcionales (sentinelas) ANTES de reemplazar tokens.
+  _applyOptionalBlocksToBody(body, placeholders);
+
   // 5a. Reemplazar placeholders con valor
   Object.keys(placeholders).forEach(function(key) {
     var value = placeholders[key];
@@ -211,8 +306,15 @@ function _generateSmartTemplate(template, payload, vars, submitterEmail) {
     }
   }
 
-  // 5d. Limpiar placeholders sueltos residuales
-  body.replaceText('\\{\\{[A-Z_0-9_]+\\}\\}', '');
+  // 5d. FASE A2 — Validación pre-entrega (si está activa) o limpieza histórica (fallback).
+  if (_a2Enabled()) {
+    var residualS = _findResidualMarkers(body.getText());
+    if (residualS.length) {
+      throw new Error('A2_ABORT: quedaron marcadores sin resolver: ' + residualS.join(', ') + '. No se entregó el documento para no publicar un T&C inválido.');
+    }
+  } else {
+    body.replaceText('\\{\\{[A-Z_0-9_]+\\}\\}', '');
+  }
   doc.saveAndClose();
 
   // 6. Permisos + tracking
@@ -317,6 +419,9 @@ function _generateWithTemplate(template, vars, submitterEmail) {
   const doc = DocumentApp.openById(newFile.getId());
   const body = doc.getBody();
   
+  // FASE B — Resolver bloques opcionales (sentinelas) ANTES de reemplazar tokens.
+  _applyOptionalBlocksToBody(body, placeholders);
+
   // 1. Reemplazar variables que SÍ tienen contenido
   Object.entries(placeholders).forEach(([key, value]) => {
     if (value !== null && value !== undefined && value !== '') {
@@ -340,8 +445,15 @@ function _generateWithTemplate(template, vars, submitterEmail) {
     }
   }
   
-  // 4. Limpiar cualquier otro placeholder que haya quedado suelto
-  body.replaceText('\\{\\{[A-Z_0-9_]+\\}\\}', '');
+  // 4. FASE A2 — Validación pre-entrega (si está activa) o limpieza histórica (fallback).
+  if (_a2Enabled()) {
+    var residualL = _findResidualMarkers(body.getText());
+    if (residualL.length) {
+      throw new Error('A2_ABORT: quedaron marcadores sin resolver: ' + residualL.join(', ') + '. No se entregó el documento para no publicar un T&C inválido.');
+    }
+  } else {
+    body.replaceText('\\{\\{[A-Z_0-9_]+\\}\\}', '');
+  }
   doc.saveAndClose();
   
   const publicUrl = setPublicViewPermissions(doc);

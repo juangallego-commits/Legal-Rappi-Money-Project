@@ -72,6 +72,26 @@ const TW_CONFIG = {
 // Usados por _generateSmartTemplate() cuando el template tiene
 // placeholders compuestos que no son un campo directo del formulario.
 // =================================================================
+
+//==FASE_D_SENTENCE_START== (marcador para tests node; no remover)
+// FASE D — CONTRATO de derivados. Cada TEXTO_* es de un tipo fijo:
+//   'oración'   → autónomo (mayúscula inicial + punto final). En el template va como frase
+//                 SUELTA, nunca embebido dentro de otra oración.
+//   'fragmento' → se inserta dentro de otra frase (minúscula, sin punto final).
+// ORACIÓN: TEXTO_SEGMENTO, TEXTO_METODO_PAGO, TEXTO_LUGAR_REDENCION.
+// FRAGMENTO: TEXTO_VIGENCIA_CREDITOS, TEXTO_ORDENES, TEXTO_PORCENTAJE, TOPE_LETRAS,
+//   PRESUPUESTO_LETRAS, REF_TIENDA, TEXTO_CARGA, NOMBRE_CAMPANA_UPPER, TEXTO_TERRITORIO.
+// _asSentence hace idempotente el contrato 'oración': capitaliza la inicial y garantiza el
+// punto final (no duplica si ya lo tiene). Se aplica a los 3 derivados de tipo oración.
+function _asSentence(str) {
+  var s = String(str == null ? '' : str).trim();
+  if (!s) return '';
+  s = s.charAt(0).toUpperCase() + s.slice(1);
+  if (!/[.!?]$/.test(s)) s += '.';
+  return s;
+}
+//==FASE_D_SENTENCE_END==
+
 const DERIVED_FIELDS = {
   // --- Nombres derivados ---
   'NOMBRE_CAMPANA_UPPER': function(p) {
@@ -200,7 +220,7 @@ const DERIVED_FIELDS = {
   },
 
   // --- Texto de segmento ---
-  'TEXTO_SEGMENTO': function(p) {
+  'TEXTO_SEGMENTO': function(p) { return _asSentence((function() {
     var seg = p.userSegment || 'Todos los usuarios';
     if (seg.indexOf('Pro') >= 0) {
       return 'Pueden participar los Usuarios/Consumidores que tengan activa la suscripción RappiPro y/o RappiPro Black.';
@@ -209,10 +229,10 @@ const DERIVED_FIELDS = {
       return 'Campaña válida únicamente para Nuevos Usuarios/Consumidores.';
     }
     return 'Pueden participar todos los Usuarios/Consumidores de la Plataforma Rappi que sean mayores de edad.';
-  },
+  })()); },
 
   // --- Texto de método de pago ---
-  'TEXTO_METODO_PAGO': function(p) {
+  'TEXTO_METODO_PAGO': function(p) { return _asSentence((function() {
     var met = p.paymentMethods || 'Todos excepto Efectivo';
     if (met.indexOf('excepto Efectivo') >= 0 || met.indexOf('excepto efectivo') >= 0) {
       return 'Campaña válida para órdenes pagadas con todos los medios de pago habilitados en la Plataforma Rappi, excepto efectivo. No se obtendrá el Beneficio respecto de órdenes pagadas en efectivo o parcial/totalmente con Créditos.';
@@ -221,10 +241,10 @@ const DERIVED_FIELDS = {
       return 'Campaña válida para órdenes pagadas con todos los medios de pago habilitados en la Plataforma Rappi.';
     }
     return 'Campaña válida únicamente para órdenes pagadas con ' + met.replace('Únicamente ', '') + '.';
-  },
+  })()); },
 
   // --- Texto de lugar de redención (Cashback) ---
-  'TEXTO_LUGAR_REDENCION': function(p) {
+  'TEXTO_LUGAR_REDENCION': function(p) { return _asSentence((function() {
     var lugar = p.redemptionPlace || 'Únicamente en la Tienda Participante (Brand Credits)';
     var refTienda = DERIVED_FIELDS['REF_TIENDA'](p);
     var suffix = ' únicamente dentro del Territorio.';
@@ -235,7 +255,7 @@ const DERIVED_FIELDS = {
       return 'Se aclara que los Créditos otorgados podrán ser redimidos en cualquier sección de la Plataforma Rappi (excepto Cajero ATM y RappiFavor)' + suffix;
     }
     return 'Se aclara que los Créditos otorgados podrán ser redimidos únicamente en ' + refTienda + ' donde se originó el Beneficio' + suffix;
-  },
+  })()); },
 
   // --- Texto de territorio (multi-país V3.4) ---
   'TEXTO_TERRITORIO': function(p) {
@@ -433,6 +453,14 @@ const LEGAL_DEFAULTS_MAP = {
   'NOMBRE_POLITICA_PRIVACIDAD': { column: 'nombre_politica_privacidad' },
   'EDAD_MINIMA':               { column: 'edad_minima' }
 };
+
+// FASE A1 — Guardarraíl de país. Columnas legales de Country_Settings que DEBEN estar
+// completas (no vacías, sin marcador "[VERIFICAR") para permitir generar un documento.
+// Hoy solo Colombia (CO) las tiene sembradas; el resto de países quedan bloqueados hasta
+// que Legal complete su fila. Se eligieron estas 3 porque son la señal confirmada de
+// "país vetado por Legal" (CO las tiene; MX/PE/CL/AR/EC/UY/CR/BR las tienen vacías).
+const REQUIRED_LEGAL_COLUMNS = ['jurisdiction_text', 'applicable_law', 'legal_url'];
+
 const BASE_FIELD_MAP = {
   'NOMBRE_CAMPANA':  { canonical: 'campaignName', format_as: '' },
   'FECHA_INICIO':    { canonical: 'startDate',    format_as: 'date_legal' },
@@ -442,3 +470,69 @@ const BASE_FIELD_MAP = {
   'TERRITORIO':      { canonical: 'territory',    format_as: '' },
   'TIENDA_BASE':     { canonical: 'shopName',     format_as: '' },
 };
+
+//==FASE_C_CATALOG_START== (marcador para tests node; no remover)
+// FASE C — CATÁLOGO MAESTRO DE PLACEHOLDERS (FIELD_CATALOG).
+// Fuente ÚNICA y determinista para clasificar cada {{TOKEN}} de una plantilla y decidir si
+// genera un campo de formulario y si es obligatorio. Reemplaza la detección por IA (Gemini)
+// en la ESCRITURA de campos. 'required' SOLO lo define este catálogo, nunca la IA.
+// Categorías:
+//   'base'    → input base ya presente en el formulario estático (canonical). No re-generar.
+//   'input'   → lo diligencia el CAM. Genera fila en Template_Fields con 'required' del catálogo.
+//   'derived' → lo calcula DERIVED_FIELDS. No genera campo (no se pregunta).
+//   'legal'   → se resuelve de Country_Settings (LEGAL_DEFAULTS_MAP). No genera campo; lo cubre A1.
+const FIELD_CATALOG = {
+  // ---- INPUTS de negocio (se preguntan al CAM) ----
+  // Organizador: por la REGLA LEGAL, Rappi NUNCA es el organizador → SIEMPRE obligatorio.
+  'ORGANIZADOR':       { category: 'input', required: true,  field_id: 'organizerLegalName', label_es: 'Razón social del Organizador', field_type: 'text',   section: '3', group: 'Organizador', tooltip: 'El aliado/marca que fondea la campaña. Rappi nunca es el organizador.' },
+  'ID_ORGANIZADOR':    { category: 'input', required: true,  field_id: 'organizerTaxId',     label_es: 'ID fiscal del Organizador',    field_type: 'text',   section: '3', group: 'Organizador', tooltip: 'ID tributario de la marca/tienda organizadora (NO el de Rappi). Ej: NIT 900.843.898-9.' },
+  'TELEFONO_CONTACTO': { category: 'input', required: true,  field_id: 'organizerPhone',     label_es: 'Teléfono de contacto',         field_type: 'text',   section: '3', group: 'Organizador' },
+  'EMAIL_CONTACTO':    { category: 'input', required: true,  field_id: 'organizerEmail',     label_es: 'Email de contacto',            field_type: 'text',   section: '3', group: 'Organizador' },
+  'NUM_GANADORES':     { category: 'input', required: true,  field_id: 'numberOfWinners',    label_es: 'Número de ganadores',          field_type: 'number', section: '3', group: 'Concurso' },
+  'CRITERIO_GANADOR':  { category: 'input', required: true,  field_id: 'winnerCriteria',     label_es: 'Criterio del ganador',         field_type: 'select', section: '3', group: 'Concurso' },
+  'FECHA_ANUNCIO':     { category: 'input', required: true,  field_id: 'announcementDate',   label_es: 'Fecha de anuncio de ganadores',field_type: 'date',   section: '3', group: 'Concurso' },
+  'VERTICALES':               { category: 'input', required: false, field_id: 'verticals',             label_es: 'Verticales/Secciones',    field_type: 'text',     section: '3', group: 'Concurso' },
+  'PRODUCTOS_PARTICIPANTES':  { category: 'input', required: false, field_id: 'participatingProducts', label_es: 'Productos participantes',  field_type: 'text',     section: '3', group: 'Concurso' },
+  'CONDICIONES_ESPECIALES':   { category: 'input', required: false, field_id: 'specialConditions',     label_es: 'Condiciones especiales',  field_type: 'textarea', section: '4', group: 'Restricciones' },
+
+  // ---- BASE (ya en el form estático; no re-generar como dinámicos) ----
+  'NOMBRE_CAMPANA':  { category: 'base', required: false, canonical: 'campaignName' },
+  'TIENDA_BASE':     { category: 'base', required: true,  canonical: 'shopName' },
+  'TERRITORIO':      { category: 'base', required: true,  canonical: 'territory' },
+  'FECHA_INICIO':    { category: 'base', required: true,  canonical: 'startDate' },
+  'FECHA_FIN':       { category: 'base', required: true,  canonical: 'endDate' },
+  'HORA_INICIO':     { category: 'base', required: false, canonical: 'startTime' },
+  'HORA_FIN':        { category: 'base', required: false, canonical: 'endTime' },
+  'TOPE_NUM':        { category: 'base', required: true,  canonical: 'cap' },
+  'PRESUPUESTO_NUM': { category: 'base', required: true,  canonical: 'budget' },
+  'LIMITE_ORDENES':  { category: 'base', required: false, canonical: 'maxOrders' },
+
+  // ---- DERIVED (los calcula DERIVED_FIELDS; no se preguntan) ----
+  'NOMBRE_CAMPANA_UPPER':    { category: 'derived' },
+  'TEXTO_TERRITORIO':        { category: 'derived' },
+  'REF_TIENDA':              { category: 'derived' },
+  'PRESUPUESTO_LETRAS':      { category: 'derived' },
+  'TOPE_LETRAS':             { category: 'derived' },
+  'TEXTO_SEGMENTO':          { category: 'derived' },
+  'TEXTO_METODO_PAGO':       { category: 'derived' },
+  'TEXTO_PORCENTAJE':        { category: 'derived' },
+  'TEXTO_ORDENES':           { category: 'derived' },
+  'TEXTO_CARGA':             { category: 'derived' },
+  'TEXTO_VIGENCIA_CREDITOS': { category: 'derived' },
+  'TEXTO_LUGAR_REDENCION':   { category: 'derived' },
+
+  // ---- LEGAL (Country_Settings vía LEGAL_DEFAULTS_MAP; cubierto por el guardarraíl A1) ----
+  'JURISDICCION':               { category: 'legal', column: 'jurisdiction_text' },
+  'LEY_APLICABLE':              { category: 'legal', column: 'applicable_law' },
+  'ENTIDAD_VIGILANCIA':         { category: 'legal', column: 'legal_entity' },
+  'ENTIDAD_LEGAL':              { category: 'legal', column: 'entidad_legal_nombre' },
+  'PAIS_LEGAL':                 { category: 'legal', column: 'legal_country' },
+  'URL_TC_CREDITOS':            { category: 'legal', column: 'url_tc_creditos' },
+  'URL_TC_PLATAFORMA':          { category: 'legal', column: 'url_tc_plataforma' },
+  'URL_PRIVACIDAD':             { category: 'legal', column: 'url_privacidad' },
+  'NOMBRE_POLITICA_PRIVACIDAD': { category: 'legal', column: 'nombre_politica_privacidad' },
+  // ID_FISCAL = identificación de RAPPI (Country_Settings). NO confundir con ID_ORGANIZADOR
+  // (input del CAM: el ID de la marca/tienda organizadora). Son campos distintos.
+  'ID_FISCAL':                  { category: 'legal', column: 'id_fiscal' }
+};
+//==FASE_C_CATALOG_END==
