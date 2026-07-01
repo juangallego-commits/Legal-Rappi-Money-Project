@@ -630,7 +630,76 @@ function deriveFieldRowsForTemplate(templateText, campaignType, countryCode) {
   });
   return { rows: rows, skipped: skipped, unknown: unknown };
 }
+// Diff DETERMINISTA y ACOTADO por campaign_type. Por construcción NUNCA referencia filas de
+// otro tipo (ni 'ALL' ni 'Concurso'): solo compara contra las filas del MISMO campaign_type.
+// ADD-only por seguridad: reporta wouldModify/orphans pero NO borra ni modifica nada.
+function _computeFieldDiff(derivedRows, existingRows, campaignType, templateTokens) {
+  var ct = String(campaignType);
+  var sameType = existingRows.filter(function(r){ return String(r.campaign_type) === ct; });
+  var otherType = existingRows.filter(function(r){ return String(r.campaign_type) !== ct; });
+  var byField = {};
+  sameType.forEach(function(r){ byField[r.field_id] = r; });
+
+  var adds = [], wouldModify = [];
+  derivedRows.forEach(function(d){
+    var ex = byField[d.field_id];
+    if (!ex) { adds.push(d); return; }
+    if (String(ex.required) !== String(d.required) || String(ex.field_type) !== String(d.field_type)) {
+      wouldModify.push({ field_id: d.field_id, from: { required: ex.required, field_type: ex.field_type }, to: { required: d.required, field_type: d.field_type } });
+    }
+  });
+
+  // Orphan = fila del MISMO tipo cuyo placeholder (no vacío) ya no está en el template.
+  var tokenSet = {};
+  (templateTokens || []).forEach(function(t){ tokenSet[t] = true; });
+  var orphans = sameType.filter(function(r){
+    var ph = String(r.placeholder || '').replace(/^\{\{/, '').replace(/\}\}$/, '').trim();
+    return ph !== '' && !tokenSet[ph];
+  }).map(function(r){ return { field_id: r.field_id, placeholder: r.placeholder }; });
+
+  var otherByType = {};
+  otherType.forEach(function(r){ var k = String(r.campaign_type); otherByType[k] = (otherByType[k] || 0) + 1; });
+
+  return {
+    campaignType: ct,
+    adds: adds,
+    wouldModify: wouldModify,   // reportado, NO aplicado
+    orphans: orphans,           // reportado, NO borrado
+    deletes: [],                // ADD-only: nunca borra
+    untouchedOtherTypes: otherByType,
+    untouchedOtherCount: otherType.length,
+    scopeOk: true               // adds/modifies solo referencian campaignType por construcción
+  };
+}
 //==FASE_C_PURE_END==
+
+// FASE C — DRY-RUN (NO escribe). Deriva los campos de un template desde FIELD_CATALOG y
+// computa el diff ACOTADO a su campaign_type. Loguea el plan para revisión y lo devuelve.
+// Correr desde el editor Apps Script: previewFieldDerivation('Cashback', 'ALL').
+function previewFieldDerivation(campaignType, countryCode) {
+  try {
+    var registry = _sheetToObjects(_getSheet(TW_CONFIG.SHEET_REGISTRY) || []);
+    var tpl = registry.find(function(r){ return String(r.campaign_type) === String(campaignType) && String(r.status) === 'active'; });
+    if (!tpl) return JSON.stringify({ status: 'error', message: 'No hay plantilla activa para ' + campaignType });
+    var cc = countryCode || tpl.country_code || 'ALL';
+
+    var body = DocumentApp.openById(tpl.template_doc_id).getBody().getText();
+    var derived = deriveFieldRowsForTemplate(body, campaignType, cc);
+    var tokens = _extractPlaceholders(body);
+    var existing = _sheetToObjects(_getSheet(TW_CONFIG.SHEET_FIELDS) || []);
+    var diff = _computeFieldDiff(derived.rows, existing, campaignType, tokens);
+
+    Logger.log('🔎 DRY-RUN FASE C — ' + campaignType + ' / ' + cc + ' (doc ' + tpl.template_doc_id + ')');
+    Logger.log('  ADD (' + diff.adds.length + '): ' + diff.adds.map(function(a){ return a.field_id + ' [' + a.placeholder + ', req=' + a.required + ', ' + a.field_type + ']'; }).join(' | '));
+    Logger.log('  MODIFY reportado (no aplicado): ' + JSON.stringify(diff.wouldModify));
+    Logger.log('  DELETE: ' + diff.deletes.length + '  | ORPHANS reportado (no borrado): ' + JSON.stringify(diff.orphans));
+    Logger.log('  Filas de OTROS tipos NO tocadas: ' + JSON.stringify(diff.untouchedOtherTypes) + ' (total ' + diff.untouchedOtherCount + ')');
+    if (derived.unknown.length) Logger.log('  ⚠️ Placeholders no catalogados (revisar): ' + derived.unknown.join(', '));
+    return JSON.stringify({ status: 'ok', dryRun: true, wrote: false, diff: diff, unknown: derived.unknown });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
 
 // ---INICIO COPIAR---
 // =================================================================

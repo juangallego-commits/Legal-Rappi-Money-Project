@@ -64,6 +64,20 @@ const testCode = `
   results.push(['D: recorta espacios', _asSentence('   se aclara que...  ') === 'Se aclara que...']);
   results.push(['D: respeta signos ? !', _asSentence('¿aplica?') === '¿aplica?']);
   results.push(['D: vacío => vacío', _asSentence('') === '']);
+
+  // ---- FASE C: diff ACOTADO por campaign_type (no cross-type) ----
+  var EX = [
+    { field_id:'a', campaign_type:'ALL', placeholder:'{{X}}', required:'TRUE', field_type:'text' },
+    { field_id:'organizerLegalName', campaign_type:'Concurso Mayor Comprador', placeholder:'{{ORGANIZADOR}}', required:'TRUE', field_type:'text' },
+    { field_id:'cashbackPct', campaign_type:'Cashback', placeholder:'{{TEXTO_PORCENTAJE}}', required:'TRUE', field_type:'text' }
+  ];
+  var DER = [ { field_id:'organizerLegalName', campaign_type:'Cashback', placeholder:'{{ORGANIZADOR}}', required:'TRUE', field_type:'text' } ];
+  var dff = _computeFieldDiff(DER, EX, 'Cashback', ['TEXTO_PORCENTAJE','ORGANIZADOR']);
+  results.push(['diff: agrega organizer a Cashback', dff.adds.length===1 && dff.adds[0].field_id==='organizerLegalName']);
+  results.push(['diff: ADD-only, no borra', dff.deletes.length===0]);
+  results.push(['diff: no marca orphan si el placeholder sigue en el template', dff.orphans.length===0]);
+  results.push(['diff: NO toca filas de otros tipos (ALL + Concurso = 2)', dff.untouchedOtherCount===2]);
+  results.push(['diff: scopeOk', dff.scopeOk===true]);
 `;
 
 const sandbox = { CASHBACK_SNIPPET, results, console };
