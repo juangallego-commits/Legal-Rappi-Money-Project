@@ -850,7 +850,7 @@ function getFieldsForUserForm(campaignType, countryCode) {
     // La prioridad de grupo evita que campos de distinto 'group' se intercalen por colisión de
     // 'order' (lo que duplicaba encabezados en el form). Robusto ante cualquier valor de 'order':
     // el Organizador (prioridad 0) queda contiguo y primero; el resto conserva su orden original.
-    const GROUP_PRIORITY = { 'Organizador': 0 };
+    const GROUP_PRIORITY = { 'Organizador': 0, 'Mecánica': 1, 'Concurso': 2, 'Premio y notificación': 3, 'Cashback': 4, 'Restricciones': 8 };
     const _gp = g => (GROUP_PRIORITY[g] !== undefined ? GROUP_PRIORITY[g] : 50);
     filtered.sort((a, b) => {
       const secDiff = Number(a.section || 99) - Number(b.section || 99);

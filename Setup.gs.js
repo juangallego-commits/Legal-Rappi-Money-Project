@@ -1275,3 +1275,80 @@ function registerGlobalTemplate() {
   
   Logger.log('🎉 Registro completo');
 }
+// =================================================================
+// MIGRACIÓN — Carrera de Compras (Tareas 1, 3, 5). Idempotente, ADD/UPDATE-only.
+// migrateFormFieldsCarreraV1(false) para ESCRIBIR; sin argumento o true = DRY-RUN (no escribe).
+//   T1: elimina field_id='specialConditions' (campo huérfano; ÚNICO delete, autorizado por Tarea 1).
+//   T3: upsert de 5 campos nuevos de 'Concurso Mayor Comprador' (metadatos leídos del FIELD_CATALOG).
+//   T5: mejora labels/tooltips de 10 campos.
+// No toca filas de Concurso existentes ni otras filas ALL (salvo el delete explícito de T1).
+// =================================================================
+function migrateFormFieldsCarreraV1(apply) {
+  var DRY = (apply !== true); // por defecto DRY-RUN. Pasar true para escribir.
+  var sheet = _getSheet(FIELDS_SHEET_NAME);
+  if (!sheet) { Logger.log('❌ Template_Fields no existe'); return JSON.stringify({ error: 'sin hoja' }); }
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  function I(n) { return headers.indexOf(n); }
+  var iFid = I('field_id'), iCc = I('country_code'), iCt = I('campaign_type'), iPh = I('placeholder'),
+      iLbl = I('label_es'), iTt = I('tooltip'), iOrd = I('order');
+  var rep = { dryRun: DRY, delete_specialConditions: [], add: [], update: [], relabel: [] };
+
+  // ---- T1: eliminar specialConditions (de abajo hacia arriba para no desalinear) ----
+  var data = sheet.getDataRange().getValues();
+  for (var r = data.length - 1; r >= 1; r--) {
+    if (String(data[r][iFid]) === 'specialConditions') {
+      rep.delete_specialConditions.push({ row: r + 1, campaign_type: String(data[r][iCt]) });
+      if (!DRY) sheet.deleteRow(r + 1);
+    }
+  }
+
+  // ---- T3: upsert de campos nuevos de Concurso (desde FIELD_CATALOG) ----
+  var CT = 'Concurso Mayor Comprador', CC = 'ALL';
+  var NUEVOS = ['MAKER', 'CRITERIO_DESEMPATE', 'MEDIO_NOTIFICACION', 'FECHA_NOTIFICACION', 'PLAZO_CONFIRMACION'];
+  NUEVOS.forEach(function(tok, k) {
+    var cat = (typeof FIELD_CATALOG !== 'undefined') ? FIELD_CATALOG[tok] : null;
+    if (!cat) { Logger.log('⚠️ Sin catálogo para ' + tok); return; }
+    var ph = '{{' + tok + '}}';
+    var row = _buildFieldRowArray(headers, {
+      field_id: cat.field_id, country_code: CC, campaign_type: CT, placeholder: ph,
+      label_es: cat.label_es, field_type: cat.field_type, required: cat.required ? 'TRUE' : 'FALSE',
+      section: cat.section, group: cat.group
+    });
+    if (iOrd >= 0) row[iOrd] = String(10 + k);
+    var d2 = sheet.getDataRange().getValues();
+    var found = -1;
+    for (var i = 1; i < d2.length; i++) {
+      if (String(d2[i][iCc]) === CC && String(d2[i][iCt]) === CT && String(d2[i][iPh]) === ph) { found = i; break; }
+    }
+    if (found >= 0) { rep.update.push(cat.field_id); if (!DRY) sheet.getRange(found + 1, 1, 1, row.length).setValues([row]); }
+    else { rep.add.push(cat.field_id); if (!DRY) sheet.appendRow(row); }
+  });
+
+  // ---- T5: mejorar labels/tooltips ----
+  var MEJ = {
+    cap:             { label: 'Tope de cashback por pedido (en $)', tip: 'Máximo de créditos por pedido.' },
+    budget:          { label: 'Presupuesto total de la campaña (en $)', tip: 'Al agotarse, la campaña termina.' },
+    cashbackPct:     { label: '% de cashback (1–100)' },
+    maxOrders:       { label: 'Máximo de pedidos con beneficio por usuario' },
+    redemptionPlace: { label: '¿Dónde puede usar los créditos el usuario?' },
+    minPurchase:     { label: 'Compra mínima para aplicar (en $, opcional)', tip: 'Vacío = sin mínimo.' },
+    paymentMethods:  { label: '¿Con qué medios de pago aplica?' },
+    userSegment:     { label: '¿Qué usuarios pueden participar?' },
+    loadType:        { label: '¿Cuándo se cargan los créditos?' },
+    validityType:    { label: '¿Cómo vence el crédito?' }
+  };
+  var d3 = sheet.getDataRange().getValues();
+  for (var j = 1; j < d3.length; j++) {
+    var fid = String(d3[j][iFid]); var m = MEJ[fid];
+    if (m) {
+      rep.relabel.push(fid);
+      if (!DRY) {
+        if (iLbl >= 0 && m.label) sheet.getRange(j + 1, iLbl + 1).setValue(m.label);
+        if (iTt >= 0 && m.tip) sheet.getRange(j + 1, iTt + 1).setValue(m.tip);
+      }
+    }
+  }
+
+  Logger.log((DRY ? '🔎 DRY-RUN ' : '✍️ APLICADO ') + 'migrateFormFieldsCarreraV1: ' + JSON.stringify(rep));
+  return JSON.stringify(rep);
+}

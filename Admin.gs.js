@@ -758,13 +758,15 @@ function _countByCampaignType(sheet) {
 function _buildFieldRowArray(headers, r) {
   var cleanTok = String(r.placeholder || '').replace(/^\{\{/, '').replace(/\}\}$/, '');
   var cat = (typeof FIELD_CATALOG !== 'undefined') ? FIELD_CATALOG[cleanTok] : null;
+  // options/format_as/default_value/tooltip salen del catálogo (fuente única de metadatos).
   var vals = {
     field_id: r.field_id, country_code: r.country_code, campaign_type: r.campaign_type,
-    placeholder: r.placeholder, label_es: r.label_es || '', field_type: r.field_type || 'text',
-    icon: '', required: r.required || 'FALSE', section: r.section || '3',
-    validation_rule: '', options: '', default_value: '',
-    tooltip: (cat && cat.tooltip) ? cat.tooltip : '', depends_on: '', order: '99',
-    group: r.group || 'Organizador', format_as: '', canonical_field_id: ''
+    placeholder: r.placeholder, label_es: r.label_es || (cat && cat.label_es) || '',
+    field_type: r.field_type || (cat && cat.field_type) || 'text',
+    icon: '', required: r.required || 'FALSE', section: r.section || (cat && cat.section) || '3',
+    validation_rule: '', options: (cat && cat.options) || '', default_value: (cat && cat.default_value) || '',
+    tooltip: (cat && cat.tooltip) || '', depends_on: '', order: '99',
+    group: r.group || (cat && cat.group) || 'Variables', format_as: (cat && cat.format_as) || '', canonical_field_id: ''
   };
   return headers.map(function(h){ return (vals[h] !== undefined) ? vals[h] : ''; });
 }

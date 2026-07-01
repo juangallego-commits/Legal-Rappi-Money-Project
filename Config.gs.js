@@ -343,13 +343,53 @@ const DERIVED_FIELDS = {
   'NUM_GANADORES': function(p) {
     return String(p.numberOfWinners || 1);
   },
+  // LISTA_PREMIOS — ORACIÓN (clausulado Carrera, Legal). Reemplaza el wording anterior.
   'LISTA_PREMIOS': function(p) {
-    var tipo = p.prizeType || 'credits';
-    if (tipo === 'credits') {
-      var monto = Number(p.creditsAmount || 50000);
-      return numeroALetras(monto) + ' (' + monto.toLocaleString('es-CO') + ') Créditos de la App por cada ganador.';
+    if ((p.prizeType || 'credits') === 'credits') {
+      var monto = Number(p.creditsAmount || 0);
+      return 'El premio consiste en ' + numeroALetras(monto) + ' (' + monto.toLocaleString('es-CO') + ') Créditos, que serán acreditados en la Billetera de Créditos del ganador conforme a lo aquí dispuesto.';
     }
-    return p.physicalPrizeDescription || p.prizes || 'Premio sorpresa.';
+    return 'El premio consiste en: ' + (p.physicalPrizeDescription || '') + '.';
+  },
+
+  // === CARRERA DE COMPRAS / CONCURSO — derivados nuevos (clausulado por Legal) ===
+  // FRASE_GANADORES — ORACIÓN (lee p.numberOfWinners)
+  'FRASE_GANADORES': function(p) {
+    var n = Number(p.numberOfWinners || 1);
+    if (n === 1) return 'Resultará ganador el participante que ocupe la primera posición del ranking.';
+    return 'Resultarán ganadores los ' + numeroALetras(n) + ' (' + n + ') participantes que ocupen las primeras posiciones del ranking.';
+  },
+  // CRITERIO_DESEMPATE — FRAGMENTO (lee p.tiebreaker)
+  'CRITERIO_DESEMPATE': function(p) {
+    var t = p.tiebreaker || '';
+    if (t.indexOf('número') >= 0 || t.indexOf('numero') >= 0) return 'el mayor número de pedidos válidos realizados durante la Vigencia';
+    if (t.indexOf('valor') >= 0) return 'el mayor valor total acumulado en compras durante la Vigencia';
+    return 'la anterioridad en la fecha y hora del último pedido válido registrado'; // "Anterioridad..." y default
+  },
+  // TEXTO_NATURALEZA_PREMIO — ORACIÓN (lee p.prizeType)
+  'TEXTO_NATURALEZA_PREMIO': function(p) {
+    return (p.prizeType === 'physical')
+      ? 'El premio consiste en un bien de carácter físico, cuya existencia, calidad, garantía y entrega son responsabilidad exclusiva del Organizador. Rappi no fabrica, comercializa ni garantiza dicho bien.'
+      : 'El premio consiste en Créditos acreditados en la Billetera de Créditos de la Plataforma Rappi, los cuales son intangibles, no constituyen dinero en efectivo, no son transferibles a terceros y se rigen por los Términos y Condiciones de Funcionamiento de los Créditos de la Plataforma Rappi.';
+  },
+  // TEXTO_ENTREGA — ORACIÓN (lee p.prizeDeliveryBy). Rappi NUNCA organizador: solo logística por cuenta del Organizador.
+  'TEXTO_ENTREGA': function(p) {
+    return (p.prizeDeliveryBy === 'rappi')
+      ? 'La entrega del premio será gestionada por Rappi en su calidad de operador logístico y por cuenta del Organizador, quien conserva la calidad de responsable del premio; Rappi coordinará con el ganador las condiciones de tiempo, modo y lugar de entrega.'
+      : 'La entrega del premio estará a cargo exclusivamente del Organizador, quien coordinará directamente con el ganador las condiciones de tiempo, modo y lugar de entrega, siendo el único responsable de la misma.';
+  },
+  // MEDIO_NOTIFICACION — FRAGMENTO (lee p.notificationMethod)
+  'MEDIO_NOTIFICACION': function(p) {
+    var m = p.notificationMethod || '';
+    if (m.indexOf('Llamada') >= 0) return 'una llamada telefónica al número registrado en la cuenta del ganador';
+    if (m.indexOf('Plataforma') >= 0) return 'una notificación dentro de la Plataforma Rappi';
+    return 'el correo electrónico registrado en la cuenta del ganador'; // "Correo electrónico" y default
+  },
+  // TEXTO_UMBRAL — ORACIÓN (lee p.minPurchase)
+  'TEXTO_UMBRAL': function(p) {
+    var min = Number(p.minPurchase || 0);
+    if (!min || min <= 0) return 'No se exige un valor mínimo de compra por pedido para participar en la Campaña.';
+    return 'Únicamente contabilizarán para el concurso las compras cuyo valor sea igual o superior a ' + numeroALetras(min) + ' (' + min.toLocaleString('es-CO') + ').';
   },
   'RESPONSABLE_ENTREGA': function(p) {
     return (p.prizeDeliveryBy === 'organizer') ? 'el Organizador' : 'Rappi';
@@ -495,6 +535,13 @@ const FIELD_CATALOG = {
   'PRODUCTOS_PARTICIPANTES':  { category: 'input', required: false, field_id: 'participatingProducts', label_es: 'Productos participantes',  field_type: 'text',     section: '3', group: 'Concurso' },
   'CONDICIONES_ESPECIALES':   { category: 'input', required: false, field_id: 'specialConditions',     label_es: 'Condiciones especiales',  field_type: 'textarea', section: '4', group: 'Restricciones' },
 
+  // ---- INPUTS Carrera de Compras (Concurso) ----
+  'MAKER':              { category: 'input', required: false, field_id: 'makerBrand',          label_es: 'Marca (Maker) que participa — opcional',     field_type: 'text',   section: '3', group: 'Organizador',            tooltip: 'Si una marca financia el concurso (ej: Coca-Cola), escríbela. Si organiza la propia tienda, déjalo vacío.' },
+  'CRITERIO_DESEMPATE': { category: 'input', required: true,  field_id: 'tiebreaker',          label_es: 'Criterio de desempate',                     field_type: 'select', section: '3', group: 'Mecánica',                options: 'Anterioridad del último pedido|Mayor número de pedidos|Mayor valor acumulado', tooltip: 'Cómo se decide si dos participantes empatan.' },
+  'MEDIO_NOTIFICACION': { category: 'input', required: true,  field_id: 'notificationMethod',  label_es: '¿Cómo se notifica al ganador?',             field_type: 'select', section: '3', group: 'Premio y notificación',   options: 'Correo electrónico|Llamada telefónica|Notificación en la Plataforma Rappi' },
+  'FECHA_NOTIFICACION': { category: 'input', required: true,  field_id: 'notificationDate',    label_es: 'Fecha de notificación al ganador',          field_type: 'date',   section: '3', group: 'Premio y notificación',   format_as: 'date_legal' },
+  'PLAZO_CONFIRMACION': { category: 'input', required: true,  field_id: 'confirmationDeadline',label_es: 'Días hábiles para que el ganador confirme', field_type: 'number', section: '3', group: 'Premio y notificación',   default_value: '5', tooltip: 'Si el ganador no confirma en este plazo, se asigna al siguiente en el ranking.' },
+
   // ---- BASE (ya en el form estático; no re-generar como dinámicos) ----
   'NOMBRE_CAMPANA':  { category: 'base', required: false, canonical: 'campaignName' },
   'TIENDA_BASE':     { category: 'base', required: true,  canonical: 'shopName' },
@@ -520,6 +567,12 @@ const FIELD_CATALOG = {
   'TEXTO_CARGA':             { category: 'derived' },
   'TEXTO_VIGENCIA_CREDITOS': { category: 'derived' },
   'TEXTO_LUGAR_REDENCION':   { category: 'derived' },
+  // ---- DERIVED Carrera de Compras (se calculan; no se preguntan) ----
+  'FRASE_GANADORES':         { category: 'derived' },
+  'TEXTO_NATURALEZA_PREMIO': { category: 'derived' },
+  'TEXTO_ENTREGA':           { category: 'derived' },
+  'TEXTO_UMBRAL':            { category: 'derived' },
+  'LISTA_PREMIOS':           { category: 'derived' },
 
   // ---- LEGAL (Country_Settings vía LEGAL_DEFAULTS_MAP; cubierto por el guardarraíl A1) ----
   'JURISDICCION':               { category: 'legal', column: 'jurisdiction_text' },
