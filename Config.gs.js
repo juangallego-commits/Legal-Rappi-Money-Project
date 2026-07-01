@@ -385,9 +385,9 @@ const DERIVED_FIELDS = {
     if (m.indexOf('Plataforma') >= 0) return 'una notificación dentro de la Plataforma Rappi';
     return 'el correo electrónico registrado en la cuenta del ganador'; // "Correo electrónico" y default
   },
-  // TEXTO_UMBRAL — ORACIÓN (lee p.minPurchase)
+  // TEXTO_UMBRAL — ORACIÓN (lee p.minPurchase; compat con el campo existente minParticipation)
   'TEXTO_UMBRAL': function(p) {
-    var min = Number(p.minPurchase || 0);
+    var min = Number(p.minPurchase || p.minParticipation || 0);
     if (!min || min <= 0) return 'No se exige un valor mínimo de compra por pedido para participar en la Campaña.';
     return 'Únicamente contabilizarán para el concurso las compras cuyo valor sea igual o superior a ' + numeroALetras(min) + ' (' + min.toLocaleString('es-CO') + ').';
   },
