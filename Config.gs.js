@@ -72,6 +72,26 @@ const TW_CONFIG = {
 // Usados por _generateSmartTemplate() cuando el template tiene
 // placeholders compuestos que no son un campo directo del formulario.
 // =================================================================
+
+//==FASE_D_SENTENCE_START== (marcador para tests node; no remover)
+// FASE D — CONTRATO de derivados. Cada TEXTO_* es de un tipo fijo:
+//   'oración'   → autónomo (mayúscula inicial + punto final). En el template va como frase
+//                 SUELTA, nunca embebido dentro de otra oración.
+//   'fragmento' → se inserta dentro de otra frase (minúscula, sin punto final).
+// ORACIÓN: TEXTO_SEGMENTO, TEXTO_METODO_PAGO, TEXTO_LUGAR_REDENCION.
+// FRAGMENTO: TEXTO_VIGENCIA_CREDITOS, TEXTO_ORDENES, TEXTO_PORCENTAJE, TOPE_LETRAS,
+//   PRESUPUESTO_LETRAS, REF_TIENDA, TEXTO_CARGA, NOMBRE_CAMPANA_UPPER, TEXTO_TERRITORIO.
+// _asSentence hace idempotente el contrato 'oración': capitaliza la inicial y garantiza el
+// punto final (no duplica si ya lo tiene). Se aplica a los 3 derivados de tipo oración.
+function _asSentence(str) {
+  var s = String(str == null ? '' : str).trim();
+  if (!s) return '';
+  s = s.charAt(0).toUpperCase() + s.slice(1);
+  if (!/[.!?]$/.test(s)) s += '.';
+  return s;
+}
+//==FASE_D_SENTENCE_END==
+
 const DERIVED_FIELDS = {
   // --- Nombres derivados ---
   'NOMBRE_CAMPANA_UPPER': function(p) {
@@ -200,7 +220,7 @@ const DERIVED_FIELDS = {
   },
 
   // --- Texto de segmento ---
-  'TEXTO_SEGMENTO': function(p) {
+  'TEXTO_SEGMENTO': function(p) { return _asSentence((function() {
     var seg = p.userSegment || 'Todos los usuarios';
     if (seg.indexOf('Pro') >= 0) {
       return 'Pueden participar los Usuarios/Consumidores que tengan activa la suscripción RappiPro y/o RappiPro Black.';
@@ -209,10 +229,10 @@ const DERIVED_FIELDS = {
       return 'Campaña válida únicamente para Nuevos Usuarios/Consumidores.';
     }
     return 'Pueden participar todos los Usuarios/Consumidores de la Plataforma Rappi que sean mayores de edad.';
-  },
+  })()); },
 
   // --- Texto de método de pago ---
-  'TEXTO_METODO_PAGO': function(p) {
+  'TEXTO_METODO_PAGO': function(p) { return _asSentence((function() {
     var met = p.paymentMethods || 'Todos excepto Efectivo';
     if (met.indexOf('excepto Efectivo') >= 0 || met.indexOf('excepto efectivo') >= 0) {
       return 'Campaña válida para órdenes pagadas con todos los medios de pago habilitados en la Plataforma Rappi, excepto efectivo. No se obtendrá el Beneficio respecto de órdenes pagadas en efectivo o parcial/totalmente con Créditos.';
@@ -221,10 +241,10 @@ const DERIVED_FIELDS = {
       return 'Campaña válida para órdenes pagadas con todos los medios de pago habilitados en la Plataforma Rappi.';
     }
     return 'Campaña válida únicamente para órdenes pagadas con ' + met.replace('Únicamente ', '') + '.';
-  },
+  })()); },
 
   // --- Texto de lugar de redención (Cashback) ---
-  'TEXTO_LUGAR_REDENCION': function(p) {
+  'TEXTO_LUGAR_REDENCION': function(p) { return _asSentence((function() {
     var lugar = p.redemptionPlace || 'Únicamente en la Tienda Participante (Brand Credits)';
     var refTienda = DERIVED_FIELDS['REF_TIENDA'](p);
     var suffix = ' únicamente dentro del Territorio.';
@@ -235,7 +255,7 @@ const DERIVED_FIELDS = {
       return 'Se aclara que los Créditos otorgados podrán ser redimidos en cualquier sección de la Plataforma Rappi (excepto Cajero ATM y RappiFavor)' + suffix;
     }
     return 'Se aclara que los Créditos otorgados podrán ser redimidos únicamente en ' + refTienda + ' donde se originó el Beneficio' + suffix;
-  },
+  })()); },
 
   // --- Texto de territorio (multi-país V3.4) ---
   'TEXTO_TERRITORIO': function(p) {

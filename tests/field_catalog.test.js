@@ -20,6 +20,8 @@ function extractBetween(file, startMarker, endMarker) {
 const root = path.join(__dirname, '..');
 const catalog = extractBetween(path.join(root, 'Config.gs.js'), '//==FASE_C_CATALOG_START==', '//==FASE_C_CATALOG_END==');
 const pure = extractBetween(path.join(root, 'Admin.gs.js'), '//==FASE_C_PURE_START==', '//==FASE_C_PURE_END==');
+const optBlocks = extractBetween(path.join(root, 'Código.js'), '//==FASE_B_OPT_START==', '//==FASE_B_OPT_END==');
+const sentence = extractBetween(path.join(root, 'Config.gs.js'), '//==FASE_D_SENTENCE_START==', '//==FASE_D_SENTENCE_END==');
 
 // Fragmento representativo del template real de Cashback (organizador + base + derived + legal + desconocido).
 const CASHBACK_SNIPPET = [
@@ -48,10 +50,24 @@ const testCode = `
   results.push(['_extractPlaceholders dedup + tolera espacios', (function(){ var t=_extractPlaceholders('{{ A }} {{A}} {{B}}'); return t.length===2 && t[0]==='A' && t[1]==='B'; })()]);
   results.push(['_classifyPlaceholder(ORGANIZADOR).required===true', _classifyPlaceholder('ORGANIZADOR').required===true]);
   results.push(['required NUNCA lo pone la IA: derived no aparece como campo', !findRow('texto_segmento')]);
+
+  // ---- FASE B: bloques opcionales (sentinelas) ----
+  var vacio = function(t){ return t === 'ORGANIZADOR'; };
+  results.push(['B: bloque con token VACÍO se borra completo', _stripOptionalBlocks('X [[?ORGANIZADOR]]por Y, id Z[[/?]] W', vacio) === 'X  W']);
+  results.push(['B: bloque con token CON VALOR conserva contenido y quita markers', _stripOptionalBlocks('X [[?ORGANIZADOR]]por Y[[/?]] W', function(){return false;}) === 'X por Y W']);
+  results.push(['B: sin markers => no-op (template actual)', _stripOptionalBlocks('organizada por {{ORGANIZADOR}}.', vacio) === 'organizada por {{ORGANIZADOR}}.']);
+  results.push(['B: opcional vacío NO deja restos de coma/preposición', _stripOptionalBlocks('organizada[[?ORGANIZADOR]] por {{ORGANIZADOR}}, identificada con {{ID_ORGANIZADOR}}[[/?]].', vacio) === 'organizada.']);
+
+  // ---- FASE D: contrato de oración ----
+  results.push(['D: capitaliza y agrega punto', _asSentence('pueden participar todos') === 'Pueden participar todos.']);
+  results.push(['D: idempotente (ya cumple)', _asSentence('Pueden participar todos.') === 'Pueden participar todos.']);
+  results.push(['D: recorta espacios', _asSentence('   se aclara que...  ') === 'Se aclara que...']);
+  results.push(['D: respeta signos ? !', _asSentence('¿aplica?') === '¿aplica?']);
+  results.push(['D: vacío => vacío', _asSentence('') === '']);
 `;
 
 const sandbox = { CASHBACK_SNIPPET, results, console };
-vm.runInNewContext(catalog + '\n' + pure + '\n' + testCode, sandbox, { timeout: 5000 });
+vm.runInNewContext(catalog + '\n' + pure + '\n' + optBlocks + '\n' + sentence + '\n' + testCode, sandbox, { timeout: 5000 });
 
 let passed = 0, failed = 0;
 for (const [name, ok] of results) {
