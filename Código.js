@@ -53,6 +53,7 @@ function coreEngineV2(payload, submitterEmail) {
         try {
           return _generateSmartTemplate(template, payload, vars, submitterEmail);
         } catch (smartErr) {
+          if (/^A2_ABORT/.test(smartErr.message)) throw smartErr; // abort A2: no reintentar legacy (daría el mismo doc inválido)
           Logger.log('⚠️ Smart Template falló, intentando legacy: ' + smartErr.message);
           // Solo intentar legacy si el tipo tiene lógica legacy (Cashback o Concurso)
           var campaignTypeName = vars['Tipo de Dinámica'] || campaignType;
@@ -67,8 +68,11 @@ function coreEngineV2(payload, submitterEmail) {
         return _generateWithTemplate(template, vars, submitterEmail);
       }
     }
-  } catch (e) { Logger.log('⚠️ Engine falló: ' + e.message); }
-  
+  } catch (e) {
+    if (e && /^(A2_ABORT|País no habilitado)/.test(e.message)) throw e; // aborts intencionales → mensaje al usuario
+    Logger.log('⚠️ Engine falló: ' + e.message);
+  }
+
   throw new Error("No se encontró una plantilla de documento activa para este tipo de dinámica en este país.");
 }
 
@@ -133,6 +137,24 @@ function _applyOptionalBlocksToBody(body, placeholders) {
     body.replaceText('\\[\\[\\?[A-Z0-9_]+\\]\\]', '');
     body.replaceText('\\[\\[\\/\\?\\]\\]', '');
   } catch (e) { Logger.log('⚠️ Bloques opcionales: ' + e.message); }
+}
+
+//==FASE_A2_START== (marcador para tests node; no remover)
+// FASE A2 — Detecta marcadores SIN resolver en el texto final: placeholders {{...}} o
+// corchetes [ ... ] (p. ej. [VERIFICAR ...]). Devuelve la lista; vacía = documento limpio.
+function _findResidualMarkers(text) {
+  var t = String(text == null ? '' : text), out = [];
+  var a = t.match(/\{\{[^}]+\}\}/g); if (a) out = out.concat(a);
+  var b = t.match(/\[[^\]]+\]/g);    if (b) out = out.concat(b);
+  return out;
+}
+//==FASE_A2_END==
+
+// A2 se activa con la Script Property RAPPIMIND_A2='on' (se enciende DESPUÉS de poblar el
+// organizador, para no rechazar el único flujo que funciona). Off por defecto = comportamiento previo.
+function _a2Enabled() {
+  try { return String(PropertiesService.getScriptProperties().getProperty('RAPPIMIND_A2') || '').toLowerCase() === 'on'; }
+  catch (e) { return false; }
 }
 // ---INICIO COPIAR---
 // -----------------------------------------------------------------
@@ -284,8 +306,15 @@ function _generateSmartTemplate(template, payload, vars, submitterEmail) {
     }
   }
 
-  // 5d. Limpiar placeholders sueltos residuales
-  body.replaceText('\\{\\{[A-Z_0-9_]+\\}\\}', '');
+  // 5d. FASE A2 — Validación pre-entrega (si está activa) o limpieza histórica (fallback).
+  if (_a2Enabled()) {
+    var residualS = _findResidualMarkers(body.getText());
+    if (residualS.length) {
+      throw new Error('A2_ABORT: quedaron marcadores sin resolver: ' + residualS.join(', ') + '. No se entregó el documento para no publicar un T&C inválido.');
+    }
+  } else {
+    body.replaceText('\\{\\{[A-Z_0-9_]+\\}\\}', '');
+  }
   doc.saveAndClose();
 
   // 6. Permisos + tracking
@@ -416,8 +445,15 @@ function _generateWithTemplate(template, vars, submitterEmail) {
     }
   }
   
-  // 4. Limpiar cualquier otro placeholder que haya quedado suelto
-  body.replaceText('\\{\\{[A-Z_0-9_]+\\}\\}', '');
+  // 4. FASE A2 — Validación pre-entrega (si está activa) o limpieza histórica (fallback).
+  if (_a2Enabled()) {
+    var residualL = _findResidualMarkers(body.getText());
+    if (residualL.length) {
+      throw new Error('A2_ABORT: quedaron marcadores sin resolver: ' + residualL.join(', ') + '. No se entregó el documento para no publicar un T&C inválido.');
+    }
+  } else {
+    body.replaceText('\\{\\{[A-Z_0-9_]+\\}\\}', '');
+  }
   doc.saveAndClose();
   
   const publicUrl = setPublicViewPermissions(doc);

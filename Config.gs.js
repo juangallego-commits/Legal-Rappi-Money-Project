@@ -485,7 +485,7 @@ const FIELD_CATALOG = {
   // ---- INPUTS de negocio (se preguntan al CAM) ----
   // Organizador: por la REGLA LEGAL, Rappi NUNCA es el organizador → SIEMPRE obligatorio.
   'ORGANIZADOR':       { category: 'input', required: true,  field_id: 'organizerLegalName', label_es: 'Razón social del Organizador', field_type: 'text',   section: '3', group: 'Organizador', tooltip: 'El aliado/marca que fondea la campaña. Rappi nunca es el organizador.' },
-  'ID_ORGANIZADOR':    { category: 'input', required: true,  field_id: 'organizerTaxId',     label_es: 'ID fiscal del Organizador',    field_type: 'text',   section: '3', group: 'Organizador', tooltip: 'Identificación tributaria del organizador (NIT en CO, RUC en PE, RFC en MX, CUIT en AR, CNPJ en BR).' },
+  'ID_ORGANIZADOR':    { category: 'input', required: true,  field_id: 'organizerTaxId',     label_es: 'ID fiscal del Organizador',    field_type: 'text',   section: '3', group: 'Organizador', tooltip: 'ID tributario de la marca/tienda organizadora (NO el de Rappi). Ej: NIT 900.843.898-9.' },
   'TELEFONO_CONTACTO': { category: 'input', required: true,  field_id: 'organizerPhone',     label_es: 'Teléfono de contacto',         field_type: 'text',   section: '3', group: 'Organizador' },
   'EMAIL_CONTACTO':    { category: 'input', required: true,  field_id: 'organizerEmail',     label_es: 'Email de contacto',            field_type: 'text',   section: '3', group: 'Organizador' },
   'NUM_GANADORES':     { category: 'input', required: true,  field_id: 'numberOfWinners',    label_es: 'Número de ganadores',          field_type: 'number', section: '3', group: 'Concurso' },

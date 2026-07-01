@@ -701,6 +701,74 @@ function previewFieldDerivation(campaignType, countryCode) {
   }
 }
 
+// FASE C — WRITER (ESCRIBE). ADD-only + UPSERT idempotente keyed by (country_code + campaign_type +
+// placeholder). ACOTADO a campaign_type: NUNCA toca filas de otro tipo (los adds vienen de
+// _computeFieldDiff, que solo compara contra el mismo tipo). country_code se fuerza a 'ALL'
+// (organizador en todos los países). Devuelve conteos before/after por campaign_type (verificación).
+function applyFieldDerivation(campaignType, countryCode) {
+  try {
+    var registry = _sheetToObjects(_getSheet(TW_CONFIG.SHEET_REGISTRY) || []);
+    var tpl = registry.find(function(r){ return String(r.campaign_type) === String(campaignType) && String(r.status) === 'active'; });
+    if (!tpl) return JSON.stringify({ status: 'error', message: 'No hay plantilla activa para ' + campaignType });
+    var cc = countryCode || 'ALL';
+
+    var bodyTxt = DocumentApp.openById(tpl.template_doc_id).getBody().getText();
+    var derived = deriveFieldRowsForTemplate(bodyTxt, campaignType, cc);
+    var tokens = _extractPlaceholders(bodyTxt);
+
+    var sheet = _getSheet(TW_CONFIG.SHEET_FIELDS);
+    var before = _countByCampaignType(sheet);
+    var diff = _computeFieldDiff(derived.rows, _sheetToObjects(sheet), campaignType, tokens);
+    if (!diff.scopeOk) return JSON.stringify({ status: 'error', message: 'Scope inseguro; abortado sin escribir.' });
+
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var ccCol = headers.indexOf('country_code'), ctCol = headers.indexOf('campaign_type'), phCol = headers.indexOf('placeholder');
+    var written = { added: 0, updated: 0 };
+
+    // Solo se escriben los ADDS (ADD-only). UPSERT por llave → re-correr no duplica (idempotente).
+    diff.adds.forEach(function(row) {
+      row.country_code = cc; // forzar ALL
+      var data = sheet.getDataRange().getValues();
+      var foundIdx = -1;
+      for (var i = 1; i < data.length; i++) {
+        if (String(data[i][ccCol]) === cc && String(data[i][ctCol]) === String(campaignType) && String(data[i][phCol]) === String(row.placeholder)) { foundIdx = i; break; }
+      }
+      var arr = _buildFieldRowArray(headers, row);
+      if (foundIdx >= 0) { sheet.getRange(foundIdx + 1, 1, 1, arr.length).setValues([arr]); written.updated++; }
+      else { sheet.appendRow(arr); written.added++; }
+    });
+
+    var after = _countByCampaignType(_getSheet(TW_CONFIG.SHEET_FIELDS));
+    Logger.log('✍️ applyFieldDerivation ' + campaignType + '/' + cc + ' → added=' + written.added + ' updated=' + written.updated);
+    Logger.log('  before=' + JSON.stringify(before) + '  after=' + JSON.stringify(after));
+    return JSON.stringify({ status: 'ok', wrote: true, written: written, before: before, after: after });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
+
+function _countByCampaignType(sheet) {
+  var out = {};
+  _sheetToObjects(sheet).forEach(function(r){ var k = String(r.campaign_type); out[k] = (out[k] || 0) + 1; });
+  return out;
+}
+
+// Construye la fila (array alineado a headers) de un campo derivado. tooltip sale del catálogo;
+// canonical_field_id vacío para que el campo SE MUESTRE en el formulario (getFieldsForUserForm).
+function _buildFieldRowArray(headers, r) {
+  var cleanTok = String(r.placeholder || '').replace(/^\{\{/, '').replace(/\}\}$/, '');
+  var cat = (typeof FIELD_CATALOG !== 'undefined') ? FIELD_CATALOG[cleanTok] : null;
+  var vals = {
+    field_id: r.field_id, country_code: r.country_code, campaign_type: r.campaign_type,
+    placeholder: r.placeholder, label_es: r.label_es || '', field_type: r.field_type || 'text',
+    icon: '', required: r.required || 'FALSE', section: r.section || '3',
+    validation_rule: '', options: '', default_value: '',
+    tooltip: (cat && cat.tooltip) ? cat.tooltip : '', depends_on: '', order: '99',
+    group: r.group || 'Organizador', format_as: '', canonical_field_id: ''
+  };
+  return headers.map(function(h){ return (vals[h] !== undefined) ? vals[h] : ''; });
+}
+
 // ---INICIO COPIAR---
 // =================================================================
 // WIZARD PASO 4: Crear template desde el Wizard (V3.1)

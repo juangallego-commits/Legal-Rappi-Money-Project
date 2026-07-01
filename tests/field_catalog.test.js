@@ -22,6 +22,7 @@ const catalog = extractBetween(path.join(root, 'Config.gs.js'), '//==FASE_C_CATA
 const pure = extractBetween(path.join(root, 'Admin.gs.js'), '//==FASE_C_PURE_START==', '//==FASE_C_PURE_END==');
 const optBlocks = extractBetween(path.join(root, 'Código.js'), '//==FASE_B_OPT_START==', '//==FASE_B_OPT_END==');
 const sentence = extractBetween(path.join(root, 'Config.gs.js'), '//==FASE_D_SENTENCE_START==', '//==FASE_D_SENTENCE_END==');
+const a2 = extractBetween(path.join(root, 'Código.js'), '//==FASE_A2_START==', '//==FASE_A2_END==');
 
 // Fragmento representativo del template real de Cashback (organizador + base + derived + legal + desconocido).
 const CASHBACK_SNIPPET = [
@@ -78,10 +79,16 @@ const testCode = `
   results.push(['diff: no marca orphan si el placeholder sigue en el template', dff.orphans.length===0]);
   results.push(['diff: NO toca filas de otros tipos (ALL + Concurso = 2)', dff.untouchedOtherCount===2]);
   results.push(['diff: scopeOk', dff.scopeOk===true]);
+
+  // ---- FASE A2: detección de marcadores residuales ----
+  results.push(['A2: detecta {{...}} residual', _findResidualMarkers('hola {{ORGANIZADOR}} y {{X}}').length===2]);
+  results.push(['A2: detecta [ ... ] residual', _findResidualMarkers('jurisdicción [VERIFICAR CON LEGAL EC]').length===1]);
+  results.push(['A2: doc limpio => sin marcadores', _findResidualMarkers('Texto legal completo, sin restos.').length===0]);
+  results.push(['A2: detecta {{}} y [] juntos', _findResidualMarkers('{{A}} y [B]').length===2]);
 `;
 
 const sandbox = { CASHBACK_SNIPPET, results, console };
-vm.runInNewContext(catalog + '\n' + pure + '\n' + optBlocks + '\n' + sentence + '\n' + testCode, sandbox, { timeout: 5000 });
+vm.runInNewContext(catalog + '\n' + pure + '\n' + optBlocks + '\n' + sentence + '\n' + a2 + '\n' + testCode, sandbox, { timeout: 5000 });
 
 let passed = 0, failed = 0;
 for (const [name, ok] of results) {
