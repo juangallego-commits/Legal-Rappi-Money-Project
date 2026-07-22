@@ -9,6 +9,7 @@ function doGet(e) {
   if (page === 'crm' || page === 'crm-form') return _crmServePage('CrmForm', e);
   if (page === 'crm-status')                 return _crmServePage('CrmStatus', e);
   if (page === 'crm-admin')                  return _crmServePage('CrmAdmin', e);
+  if (page === 'tc-generales')               return _crmServePage('TcGenerales', e);
   return HtmlService.createTemplateFromFile('WebApp')
       .evaluate()
       .setTitle('Motor Legal Rappi')
@@ -24,6 +25,8 @@ function processWebPayload(payloadString) {
       
     Logger.log('📥 Tipo de campaña: ' + payload.dynamicType);
     const result = coreEngineV2(payload, activeEmail);
+    // F2b — aprendizaje de aliados: solo si la generación fue exitosa; nunca rompe la entrega.
+    try { _learnAliadoFromPayload(payload); } catch (eA) { Logger.log('Aliados learn: ' + eA.message); }
     return JSON.stringify({ status: 'success', docUrl: result.docUrl, docName: result.docName });
   } catch (e) {
     return JSON.stringify({ status: 'error', message: e.message, stack: e.stack });
@@ -932,5 +935,57 @@ function getGeneralTcCatalog(countryCode) {
     return JSON.stringify({ status: 'ok', items: items });
   } catch (e) {
     return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
+
+
+// -----------------------------------------------------------------
+// ALIADOS FRECUENTES — aprendizaje automático del Organizador (F2b).
+// Cada vez que se genera un T&C con organizador, se guarda/actualiza la
+// fila del aliado (llave: país + ID fiscal normalizado; respaldo: razón
+// social). getAliadosCatalog alimenta el autocompletar del wizard (F2a).
+// -----------------------------------------------------------------
+function getAliadosCatalog(countryCode) {
+  try {
+    var sheet = _getSheet(ALIADOS_SHEET);
+    if (!sheet) return JSON.stringify({ status: 'ok', items: [] });
+    var cc = String(countryCode || '').trim().toUpperCase();
+    var items = _sheetToObjects(sheet).filter(function (r) {
+      return String(r.country_code).trim().toUpperCase() === cc;
+    }).map(function (r) {
+      return { razon_social: String(r.razon_social || ''), id_fiscal: String(r.id_fiscal || ''), uses: Number(r.uses || 0) };
+    }).sort(function (a, b) { return b.uses - a.uses; });
+    return JSON.stringify({ status: 'ok', items: items });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}
+
+function _learnAliadoFromPayload(payload) {
+  var df = (payload && payload.dynamicFields) || {};
+  var razon = String((payload && payload.organizerLegalName) || df.organizerLegalName || '').trim();
+  var idf   = String((payload && payload.organizerTaxId)    || df.organizerTaxId    || '').trim();
+  if (!razon && !idf) return; // campaña sin organizador (tipo sin FASE C aplicada)
+  var cc = String((payload && payload.countryCode) || 'CO').trim().toUpperCase();
+  var headers = ['country_code', 'razon_social', 'id_fiscal', 'uses', 'first_seen', 'last_used', 'last_used_by'];
+  var sheet = _getOrCreateSheet(ALIADOS_SHEET, headers);
+  var rows = _sheetToObjects(sheet);
+  var norm = function (s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); };
+  var idx = -1;
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i].country_code).trim().toUpperCase() !== cc) continue;
+    if ((idf && norm(rows[i].id_fiscal) === norm(idf)) ||
+        (!idf && razon && norm(rows[i].razon_social) === norm(razon))) { idx = i; break; }
+  }
+  var today = new Date().toISOString().split('T')[0];
+  var email = ''; try { email = Session.getActiveUser().getEmail(); } catch (e) {}
+  if (idx < 0) {
+    sheet.appendRow([cc, razon, idf, 1, today, today, email]);
+  } else {
+    var uses = Number(rows[idx].uses || 0) + 1;
+    sheet.getRange(idx + 2, 1, 1, headers.length).setValues([[
+      cc, razon || rows[idx].razon_social, idf || rows[idx].id_fiscal,
+      uses, rows[idx].first_seen || today, today, email
+    ]]);
   }
 }

@@ -68,5 +68,39 @@ t('Código.js expone getGeneralTcCatalog y Setup expone setupTcGenerales', () =>
   if (!/function\s+setupTcGenerales\s*\(/.test(read('Setup.gs.js'))) throw new Error('falta setupTcGenerales');
 });
 
+// ---- F2b: sincronía backend↔frontend de la regla + wiring de la página/autofill ----
+t('espejo JS en CrmForm produce EXACTAMENTE lo mismo que el backend', () => {
+  const jsCtx = {};
+  vm.createContext(jsCtx);
+  vm.runInContext(extractBetween('CrmForm.html', '//==TCGEN_JS_START==', '//==TCGEN_JS_END=='), jsCtx);
+  const pickJS = jsCtx._pickGeneralTcKeyJS;
+  const casos = [];
+  ['percentage', 'value', 'free_shipping', 'service_fee', 'offer_by_product', 'cashback', 'rappicreditos', ''].forEach(tipo => {
+    ['SI', 'NO', 'TODOS'].forEach(prime => {
+      [true, false].forEach(hasProducts => casos.push({ tipo, prime, hasProducts }));
+    });
+  });
+  casos.forEach(c => {
+    const a = pick(c.tipo, { prime: c.prime, hasProducts: c.hasProducts });
+    const b = pickJS(c.tipo, { prime: c.prime, hasProducts: c.hasProducts });
+    if (a !== b) throw new Error(JSON.stringify(c) + ': backend="' + a + '" vs front="' + b + '"');
+  });
+});
+
+t('F2b wiring: página TcGenerales + router + autofill + aliados', () => {
+  const tcPage = read('TcGenerales.html');
+  if (tcPage.indexOf('getGeneralTcCatalog') < 0) throw new Error('TcGenerales no llama getGeneralTcCatalog');
+  if (tcPage.indexOf('getScriptUrl') < 0) throw new Error('TcGenerales no resuelve la URL');
+  const codigo = read('Código.js');
+  if (codigo.indexOf("_crmServePage('TcGenerales'") < 0) throw new Error('router sin tc-generales');
+  if (!/function\s+getAliadosCatalog\s*\(/.test(codigo)) throw new Error('falta getAliadosCatalog');
+  if (!/function\s+_learnAliadoFromPayload\s*\(/.test(codigo)) throw new Error('falta _learnAliadoFromPayload');
+  if (codigo.indexOf('_learnAliadoFromPayload(payload)') < 0) throw new Error('processWebPayload no aprende aliados');
+  if (read('Config.gs.js').indexOf("ALIADOS_SHEET = 'Aliados'") < 0) throw new Error('falta ALIADOS_SHEET');
+  const form = read('CrmForm.html');
+  if (form.indexOf('_autofillGeneralTC') < 0 || form.indexOf('getGeneralTcCatalog') < 0) throw new Error('CrmForm sin autollenado');
+  if (read('.claspignore').indexOf('!TcGenerales.html') < 0) throw new Error('claspignore sin TcGenerales');
+});
+
 console.log('\nT&C Generales — ' + passed + ' passed, ' + failed + ' failed');
 if (failed) process.exit(1);

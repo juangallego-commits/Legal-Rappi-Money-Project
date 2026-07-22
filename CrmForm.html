@@ -1905,5 +1905,70 @@ function applyReference(t) {
   updateProgress();
 }
 </script>
+<script>
+/* ==================================================================
+   RappiMind F2b — Autollenado del "Link Términos y Condiciones" con el
+   catálogo de T&C GENERALES para los tipos SIN T&C específico.
+   No modifica el código original del form: envuelve selectPais/setTipo/
+   setPrime y escribe en #linkTyC solo si está vacío o si el valor
+   anterior también fue autollenado (dataset.autofilled).
+   ================================================================== */
+//==TCGEN_JS_START== (espejo de _pickGeneralTcKey en Código.js — mantener sincronizados; la sincronía se verifica en tests/tc_generales.test.js)
+function _pickGeneralTcKeyJS(tipoOferta, opts) {
+  var pro = !!(opts && String(opts.prime) === 'SI');
+  switch (String(tipoOferta || '').toLowerCase()) {
+    case 'percentage':       return (opts && opts.hasProducts) ? (pro ? 'dto_prod_pro' : 'dto_prod')
+                                                               : (pro ? 'dto_tienda_pro' : 'dto_tienda');
+    case 'value':            return pro ? 'dto_valor_pro' : 'dto_valor';
+    case 'free_shipping':    return 'envio_gratis';
+    case 'service_fee':      return 'tarifa_servicio';
+    case 'offer_by_product': return pro ? 'dto_prod_pro' : 'dto_prod';
+    default:                 return '';
+  }
+}
+//==TCGEN_JS_END==
+var _tcGenCache = {};
+var _TC_CC = {'Colombia':'CO','México':'MX','Argentina':'AR','Chile':'CL','Perú':'PE','Uruguay':'UY','Ecuador':'EC','Costa Rica':'CR'};
+function _tcHint(msg) {
+  var input = document.getElementById('linkTyC'); if (!input) return;
+  var h = document.getElementById('linkTyCAutoHint');
+  if (!h) {
+    h = document.createElement('div'); h.id = 'linkTyCAutoHint';
+    h.style.cssText = 'font-size:11px;margin-top:4px;color:#15803D;font-weight:600;';
+    input.parentNode.appendChild(h);
+  }
+  h.textContent = msg || ''; h.style.display = msg ? 'block' : 'none';
+}
+function _autofillGeneralTC() {
+  var input = document.getElementById('linkTyC'); if (!input) return;
+  var esGeneral = ['percentage','value','free_shipping','service_fee','offer_by_product'].indexOf(sTipo) !== -1;
+  if (!esGeneral) { // cashback / rappicreditos → T&C específico: limpiar solo lo autollenado
+    if (input.dataset.autofilled === '1') { input.value = ''; input.dataset.autofilled = ''; _tcHint(''); }
+    return;
+  }
+  var cc = _TC_CC[sPaisName] || ''; if (!cc) return;
+  var apply = function(items) {
+    var key = _pickGeneralTcKeyJS(sTipo, { prime: sPrime, hasProducts: sTipo === 'offer_by_product' });
+    var it = (items || []).filter(function(x){ return x.key === key && x.url; })[0];
+    if (!it) return;
+    if (!input.value || input.dataset.autofilled === '1') {
+      input.value = it.url; input.dataset.autofilled = '1';
+      _tcHint('✓ T&C general autollenado: "' + it.nombre + '" (puedes reemplazarlo si tu campaña usa otro)');
+    }
+  };
+  if (_tcGenCache[cc]) return apply(_tcGenCache[cc]);
+  try {
+    google.script.run.withSuccessHandler(function(res){
+      try { var p = JSON.parse(res); _tcGenCache[cc] = (p && p.items) || []; apply(_tcGenCache[cc]); } catch (e) {}
+    }).getGeneralTcCatalog(cc);
+  } catch (e) {}
+}
+(function () {
+  var _oSelectPais = selectPais, _oSetTipo = setTipo, _oSetPrime = setPrime;
+  selectPais = function (p, el) { _oSelectPais(p, el); _autofillGeneralTC(); };
+  setTipo    = function (t)     { _oSetTipo(t);        _autofillGeneralTC(); };
+  setPrime   = function (v)     { _oSetPrime(v);       _autofillGeneralTC(); };
+})();
+</script>
 </body>
 </html>

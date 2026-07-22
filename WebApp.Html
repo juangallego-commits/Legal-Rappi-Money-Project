@@ -5196,5 +5196,28 @@ document.addEventListener('DOMContentLoaded', function() {
   checkAdminAccess();
 });
 </script>  
+<script>
+/* F2b — Accesos rápidos a los módulos nuevos (hub provisional hasta el rediseño F2a). */
+(function () {
+  function addHub(url) {
+    if (!url || document.getElementById('rmQuickHub')) return;
+    var wrap = document.createElement('div');
+    wrap.id = 'rmQuickHub';
+    wrap.style.cssText = 'position:fixed;bottom:16px;left:16px;z-index:40;display:flex;flex-direction:column;gap:8px;';
+    var mk = function (label, page) {
+      var a = document.createElement('a');
+      a.textContent = label;
+      a.href = url + '?page=' + page;
+      a.target = '_top';
+      a.style.cssText = 'background:#fff;border:1.5px solid #ff441f;color:#ff441f;padding:8px 14px;border-radius:9999px;font-size:12px;font-weight:700;text-decoration:none;box-shadow:0 2px 10px rgba(0,0,0,.08);font-family:Nunito,sans-serif;';
+      return a;
+    };
+    wrap.appendChild(mk('🔎 T&C Generales', 'tc-generales'));
+    wrap.appendChild(mk('🎫 Solicitud CRM', 'crm'));
+    document.body.appendChild(wrap);
+  }
+  try { google.script.run.withSuccessHandler(addHub).getScriptUrl(); } catch (e) {}
+})();
+</script>
 </body>
 </html>

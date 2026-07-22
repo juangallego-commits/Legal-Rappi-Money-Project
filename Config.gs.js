@@ -23,6 +23,10 @@ const AUDIT_SHEET_ID = (function () {
 // Hoja del catálogo de T&C GENERALES (links fijos por país/tipo — ver
 // data/tc_generales_2026.csv y setupTcGenerales() en Setup.gs.js).
 const TC_GENERALES_SHEET = 'TC_Generales';
+
+// Hoja de ALIADOS FRECUENTES (organizadores aprendidos automáticamente al
+// generar T&Cs; alimenta el autocompletar del Organizador — ver Código.js F2b).
+const ALIADOS_SHEET = 'Aliados';
 const REGISTRY_SHEET_NAME = 'Template_Registry';
 const FIELDS_SHEET_NAME = 'Template_Fields';
 const TEAM_SHEET_NAME = 'Admin_Team';

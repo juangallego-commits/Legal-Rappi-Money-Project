@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T&C Generales — Motor Legal Rappi</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--rappi:#FF441F;--rappi-light:#FF6B47;--rappi-dim:rgba(255,68,31,.08);--bg:#F5F4F0;--surface:#FFF;--surface2:#F9F8F6;--surface3:#F0EEE9;--border:#E5E2DA;--border2:#D4D0C8;--tx:#1A1916;--txm:#6B6860;--txd:#A8A49C;--green:#16A34A;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;}
+nav{position:sticky;top:0;z-index:100;background:rgba(245,244,240,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:60px;}
+.nav-brand{display:flex;align-items:center;gap:9px;font-family:'Syne',sans-serif;font-weight:800;font-size:17px;color:var(--tx);cursor:pointer;}
+.nav-dot{width:7px;height:7px;background:var(--rappi);border-radius:50%;}
+.nav-links{display:flex;gap:4px;flex-wrap:wrap;}
+.nav-btn{padding:6px 14px;border-radius:8px;font-size:13px;color:var(--txm);border:none;background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.nav-btn:hover{background:var(--surface3);color:var(--tx);}
+.main{max-width:1000px;margin:0 auto;padding:44px 24px 80px;animation:fadeUp .4s ease;}
+.hero-tag{display:inline-flex;align-items:center;gap:5px;background:var(--rappi-dim);color:var(--rappi);border:1px solid rgba(255,68,31,.2);padding:3px 12px;border-radius:100px;font-size:11px;font-weight:600;margin-bottom:12px;}
+h1{font-family:'Syne',sans-serif;font-size:clamp(24px,3.5vw,36px);font-weight:800;letter-spacing:-1px;margin-bottom:6px;}
+h1 span{color:var(--rappi);}
+.sub{font-size:14px;color:var(--txm);line-height:1.6;margin-bottom:24px;max-width:640px;}
+.pais-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;}
+.pais-chip{padding:8px 15px;border-radius:100px;font-size:13px;font-weight:600;border:1.5px solid var(--border);background:var(--surface);color:var(--txm);cursor:pointer;transition:all .2s;}
+.pais-chip:hover{border-color:var(--rappi);color:var(--tx);}
+.pais-chip.active{background:var(--rappi);border-color:var(--rappi);color:#fff;}
+.search{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:15px;padding:12px 16px;margin-bottom:20px;}
+.search:focus{outline:none;border-color:var(--rappi);box-shadow:0 0 0 3px rgba(255,68,31,.1);}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:720px){.grid{grid-template-columns:1fr;}nav{padding:0 16px;}.main{padding:32px 16px 60px;}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,.04);animation:fadeUp .3s ease;}
+.card h3{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--tx);}
+.card .ben{font-size:12px;color:var(--rappi);font-weight:600;}
+.card .desc{font-size:12px;color:var(--txm);line-height:1.5;}
+.card .vig{font-size:11px;color:var(--txd);}
+.card .row{display:flex;gap:8px;margin-top:4px;}
+.btn-copy{flex:1;padding:9px;background:var(--rappi);border:none;border-radius:8px;color:#fff;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
+.btn-copy:hover{background:var(--rappi-light);}
+.btn-copy.copied{background:var(--green);}
+.btn-open{padding:9px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--txm);font-size:12px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;}
+.btn-open:hover{background:var(--surface3);color:var(--tx);}
+.empty{text-align:center;padding:56px 20px;color:var(--txm);grid-column:1/-1;}
+.empty .ico{font-size:36px;margin-bottom:10px;}
+.notice{background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.15);border-radius:12px;padding:14px 16px;font-size:13px;color:#1D4ED8;line-height:1.55;margin-top:24px;}
+.notice a{color:var(--rappi);font-weight:700;cursor:pointer;text-decoration:underline;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand" onclick="goGenerador()"><div class="nav-dot"></div>Motor Legal Rappi</div>
+  <div class="nav-links">
+    <button class="nav-btn" onclick="goGenerador()">⚡ Generador de T&C</button>
+    <button class="nav-btn" onclick="navTo('crm')">🎫 Solicitud CRM</button>
+    <button class="nav-btn" onclick="navTo('crm-status')">📍 Consultar Ticket</button>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="hero-tag">🔎 Catálogo para KAMs</div>
+  <h1>T&C <span>Generales</span></h1>
+  <p class="sub">Links de Términos y Condiciones ya aprobados por Legal para dinámicas
+  estándar (descuentos, envío gratis, tarifa de servicio, cupones…). Elige tu país,
+  encuentra el que corresponde a tu dinámica y <strong>copia el link</strong> — no
+  necesitas generar un documento nuevo.</p>
+
+  <div class="pais-row" id="paisRow"></div>
+  <input class="search" id="q" placeholder="Buscar: descuento, envío, cupón, Pro..." oninput="render()">
+  <div class="grid" id="grid">
+    <div class="empty"><div class="ico">👆</div><div>Selecciona tu país para ver el catálogo.</div></div>
+  </div>
+
+  <div class="notice">💡 <strong>¿Tu dinámica no encaja en ninguno?</strong> Entonces necesita un
+  <strong>T&C específico</strong> (por ejemplo cashback o concurso): créalo en el
+  <a onclick="goGenerador()">Generador de T&C</a>. Si tienes dudas de cuál aplica,
+  escribe al equipo Legal antes de publicar la campaña.</div>
+</div>
+
+<script>
+var SCRIPT_URL = '';
+var PAISES = [
+  { cc: 'CO', flag: '🇨🇴', name: 'Colombia' },  { cc: 'MX', flag: '🇲🇽', name: 'México' },
+  { cc: 'PE', flag: '🇵🇪', name: 'Perú' },      { cc: 'AR', flag: '🇦🇷', name: 'Argentina' },
+  { cc: 'CL', flag: '🇨🇱', name: 'Chile' },     { cc: 'EC', flag: '🇪🇨', name: 'Ecuador' },
+  { cc: 'UY', flag: '🇺🇾', name: 'Uruguay' },   { cc: 'CR', flag: '🇨🇷', name: 'Costa Rica' }
+];
+var cache = {}, currentCC = '', items = [];
+
+try { google.script.run.withSuccessHandler(function(u){ SCRIPT_URL = u; }).getScriptUrl(); } catch(e) {}
+function navTo(page) {
+  var go = function(u){ window.top.location.href = u + '?page=' + page; };
+  if (SCRIPT_URL) go(SCRIPT_URL);
+  else google.script.run.withSuccessHandler(go).getScriptUrl();
+}
+function goGenerador() {
+  var go = function(u){ window.top.location.href = u; };
+  if (SCRIPT_URL) go(SCRIPT_URL);
+  else google.script.run.withSuccessHandler(go).getScriptUrl();
+}
+
+(function buildPaises(){
+  var row = document.getElementById('paisRow');
+  PAISES.forEach(function(p){
+    var b = document.createElement('button');
+    b.className = 'pais-chip'; b.textContent = p.flag + ' ' + p.name;
+    b.onclick = function(){ selectCC(p.cc, b); };
+    row.appendChild(b);
+  });
+})();
+
+function selectCC(cc, el) {
+  currentCC = cc;
+  document.querySelectorAll('.pais-chip').forEach(function(c){ c.classList.remove('active'); });
+  el.classList.add('active');
+  if (cache[cc]) { items = cache[cc]; render(); return; }
+  document.getElementById('grid').innerHTML = '<div class="empty"><div class="ico">⏳</div><div>Cargando catálogo...</div></div>';
+  google.script.run
+    .withSuccessHandler(function(res){
+      try { var p = JSON.parse(res); cache[cc] = (p && p.items) || []; }
+      catch(e) { cache[cc] = []; }
+      items = cache[cc]; render();
+    })
+    .withFailureHandler(function(err){
+      document.getElementById('grid').innerHTML = '<div class="empty"><div class="ico">❌</div><div>Error cargando: ' + (err.message || 'desconocido') + '</div></div>';
+    })
+    .getGeneralTcCatalog(cc);
+}
+
+function render() {
+  var grid = document.getElementById('grid');
+  if (!currentCC) return;
+  var q = document.getElementById('q').value.trim().toLowerCase();
+  var list = items.filter(function(it){
+    if (!q) return true;
+    return (it.nombre + ' ' + it.beneficio + ' ' + it.descripcion).toLowerCase().indexOf(q) !== -1;
+  });
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty"><div class="ico">📭</div><div>' +
+      (items.length ? 'Nada coincide con tu búsqueda.' :
+       'Este país aún no tiene catálogo de T&C generales. Escríbele al equipo Legal.') + '</div></div>';
+    return;
+  }
+  grid.innerHTML = list.map(function(it, i){
+    var vig = (it.vigencia_inicio || it.vigencia_fin) ? ('Vigente: ' + (it.vigencia_inicio || '—') + ' → ' + (it.vigencia_fin || '—')) : '';
+    return '<div class="card">' +
+      '<h3>' + esc(it.nombre) + '</h3>' +
+      (it.beneficio ? '<div class="ben">' + esc(it.beneficio) + '</div>' : '') +
+      (it.descripcion ? '<div class="desc">' + esc(it.descripcion) + '</div>' : '') +
+      (vig ? '<div class="vig">📅 ' + vig + '</div>' : '') +
+      '<div class="row">' +
+        '<button class="btn-copy" id="cp' + i + '" onclick="copiar(' + i + ', \'' + encodeURIComponent(it.url) + '\')">📋 Copiar link</button>' +
+        '<a class="btn-open" href="' + esc(it.url) + '" target="_blank">Abrir ↗</a>' +
+      '</div></div>';
+  }).join('');
+}
+
+function copiar(i, encUrl) {
+  var url = decodeURIComponent(encUrl);
+  var done = function(){
+    var b = document.getElementById('cp' + i);
+    if (b) { b.textContent = '✓ Copiado'; b.classList.add('copied');
+      setTimeout(function(){ b.textContent = '📋 Copiar link'; b.classList.remove('copied'); }, 2200); }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(done, function(){ fallbackCopy(url, done); });
+  } else fallbackCopy(url, done);
+}
+function fallbackCopy(text, done) {
+  var t = document.createElement('textarea');
+  t.value = text; document.body.appendChild(t); t.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(t); done();
+}
+function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>
