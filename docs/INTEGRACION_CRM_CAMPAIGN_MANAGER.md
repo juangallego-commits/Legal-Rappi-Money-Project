@@ -159,7 +159,8 @@ del solicitante sí lo capturan (sesión + owner).
   ser el aliado (y de dónde salen razón social + NIT)?
 - Confirmar semántica exacta de `maximo_descuento` (por usuario vs por orden)
   para `TOPE_LETRAS`.
-- Su `appsscript.json` (scopes/`executeAs`/`access`) para replicar el despliegue.
+- ✅ Su `appsscript.json` (obtenido 2026-07-22) — **compatible, sin cambios de
+  manifiesto** (ver §7 "Manifiesto / scopes").
 
 ---
 
@@ -213,3 +214,36 @@ del solicitante sí lo capturan (sesión + owner).
 friendly" y dejar clarísima la diferencia entre (i) generar el T&C y (ii) la
 Global Offer que monta CRM → guía de diseño para F2 (flujo por pasos:
 1. Genera tu T&C → 2. Publícalo → 3. Solicita la oferta a CRM).
+
+### Manifiesto / scopes (verificación resuelta 2026-07-22)
+
+El `appsscript.json` del Campaign Manager (copia en
+`reference/crm-campaign-manager/appsscript.json`) resultó **casi idéntico al de
+RappiMind**:
+
+| Campo | CRM | RappiMind | ¿Coincide? |
+|---|---|---|---|
+| `timeZone` | `America/Bogota` | `America/Bogota` | ✅ (valida el default `CRM_TIMEZONE='America/Bogota'`) |
+| `webapp.access` | `DOMAIN` | `DOMAIN` | ✅ solo `@rappi.com` |
+| `webapp.executeAs` | `USER_DEPLOYING` | `USER_DEPLOYING` | ✅ |
+| `runtimeVersion` | `V8` | `V8` | ✅ |
+| `oauthScopes` | **no declarado** | **no declarado** | ✅ (auto-inferidos) |
+
+**Conclusión — la fusión NO requiere tocar el manifiesto:**
+- Como **ninguno declara `oauthScopes`**, Apps Script **auto-infiere** la unión
+  de scopes de TODO el código del proyecto fusionado. Lo que el módulo CRM
+  necesita ya lo dispara RappiMind: `UrlFetchApp` (Slack del CRM = mismo scope
+  `script.external_request` que ya usa Gemini), `DriveApp` (CSV / carpetas),
+  `SpreadsheetApp`, `Session.getActiveUser().getEmail()`. **Sin scopes nuevos.**
+- Único efecto operativo: al re-desplegar RappiMind con el módulo CRM, Google
+  puede mostrar **una pantalla de consentimiento una vez** (re-autorizar con un
+  clic). No hay cambios de código ni de `appsscript.json`.
+- **Timezone:** su `Code.gs` formateaba timestamps con la constante
+  `America/Mexico_City`, pero su manifiesto es Bogotá. Nuestro `CRM_TIMEZONE`
+  por defecto es **Bogotá** (coherente con el manifiesto y con ser una herramienta
+  liderada desde CO). Si quisieran replicar exactamente el comportamiento viejo,
+  se pone la Script Property `CRM_TIMEZONE='America/Mexico_City'`.
+- **`executeAs: USER_DEPLOYING`** implica que en PROD el código corre con la
+  identidad de quien despliega RappiMind (Juan) → esa cuenta necesita **acceso de
+  edición al spreadsheet real del CRM** y a la carpeta de CSVs. En /dev no aplica
+  (Juan es dueño de las copias).
