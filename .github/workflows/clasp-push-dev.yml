@@ -1,0 +1,45 @@
+name: Deploy to Apps Script DEV (clasp push)
+
+# Despliegue a /dev CON BOTÓN, sin terminal:
+# GitHub → Actions → este workflow → "Run workflow" → elegir la rama →
+# pegar el Script ID del proyecto "RappiMind DEV" → Run.
+# Requiere el secret CLASPRC_JSON (mismo de docs/DEPLOY_CLASP.md §5).
+
+on:
+  workflow_dispatch:
+    inputs:
+      script_id:
+        description: "Script ID del proyecto Apps Script /dev (RappiMind DEV)"
+        required: true
+        type: string
+
+jobs:
+  push-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependencias (clasp)
+        run: npm ci
+
+      - name: Credenciales de clasp
+        env:
+          CLASPRC: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          if [ -z "$CLASPRC" ]; then
+            echo "::error::Falta el secret CLASPRC_JSON. En tu máquina: 'npx clasp login' y copia el contenido de ~/.clasprc.json a Settings → Secrets and variables → Actions → New repository secret (nombre CLASPRC_JSON). Ver docs/DEPLOY_CLASP.md §5."
+            exit 1
+          fi
+          printf '%s' "$CLASPRC" > ~/.clasprc.json
+
+      - name: Apuntar a DEV y push
+        env:
+          DEV_SCRIPT_ID: ${{ github.event.inputs.script_id }}
+        run: |
+          node -e "const f=require('fs');const c=JSON.parse(f.readFileSync('.clasp.json','utf8'));c.scriptId=process.env.DEV_SCRIPT_ID.trim();f.writeFileSync('.clasp.json',JSON.stringify(c,null,2));console.log('scriptId →',c.scriptId)"
+          npx clasp push --force
+          echo "✅ Código desplegado al proyecto DEV. Siguiente: Script Properties + P0_0_estado (ver docs/RUNBOOK_P0_PASO_A_PASO.md)."

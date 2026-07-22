@@ -17,7 +17,7 @@ function t(name, fn) {
 function assert(cond, msg) { if (!cond) throw new Error(msg || 'assert'); }
 
 // 1) Sintaxis de todos los backend .js (V8 los parsea igual que GAS)
-['Crm.gs.js', 'Código.js', 'Admin.gs.js', 'Config.gs.js', 'Helpers.gs.js', 'Setup.gs.js'].forEach(f => {
+['Crm.gs.js', 'Código.js', 'Admin.gs.js', 'Config.gs.js', 'Helpers.gs.js', 'Setup.gs.js', 'P0.gs.js'].forEach(f => {
   t('sintaxis OK: ' + f, () => {
     const r = spawnSync('node', ['--check', path.join(ROOT, f)], { encoding: 'utf8' });
     assert(r.status === 0, (r.stderr || '').split('\n')[0]);

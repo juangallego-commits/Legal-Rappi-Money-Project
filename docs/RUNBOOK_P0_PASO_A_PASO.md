@@ -35,9 +35,16 @@ Edita el archivo **`.clasp.json`** y reemplaza el `scriptId` por el de
 npx clasp push --force
 ```
 
-En el editor de Apps Script de DEV deben aparecer **11 archivos**: Código,
-Admin.gs, Config.gs, Helpers.gs, Setup.gs, WebApp, Crm.gs, CrmForm, CrmStatus,
-CrmAdmin y appsscript.json.
+> **Alternativa SIN terminal (recomendada si te da pereza):** carga una sola
+> vez el secret `CLASPRC_JSON` en GitHub (en tu máquina `npx clasp login` y
+> copia el contenido de `~/.clasprc.json` a Settings → Secrets and variables →
+> Actions → New repository secret). Después, cada despliegue a /dev es un
+> botón: **GitHub → Actions → "Deploy to Apps Script DEV (clasp push)" → Run
+> workflow → pegar el Script ID de DEV → Run.** Sin comandos.
+
+En el editor de Apps Script de DEV deben aparecer **12 archivos**: Código,
+Admin.gs, Config.gs, Helpers.gs, Setup.gs, WebApp, **P0.gs**, Crm.gs, CrmForm,
+CrmStatus, CrmAdmin y appsscript.json.
 
 ## Parte 3 — Aislar la base de datos (copia de la DB de RappiMind)
 
@@ -64,31 +71,21 @@ CrmAdmin y appsscript.json.
    viajan en `Template_Registry`). Generar documentos está bien (hace
    `makeCopy`); solo no borres plantillas desde /dev.
 
-## Parte 4 — Sembrar catálogo de T&C generales (nuevo)
+## Partes 4 a 6 — TODO con funciones de UN CLIC (archivo **P0.gs**)
 
-En el editor de **DEV**: selector de función → **`setupTcGenerales`** →
-Ejecutar. Debe loguear `added: 13`. (Re-correrlo no duplica.)
+En el editor de **DEV**: abre el archivo **`P0.gs`** en la lista de la
+izquierda. Arriba hay un selector de funciones — elige y presiona **Ejecutar**
+(la primera vez Google pide autorizar permisos: acepta con tu cuenta). Orden:
 
-## Parte 5 — FASE C: campos de Organizador en Cashback
+| # | Función | Qué hace | Esperado en el log |
+|---|---|---|---|
+| 1 | `P0_0_estado` | Solo MIRA: a qué DB apunta, qué properties faltan | `DB … → COPIA (/dev) ✓` (si dice PRODUCCIÓN, revisa `RAPPIMIND_DB_ID`) |
+| 2 | `P0_1_sembrarTcGenerales` | Siembra los 13 T&C generales | `added: 13` (re-correr no duplica) |
+| 3 | `P0_2_previewOrganizador` | Solo MIRA el diff de FASE C | `adds: 2`, `wouldModify: 0`, `deletes: 0` — **si difiere, PARAR y avisarme** |
+| 4 | `P0_3_aplicarOrganizador` | ESCRIBE los 2 campos de Organizador | 1ª vez `added: 2`; córrela **otra vez** → `added: 0` (idempotencia ✓) |
+| 5 | `P0_4_encenderA2` | Activa la validación pre-entrega | `A2 = on ✓` |
 
-En el editor de **DEV**, ejecuta en este orden (selector de función → Ejecutar):
-
-1. **`previewFieldDerivation('Cashback','ALL')`** — para pasarle argumentos:
-   pega esto en una función temporal o córrela desde una función wrapper:
-   ```js
-   function _p0_preview() { Logger.log(previewFieldDerivation('Cashback','ALL')); }
-   ```
-   Esperado en el log: `adds = 2` (organizerLegalName, organizerTaxId),
-   `wouldModify 0`, `deletes 0`. **Si difiere → PARAR y avisarme.**
-2. ```js
-   function _p0_apply() { Logger.log(applyFieldDerivation('Cashback','ALL')); }
-   ```
-   Esperado: `written: { added: 2, updated: 0 }`.
-3. Corre `_p0_apply` **otra vez** → esperado `added: 0` (idempotencia ✓).
-
-## Parte 6 — Activar A2 y probar end-to-end
-
-1. Propiedades del script → añadir **`RAPPIMIND_A2` = `on`**.
+## Parte 6b — Probar end-to-end
 2. Implementar → **Nueva implementación** → App web (o "Probar
    implementación") → abrir la URL de /dev.
 3. **Prueba 1 (generador):** sin `?page` → Colombia → Cashback → el form debe

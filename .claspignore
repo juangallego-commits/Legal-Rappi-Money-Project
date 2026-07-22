@@ -17,6 +17,9 @@
 !Setup.gs.js
 !WebApp.Html
 
+# Funciones de un clic del runbook P0
+!P0.gs.js
+
 # Módulo CRM Campaign Manager (integración F1)
 !Crm.gs.js
 !CrmForm.html
