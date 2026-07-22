@@ -3,6 +3,12 @@
 // =================================================================
 
 function doGet(e) {
+  // Router de páginas. Sin ?page → generador RappiMind (comportamiento de siempre).
+  // ?page=crm* → módulo CRM Campaign Manager (Crm.gs.js + CrmForm/CrmStatus/CrmAdmin).
+  var page = (e && e.parameter && e.parameter.page) ? String(e.parameter.page) : '';
+  if (page === 'crm' || page === 'crm-form') return _crmServePage('CrmForm', e);
+  if (page === 'crm-status')                 return _crmServePage('CrmStatus', e);
+  if (page === 'crm-admin')                  return _crmServePage('CrmAdmin', e);
   return HtmlService.createTemplateFromFile('WebApp')
       .evaluate()
       .setTitle('Motor Legal Rappi')

@@ -1,0 +1,53 @@
+TÉRMINOS Y CONDICIONES – {{NOMBRE_CAMPANA_UPPER}}
+Organizador de la Campaña: La presente campaña promocional es organizada por {{ORGANIZADOR}}, identificada con {{ID_ORGANIZADOR}}.
+Cobertura: Esta Campaña es válida exclusivamente en {{TEXTO_TERRITORIO}}, dentro de las zonas de cobertura de {{REF_TIENDA}} en la Plataforma Rappi. La disponibilidad puede variar según tu ubicación y los horarios de operación de los Aliados Comerciales.
+Vigencia: Esta Campaña estará vigente desde las {{HORA_INICIO}} del {{FECHA_INICIO}} hasta las {{HORA_FIN}} del {{FECHA_FIN}} (hora local de {{PAIS_LEGAL}}), o hasta agotar el presupuesto disponible de {{PRESUPUESTO_LETRAS}} ({{PRESUPUESTO_NUM}}), lo que ocurra primero. Los pedidos realizados fuera de la Vigencia no generarán el beneficio.
+Productos Participantes: Participarán todos los productos que hacen parte del catálogo de las Tiendas Participantes al interior de la Plataforma Rappi.
+Comercios Participantes: Esta Campaña aplica exclusivamente para pedidos realizados en {{REF_TIENDA}} a través de la Plataforma Rappi.
+Usuarios Participantes: {{TEXTO_SEGMENTO}} El Usuario/Consumidor participante deberá cumplir con los requisitos establecidos en los presentes Términos y Condiciones. 
+Mecánica del Cashback: Para que puedas obtener el beneficio, debes:
+Realizar un pedido en {{REF_TIENDA}} a través de la Plataforma Rappi durante la vigencia de la Campaña;
+Recibir el pedido de manera exitosa (que el pedido no haya sido cancelado);
+Realizar el pago del pedido con un medio de pago válido para la Campaña.
+El beneficio consiste en el {{TEXTO_PORCENTAJE}} del valor de tu pedido tras realizar compras de Productos Participantes, acreditado como Créditos en tu Billetera de Créditos, pero recuerda que no podrás recibir más de {{TOPE_LETRAS}} ({{TOPE_NUM}}) Créditos por pedido. El valor sobre el cual se calcula el beneficio corresponde exclusivamente al precio de los productos adquiridos, sin incluir el costo de envío, la tarifa de servicio, ni las propinas. 
+{{TEXTO_METODO_PAGO}} 
+Esta Campaña aplica siempre que no hayas superado el número máximo de pedidos elegibles, y/o hasta agotar el presupuesto total, lo que ocurra primero. 
+Topes y Límites:
+Tope por pedido: El beneficio máximo por cada pedido es de {{TOPE_LETRAS}} ({{TOPE_NUM}}) Créditos.
+Máximo de pedidos: Puedes obtener el beneficio en un máximo de {{LIMITE_ORDENES}} {{TEXTO_ORDENES}} durante la vigencia de la Campaña. Si superas el número máximo de pedidos elegibles, tus pedidos adicionales no generarán el beneficio y serán procesados normalmente como pedidos regulares.
+Presupuesto total: Esta Campaña tiene un presupuesto total de {{PRESUPUESTO_LETRAS}} ({{PRESUPUESTO_NUM}}). Una vez agotado el presupuesto, la Campaña finalizará automáticamente, incluso si no ha transcurrido la vigencia.
+Acreditación del Beneficio: Los Créditos correspondientes al beneficio se acreditarán en tu Billetera de Créditos {{TEXTO_CARGA}}. Podrás verificar el estado de tus Créditos en la sección "Cuenta” y “Créditos" al interior de la Plataforma Rappi. Rappi se reserva el derecho de verificar la elegibilidad de cada orden antes de acreditar el beneficio. En caso de que la verificación determine que tu orden no cumple con las condiciones de la Campaña, los Créditos no serán acreditados y se te informará a través de la Plataforma Rappi.
+Naturaleza del Beneficio (Créditos): El beneficio de esta Campaña consiste en Créditos acreditados en tu Billetera de Créditos de la Plataforma Rappi. Al participar, reconoces y aceptas que:
+Los Créditos son intangibles que te permiten adquirir productos y/o servicios exhibidos por los Aliados Comerciales a través de la Plataforma Rappi.
+Los Créditos no constituyen dinero en efectivo, valores, instrumentos financieros, ni pueden convertirse en dinero.
+Los Créditos no son transferibles a terceros ni a otras cuentas de la Plataforma Rappi.
+Los Créditos no son acumulables con otros cupones o promociones, salvo que Rappi indique expresamente lo contrario.
+El funcionamiento de los Créditos se rige por los Términos y Condiciones de Funcionamiento de los Créditos de la Plataforma Rappi, disponibles en: {{URL_TC_CREDITOS}}.
+Vigencia y Redención del Beneficio: Los Créditos acreditados en virtud de esta Campaña {{TEXTO_VIGENCIA_CREDITOS}}. {{TEXTO_LUGAR_REDENCION}}. Una vez vencidos, los Créditos no podrán ser recuperados, reactivados ni compensados por Rappi. Eres responsable de redimir tus Créditos dentro del plazo indicado.
+Exclusiones y Restricciones: El beneficio de la Campaña no aplica para:
+Pedidos cancelados, devueltos o que no se completen exitosamente por cualquier causa;
+Pedidos que hayas pagado con métodos de pago diferentes a los aplicables para la Campaña;
+Pedidos realizados fuera de la vigencia de la Campaña;
+Propinas, costos de envío, tarifas de servicio e impuestos; y
+No es acumulable con otros cupones, descuentos o promociones vigentes en la Plataforma Rappi, salvo que Rappi indique expresamente lo contrario en la comunicación de la Campaña.
+Publicidad y Prevalencia: Las condiciones específicas de la Campaña son las establecidas en los presentes Términos y Condiciones. En caso de discrepancia entre la información contenida en piezas publicitarias, comunicaciones comerciales o cualquier otro medio de difusión y los presentes Términos y Condiciones, se aplicará la condición más favorable para ti. Rappi se compromete a que la publicidad de la Campaña sea veraz, verificable y no te induzca a error.
+Atención al Usuario: Para cualquier consulta, petición, queja o reclamo relacionado con la Campaña, puedes comunicarte con Rappi a través de los siguientes canales:
+Centro de Ayuda al interior de la Plataforma Rappi.
+Botón de PQRs en la página web de Rappi del territorio correspondiente.
+Modificaciones a los Términos y Condiciones: Rappi podrá modificar los presentes Términos y Condiciones siempre que se cumplan las siguientes condiciones:
+Las modificaciones se publicarán en el mismo medio donde se publicaron los Términos y Condiciones originales.
+Las modificaciones no podrán afectar los beneficios ya acreditados en tu cuenta con anterioridad a la modificación.
+En caso de que las modificaciones impliquen un cambio sustancial en las condiciones de la Campaña (como la reducción del porcentaje, la modificación de los comercios participantes o la anticipación de la fecha de finalización), Rappi hará esfuerzos razonables por informarte a través de los canales disponibles en la Plataforma Rappi.
+Fraude, Abuso y Descalificación: Rappi se reserva el derecho de descalificarte de la Campaña y/o bloquear temporal o definitivamente tu cuenta si, a juicio razonable de Rappi:
+Utilizas la Campaña de manera fraudulenta, incluyendo el uso de cuentas múltiples, datos falsos o manipulación del sistema.
+Intentas alterar, manipular o interferir con el funcionamiento de la Plataforma Rappi o de la Campaña.
+Incumples los Términos y Condiciones de Uso de la Plataforma Rappi.
+En caso de descalificación, Rappi podrá revocar los Créditos acreditados en virtud de la Campaña que aún no hayas redimido. Los Créditos ya redimidos no serán objeto de recuperación, salvo en casos de fraude comprobado conforme a la legislación aplicable. Rappi te informará la razón de la descalificación a través de los canales de comunicación de la Plataforma Rappi.
+Aplicación de los Términos y Condiciones de Uso de la Plataforma Rappi: Los presentes Términos y Condiciones son especiales y complementarios respecto de los Términos y Condiciones de Uso de la Plataforma Rappi, disponibles en: {{URL_TC_PLATAFORMA}}, los cuales continúan aplicando en todo aquello no regulado expresamente en el presente documento. En caso de contradicción respecto de las condiciones específicas de esta Campaña, prevalecerán los presentes Términos y Condiciones.
+Limitación de Responsabilidad: 
+Rappi no será responsable por: (i) La calidad, idoneidad, seguridad o disponibilidad de los productos y/o servicios comercializados por los Aliados Comerciales a través de la Plataforma Rappi. La responsabilidad por garantía corresponde exclusivamente al Aliado Comercial; (ii) Fallas técnicas, interrupciones o limitaciones en la disponibilidad de la Plataforma Rappi ajenas al control razonable de Rappi; o (iii) Retrasos en la entrega de las órdenes atribuibles a los Repartidores Independientes o a causas externas. 
+Los productos exhibidos en la Plataforma Rappi son ofrecidos y comercializados directamente por los Aliados Comerciales. Rappi no es el vendedor, productor ni expendedor de dichos productos. La factura de los productos será emitida por el Aliado Comercial correspondiente. La disponibilidad de los Aliados Comerciales participantes depende de sus horarios de operación, cobertura y condiciones propias.
+{{ENTIDAD_LEGAL}} (en adelante, «Rappi») actúa únicamente como plataforma de contacto/intermediación tecnológica y medio de difusión de la Campaña. Rappi no es el organizador de la Campaña; el organizador es {{ORGANIZADOR}}, quien responde por su desarrollo, condiciones y por el beneficio ofrecido.
+Rappi sí es responsable de: (i) la correcta acreditación de los Créditos en tu Billetera de Créditos conforme a las condiciones de la Campaña; (ii) la publicación veraz y completa de los Términos y Condiciones; y (iii) la atención oportuna de tus peticiones, quejas y reclamos relacionados con la Campaña.
+Tratamiento de Datos Personales: Los datos personales de los participantes de esta Campaña serán tratados por {{ENTIDAD_LEGAL}} con la finalidad exclusiva de gestionar la participación, verificar el cumplimiento de los requisitos, acreditar el beneficio e informar los resultados. Dicho tratamiento se rige por la legislación aplicable y por la {{NOMBRE_POLITICA_PRIVACIDAD}} (disponible en: {{URL_PRIVACIDAD}}), aceptada previamente por el usuario. Podrás ejercer en cualquier momento tus derechos a conocer, actualizar, rectificar y suprimir tus datos personales, a través de los canales dispuestos para tal fin en la referida Política. 
+Ley Aplicable y Jurisdicción: Los presentes Términos y Condiciones se rigen e interpretan de conformidad con {{LEY_APLICABLE}}. Cualquier controversia, diferencia o reclamación que surja con ocasión de la Campaña o de los presentes Términos y Condiciones se someterá a {{JURISDICCION}}, sin perjuicio de las acciones, derechos y mecanismos de protección que la ley reconoce a los consumidores ante {{ENTIDAD_VIGILANCIA}}.

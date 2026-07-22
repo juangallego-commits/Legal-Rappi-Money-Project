@@ -4,7 +4,7 @@
   "description": "RappiMind - Generador legal de T&C + Legal Team Tracker (Google Apps Script). Sincronizado con Apps Script vía clasp.",
   "private": true,
   "scripts": {
-    "test": "node tests/field_catalog.test.js",
+    "test": "node tests/field_catalog.test.js && node tests/crm_integration.test.js",
     "login": "clasp login",
     "status": "clasp status",
     "pull": "clasp pull",
