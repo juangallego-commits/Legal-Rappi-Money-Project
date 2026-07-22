@@ -1275,3 +1275,152 @@ function registerGlobalTemplate() {
   
   Logger.log('🎉 Registro completo');
 }
+
+// -----------------------------------------------------------------
+// T&C GENERALES — seed del catálogo (idempotente: UPSERT por country+key).
+// Fuente: TC_Generales_2026.xlsx (Legal CO) → data/tc_generales_2026.csv.
+// Re-correr NO duplica. Solo siembra CO; otros países se agregan a la hoja.
+// -----------------------------------------------------------------
+var TC_GENERALES_SEED_CO = [
+  {
+    "key": "dto_tienda",
+    "nombre": "Descuento en Toda la Tienda",
+    "url": "https://promos.rappi.com/colombia/2026/descuentoentiendaco",
+    "vig_ini": "2026-01-01",
+    "vig_fin": "2026-12-31",
+    "beneficio": "Porcentaje de descuento sobre el valor total del pedido (el porcentaje específico dependerá de lo que indique el banner o pieza publicitaria en la app).",
+    "descripcion": "Esta es la legal \"comodín\". Úsala cuando la marca quiera dar un descuento general en toda su tienda (Ej: \"Hoy 20% OFF en toda la carta\"). Sirve para cualquier porcentaje porque el número exacto se pone en el banner, no en el texto."
+  },
+  {
+    "key": "dto_prod",
+    "nombre": "Descuento en Productos Seleccionados",
+    "url": "https://promos.rappi.com/colombia/2026/descuentoprodselecc",
+    "vig_ini": "2026-01-01",
+    "vig_fin": "2026-12-31",
+    "beneficio": "Descuento porcentual directo (Precio tachado)",
+    "descripcion": "Respaldo legal para ofertas de \"precio tachado\" en la App. Úsalo cuando negocies descuentos directos en productos específicos para que el usuario vea la rebaja automáticamente en la tienda (sin cupones)."
+  },
+  {
+    "key": "dto_valor",
+    "nombre": "Descuento en Valor",
+    "url": "https://promos.rappi.com/colombia/2026/dtoenvalor",
+    "vig_ini": "2026-01-01",
+    "vig_fin": "2026-12-31",
+    "beneficio": "Descuento de monto fijo (Dinero OFF)",
+    "descripcion": "Respaldo legal para descuentos de valor monetario específico. A diferencia del porcentual, este aplica cuando se rebaja una cantidad exacta de dinero al producto (ej. \"$5.000 OFF\"). Úsalo cuando la negociación sea por monto fijo directo en el precio del producto."
+  },
+  {
+    "key": "dto_nuevos_turbo",
+    "nombre": "Descuento para Usuarios Nuevos en Turbo",
+    "url": "https://promos.rappi.com/colombia/2026/1/10/trminos-y-condiciones-campaa-de-descuento-para-usuarios-nuevos-en-turbo",
+    "vig_ini": "2026-01-01",
+    "vig_fin": "2026-12-31",
+    "beneficio": "Porcentaje de descuento sobre el valor de los productos (el porcentaje específico y el tope máximo dependerán de lo que indique el banner o pieza publicitaria en la app).",
+    "descripcion": "Esta es la legal \"comodín\" de ADQUISICIÓN para Turbo. Úsala cuando la campaña sea exclusiva para usuarios que NUNCA han comprado en Turbo (Ej: \"50% OFF en Fruver en tu 1ra compra\"). Sirve para cualquier categoría del Botón Turbo (Fruver, Licores, Snacks) pero NO aplica para Turbo Restaurantes."
+  },
+  {
+    "key": "envio_gratis",
+    "nombre": "Envío Gratis",
+    "url": "https://promos.rappi.com/colombia/enviogratis",
+    "vig_ini": "2026-01-01",
+    "vig_fin": "2026-12-31",
+    "beneficio": "Costo de envío $0",
+    "descripcion": "Respaldo legal para eliminar el costo de envio (cobro de domicilio) al usuario. (ej. \"Envío Gratis por compras superiores a $X\"). El descuento se refleja automáticamente en el check out."
+  },
+  {
+    "key": "tarifa_servicio",
+    "nombre": "Tarifa de Servicio Gratis",
+    "url": "https://promos.rappi.com/colombia/tarifadeservicio",
+    "vig_ini": "2026-02-01",
+    "vig_fin": "2026-10-31",
+    "beneficio": "Tarifa de servicio $0 (Service Fee OFF)",
+    "descripcion": "Respaldo legal para no cobrar la tarifa de servicio. Ojo: No incluye el envío, solo la tarifa de servicio. Úsalo cuando se quiera eliminar esta barrera de costo adicional para el usuario."
+  },
+  {
+    "key": "dto_prod_pro",
+    "nombre": "Descuento en Productos Seleccionados Rappi Pro",
+    "url": "https://promos.rappi.com/colombia/2026/descuento-en-productos-seleccionados-rappipro",
+    "vig_ini": "2026-01-01",
+    "vig_fin": "2026-12-31",
+    "beneficio": "Precio tachado exclusivo para suscriptores (Descuento Pro)",
+    "descripcion": "Respaldo legal para descuentos exclusivos de la membresía. Úsalo cuando se quiera dar un beneficio diferencial solo a usuarios Rappi Pro (segmentado). El usuario normal verá el precio full, el usuario Pro verá el precio tachado."
+  },
+  {
+    "key": "dto_tienda_pro",
+    "nombre": "Descuento en Toda la Tienda Rappi Pro",
+    "url": "https://promos.rappi.com/colombia/2026/descuento-en-toda-la-tienda-rappipro",
+    "vig_ini": "2026-01-01",
+    "vig_fin": "2026-12-31",
+    "beneficio": "% OFF en todo el menú para suscriptores (Exclusivo Pro)",
+    "descripcion": "Respaldo legal para descuentos generales en el menú exclusivos para miembros rappi pro. Úsalo para negociaciones donde se quiera premiar la fidelidad del usuario Pro. El descuento aplica a todo el catálogo de la tienda participante, pero solo es visible y aplicable para usuarios con la membresía activa."
+  },
+  {
+    "key": "dto_valor_pro",
+    "nombre": "Descuento en Valor Rappi Pro",
+    "url": "https://promos.rappi.com/colombia/2026/descuento-en-valor-rappi-pro",
+    "vig_ini": "2026-01-01",
+    "vig_fin": "2026-12-31",
+    "beneficio": "Descuento de monto fijo exclusivo para suscriptores ($ OFF)",
+    "descripcion": "Respaldo legal para descuentos de dinero fijo exclusivos para miembros rappi pro. Similar al \"Descuento en Valor\" normal, pero el beneficio de restar un monto exacto (ej. \"$10.000 OFF\") solo aplica y es visible para usuarios Rappi Pro."
+  },
+  {
+    "key": "dto_membresia_pro",
+    "nombre": "Descuento en la Membresía Rappi Pro",
+    "url": "https://promos.rappi.com/colombia/2026/descuentos-en-membresia-rappipro",
+    "vig_ini": "2026-01-01",
+    "vig_fin": "2026-12-31",
+    "beneficio": "Descuento en el valor de la suscripción (Fee de Membresía OFF)",
+    "descripcion": "Respaldo legal para vender la membresía Rappi Pro más barata. Úsalo exclusivamente cuando la oferta sea sobre el precio de la suscripcion. No sirve para descuentos en comida o productos."
+  },
+  {
+    "key": "cupon_membresia_pro",
+    "nombre": "Cupones de Descuento para Membresía Rappi Pro y Black",
+    "url": "https://promos.rappi.com/colombia/2024/trminos-y-condiciones-cupones-de-descuento-para-la-membresa-rappi-pro-y-rappi-pro-black",
+    "vig_ini": "2026-01-01",
+    "vig_fin": "2026-12-31",
+    "beneficio": "Descuento en la suscripción vía Código (Cupón)",
+    "descripcion": "Respaldo legal para códigos promocionales que rebajan el precio de la membresía. Úsalo para estrategias donde entregas un código alfanumérico que el usuario debe redimir manualmente para pagar menos por su plan Rappi Pro."
+  },
+  {
+    "key": "cupon_valor_fijo",
+    "nombre": "Cupon de descuento - Valor fijo",
+    "url": "https://promos.rappi.com/colombia/cuponvalorfijoco",
+    "vig_ini": "2026-01-01",
+    "vig_fin": "2026-12-31",
+    "beneficio": "",
+    "descripcion": ""
+  },
+  {
+    "key": "cupon_tienda",
+    "nombre": "Cupon de descuento - Toda la tienda",
+    "url": "https://promos.rappi.com/colombia/cupondescuentoco",
+    "vig_ini": "2026-01-01",
+    "vig_fin": "2026-12-31",
+    "beneficio": "",
+    "descripcion": ""
+  }
+];
+
+function setupTcGenerales() {
+  var headers = ['country_code', 'key', 'nombre', 'url', 'vigencia_inicio', 'vigencia_fin',
+                 'beneficio', 'descripcion', 'status', 'last_updated'];
+  var sheet = _getOrCreateSheet(TC_GENERALES_SHEET, headers);
+  var existing = _sheetToObjects(sheet);
+  var added = 0, updated = 0;
+  TC_GENERALES_SEED_CO.forEach(function (it) {
+    var idx = -1;
+    for (var i = 0; i < existing.length; i++) {
+      if (String(existing[i].country_code).trim().toUpperCase() === 'CO' &&
+          String(existing[i].key).trim() === it.key) { idx = i; break; }
+    }
+    var row = ['CO', it.key, it.nombre, it.url, it.vig_ini, it.vig_fin,
+               it.beneficio, it.descripcion, 'active', new Date().toISOString().split('T')[0]];
+    if (idx < 0) { sheet.appendRow(row); added++; }
+    else if (String(existing[idx].url).trim() !== it.url) {
+      sheet.getRange(idx + 2, 1, 1, row.length).setValues([row]); updated++;
+    }
+  });
+  Logger.log('setupTcGenerales → added: ' + added + ', updated: ' + updated +
+             ', total seed: ' + TC_GENERALES_SEED_CO.length);
+  return { added: added, updated: updated };
+}

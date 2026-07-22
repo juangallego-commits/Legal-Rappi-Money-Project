@@ -891,3 +891,46 @@ function _getCampaignTypeConfig(campaignType) {
   if (!sheet) return null;
   return _sheetToObjects(sheet).find(t => t.type_name === campaignType && t.status === 'active') || null;
 }
+
+// -----------------------------------------------------------------
+// T&C GENERALES — catálogo de links fijos por país/tipo (hoja TC_Generales).
+// Los tipos del CRM sin T&C específico (percentage, value, free_shipping,
+// offer_by_product, service_fee) usan estos links; cashback/rappicreditos NO
+// (llevan T&C específico). La regla de selección es determinista y pura.
+// -----------------------------------------------------------------
+//==TCGEN_START== (marcador para tests node; no remover)
+// Devuelve la key del catálogo para un tipo de oferta del CRM, o '' si el tipo
+// requiere T&C específico. opts: { prime: 'SI'|'NO'|'TODOS', hasProducts: bool }.
+function _pickGeneralTcKey(tipoOferta, opts) {
+  var pro = !!(opts && String(opts.prime) === 'SI'); // solo suscriptores → versión Rappi Pro
+  switch (String(tipoOferta || '').toLowerCase()) {
+    case 'percentage':       return (opts && opts.hasProducts) ? (pro ? 'dto_prod_pro' : 'dto_prod')
+                                                               : (pro ? 'dto_tienda_pro' : 'dto_tienda');
+    case 'value':            return pro ? 'dto_valor_pro' : 'dto_valor';
+    case 'free_shipping':    return 'envio_gratis';
+    case 'service_fee':      return 'tarifa_servicio';
+    case 'offer_by_product': return pro ? 'dto_prod_pro' : 'dto_prod';
+    default:                 return ''; // cashback / rappicreditos / desconocido → T&C específico
+  }
+}
+//==TCGEN_END==
+
+// Catálogo completo de un país (para el form CRM y la página de consulta de KAMs).
+function getGeneralTcCatalog(countryCode) {
+  try {
+    var sheet = _getSheet(TC_GENERALES_SHEET);
+    if (!sheet) return JSON.stringify({ status: 'ok', items: [] });
+    var cc = String(countryCode || '').trim().toUpperCase();
+    var items = _sheetToObjects(sheet).filter(function (r) {
+      return String(r.country_code).trim().toUpperCase() === cc &&
+             String(r.status || 'active').trim() === 'active';
+    }).map(function (r) {
+      return { key: String(r.key || ''), nombre: String(r.nombre || ''), url: String(r.url || ''),
+               beneficio: String(r.beneficio || ''), descripcion: String(r.descripcion || ''),
+               vigencia_inicio: String(r.vigencia_inicio || ''), vigencia_fin: String(r.vigencia_fin || '') };
+    });
+    return JSON.stringify({ status: 'ok', items: items });
+  } catch (e) {
+    return JSON.stringify({ status: 'error', message: e.message });
+  }
+}

@@ -9,7 +9,20 @@ const DRIVE_FOLDER_ID = '';
 const TEMPLATES_ROOT_NAME = 'RappiMind_Templates';
 
 // 2. Base de Datos (Google Sheets)
-const AUDIT_SHEET_ID = '1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI';
+// DB del generador. Overridable con la Script Property RAPPIMIND_DB_ID para que un
+// proyecto /dev apunte a una COPIA del spreadsheet sin tocar producción (ver
+// docs/RUNBOOK_P0_PASO_A_PASO.md). Sin property → producción, como siempre.
+const AUDIT_SHEET_ID = (function () {
+  try {
+    var v = PropertiesService.getScriptProperties().getProperty('RAPPIMIND_DB_ID');
+    if (v) return String(v).trim();
+  } catch (e) {}
+  return '1Ki9FvHGkGSxnUpZCM2RwieTZwkpIlcBxPIYnvLixqZI';
+})();
+
+// Hoja del catálogo de T&C GENERALES (links fijos por país/tipo — ver
+// data/tc_generales_2026.csv y setupTcGenerales() en Setup.gs.js).
+const TC_GENERALES_SHEET = 'TC_Generales';
 const REGISTRY_SHEET_NAME = 'Template_Registry';
 const FIELDS_SHEET_NAME = 'Template_Fields';
 const TEAM_SHEET_NAME = 'Admin_Team';

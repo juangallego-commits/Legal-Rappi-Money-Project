@@ -15,12 +15,19 @@ Cómo desplegar y probar la fusión del Campaign Manager dentro de RappiMind
 ## Paso 0 — Insumos (una vez)
 
 1. **Token de Slack:** pedir al equipo CRM que **rote** el token expuesto y
-   genere uno para pruebas (o usar un bot propio en un canal de pruebas).
-2. **Copia del Sheet del CRM:** abrir su spreadsheet (`1yzcRT…`) → Archivo →
-   Hacer una copia (incluye hojas `Base` y `RappiCreditos`). Anotar el ID.
-3. **Carpeta Drive de pruebas** para los CSV por ticket. Anotar el ID.
+   comparta el nuevo por canal seguro (va en Script Properties, nunca en
+   código). Para /dev basta el mismo bot apuntando a un canal de pruebas.
+2. ✅ **Copia del Sheet del CRM** (hecha 2026-07-22):
+   `1XR5zWNj5cd3vDLCEeaOX6mqjPliknJ9gHhO6YVzrzuE`
+3. ✅ **Carpeta Drive de pruebas** (hecha 2026-07-22):
+   `1T39sOtnG1rd4UCeJZtSs6VDoMCv3Cb5D`
 4. Canal de Slack de pruebas (p. ej. `#rappimind-dev`) con el bot invitado.
-   Anotar el channel ID (empieza por `C`).
+   Anotar el channel ID (empieza por `C`). **Opcional para probar** — sin
+   token/canal el módulo funciona igual, solo no notifica.
+
+> La secuencia completa /dev (incluido aislar la DB de RappiMind con
+> `RAPPIMIND_DB_ID` y el P0 de FASE C + A2) está en
+> **`docs/RUNBOOK_P0_PASO_A_PASO.md`** — usar esa como guía maestra.
 
 ## Paso 1 — Desplegar el código a /dev
 
