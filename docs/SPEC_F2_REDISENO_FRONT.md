@@ -102,6 +102,24 @@ tenga como tipo.
    digitación en el dato más sensible del T&C.
 5. **A9**: pregunta a Anna qué flujo usó para reproducir lo de la carpeta.
 
+### 5.1 Estado de estas decisiones (2026-07-22) — Juan: "sí a todo"
+
+1. ✅ **Condiciones combinadas → viñetas**: implementado el catálogo +
+   combinador (`SPECIAL_CONDITIONS_CATALOG` + `_buildSpecialConditionsText`),
+   con texto legal **en BORRADOR** (pendiente que Juan valide el wording final)
+   y validación de excluyentes (local vs domicilio). ⚠️ Requiere agregar el
+   placeholder `{{TEXTO_CONDICIONES}}` al template de Cashback (con bloque FASE
+   B para que, si no hay ninguna, no quede rastro) — tarea de Juan al editar el
+   Doc.
+2. ✅ **Convención de nombres**: implementada (`_buildCampaignNames` +
+   `previewCampaignNames`), testeada.
+3. ⏳ **Canal Slack** (A7): global vs regional — sigue pendiente Juan/Anna;
+   el contacto se hará configurable para no tocar código.
+4. ✅ **Aliados con AUTO-APRENDIZAJE** (F2b): al generar un T&C se guarda solo
+   el organizador (`_learnAliadoFromPayload`); `getAliadosCatalog` alimentará el
+   autocompletar del wizard. (En vez de una hoja pre-cargada a mano.)
+5. ⏳ **A9 carpeta**: esperando el flujo que usó Anna para reproducir.
+
 ## 6. Plan de entrega (3 PRs)
 
 | PR | Contenido | Depende de |
@@ -112,3 +130,27 @@ tenga como tipo.
 
 Orden sugerido: **F2b → F2a → F2c** (F2b es la victoria rápida sin
 dependencias; F2a es el corazón; F2c pule y cierra seguridad).
+
+### 6.1 Avance real (2026-07-22)
+
+- ✅ **F2b entregado**: página T&C Generales, autollenado de `linkTyC`, aliados
+  con auto-aprendizaje, hub provisional.
+- ✅ **Helpers de F2a listos y testeados** (backend puro, sin depender de /dev):
+  nombres automáticos, catálogo+combinador de condiciones especiales, APIs
+  `previewCampaignNames` / `getSpecialConditionsCatalog`.
+- ⏳ **Pendiente de F2a**: el frontend del wizard que consume esos helpers
+  (sección legal con autocompletar de aliados, checkboxes de condiciones,
+  botón gris hasta completar, encadenamiento T&C→ticket, campo de link
+  publicado).
+
+### 6.2 Recomendación: ENHANCE en vez de rewrite
+
+`WebApp.Html` (el generador) ya son ~5.200 líneas con secciones, barra de
+progreso, campos dinámicos (que YA incluirán Organizador tras el P0), autosave
+y preview. **Reescribirlo de cero como wizard es caro y arriesgado** (y difícil
+de verificar sin /dev). Propongo **evolucionar el form actual** para cumplir el
+feedback de Anna (botón que se habilita al final, secciones renombradas
+redención vs condiciones, checkboxes, autocompletar de aliados, pantalla de
+revisión, link publicado) en incrementos aditivos y testeables — el mismo patrón
+que venimos usando. Resultado equivalente para el usuario, riesgo mucho menor.
+**A confirmar con Juan** antes de invertir en el wizard grande.

@@ -989,3 +989,107 @@ function _learnAliadoFromPayload(payload) {
     ]]);
   }
 }
+
+
+//==NAMING_START== (marcador para tests node; no remover)
+// F2a — Nombres automáticos de campaña/T&C (convención aprobada por Juan 2026-07-22).
+// Puro y determinista: NO usa la fecha actual; deriva mes/año de startDate 'YYYY-MM-DD'.
+// Devuelve { docTitle, publicTitle, internalName, slug }.
+function _buildCampaignNames(opts) {
+  opts = opts || {};
+  var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var cc     = String(opts.countryCode || '').trim().toUpperCase();
+  var tipo   = String(opts.campaignType || '').trim();
+  var marca  = String(opts.brand || '').trim();
+  var nombre = String(opts.campaignName || '').trim();
+  var fecha  = String(opts.startDate || '').trim();
+  var ticket = String(opts.ticketId || '').trim();
+
+  var y = '', mNum = '', mName = '';
+  var mm = fecha.match(/^(\d{4})-(\d{2})/);
+  if (mm) { y = mm[1]; mNum = mm[2]; mName = MESES[parseInt(mm[2], 10) - 1] || ''; }
+  var mesAno = (mName && y) ? (mName.charAt(0).toUpperCase() + mName.slice(1) + ' ' + y) : '';
+  var yyyymm = (y && mNum) ? (y + '-' + mNum) : '';
+
+  var etiqueta = nombre || marca || 'Campaña';
+  var titulo = 'Términos y Condiciones — ' + etiqueta;
+  if (marca && marca !== etiqueta) titulo += ' — ' + marca;
+  if (mesAno) titulo += ' (' + mesAno + ')';
+
+  var partes = [cc, tipo, (marca || nombre), yyyymm].filter(function (x) { return x; });
+  if (ticket) partes.push(ticket);
+  var interno = partes.join(' · ');
+
+  var slug = _slugify([(marca || nombre), tipo, yyyymm].filter(function (x) { return x; }).join('-'));
+
+  return { docTitle: titulo, publicTitle: titulo, internalName: interno, slug: slug };
+}
+
+function _slugify(s) {
+  return String(s || '')
+    .replace(/['’‘"]/g, '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+//==NAMING_END==
+
+//==SPECIAL_COND_FN_START== (marcador para tests node; no remover)
+// Combina las condiciones seleccionadas en viñetas (patrón aprobado por Juan).
+// keys: array de llaves de SPECIAL_CONDITIONS_CATALOG. '' si ninguna.
+function _buildSpecialConditionsText(keys, catalog) {
+  catalog = catalog || (typeof SPECIAL_CONDITIONS_CATALOG !== 'undefined' ? SPECIAL_CONDITIONS_CATALOG : {});
+  if (!keys || !keys.length) return '';
+  var textos = [];
+  keys.forEach(function (k) {
+    var it = catalog[k];
+    if (it && it.texto && textos.indexOf(it.texto) === -1) textos.push(it.texto);
+  });
+  if (!textos.length) return '';
+  return textos.map(function (t) { return '• ' + t; }).join('\n');
+}
+
+// Valida que no se elijan dos condiciones mutuamente excluyentes (local vs domicilio).
+function _validateSpecialConditions(keys, catalog) {
+  catalog = catalog || (typeof SPECIAL_CONDITIONS_CATALOG !== 'undefined' ? SPECIAL_CONDITIONS_CATALOG : {});
+  keys = keys || [];
+  for (var i = 0; i < keys.length; i++) {
+    var it = catalog[keys[i]];
+    if (it && it.excluye) {
+      for (var j = 0; j < it.excluye.length; j++) {
+        if (keys.indexOf(it.excluye[j]) !== -1) {
+          return { ok: false, message: '"' + it.label + '" y "' + ((catalog[it.excluye[j]] || {}).label || it.excluye[j]) + '" no pueden ir juntas.' };
+        }
+      }
+    }
+  }
+  return { ok: true };
+}
+//==SPECIAL_COND_FN_END==
+
+// API para la pantalla de revisión del wizard (F2a): previsualiza los nombres.
+function previewCampaignNames(payloadString) {
+  try {
+    var p = (typeof payloadString === 'string') ? JSON.parse(payloadString) : (payloadString || {});
+    return JSON.stringify({ status: 'ok', names: _buildCampaignNames({
+      countryCode: p.countryCode, campaignType: p.campaignType || p.dynamicType,
+      brand: p.brand || p.shopName, campaignName: p.campaignName,
+      startDate: p.startDate || p.fechaInicio, ticketId: p.ticketId
+    }) });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+}
+
+// API para el catálogo de condiciones especiales (checkboxes del wizard).
+function getSpecialConditionsCatalog() {
+  try {
+    var out = [];
+    for (var k in SPECIAL_CONDITIONS_CATALOG) {
+      if (SPECIAL_CONDITIONS_CATALOG.hasOwnProperty(k)) {
+        out.push({ key: k, label: SPECIAL_CONDITIONS_CATALOG[k].label, excluye: SPECIAL_CONDITIONS_CATALOG[k].excluye || [] });
+      }
+    }
+    return JSON.stringify({ status: 'ok', items: out });
+  } catch (e) { return JSON.stringify({ status: 'error', message: e.message }); }
+}

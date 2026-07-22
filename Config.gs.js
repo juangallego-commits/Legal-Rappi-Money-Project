@@ -553,3 +553,25 @@ const FIELD_CATALOG = {
   'ID_FISCAL':                  { category: 'legal', column: 'id_fiscal' }
 };
 //==FASE_C_CATALOG_END==
+
+//==SPECIAL_COND_START== (marcador para tests node; no remover)
+// F2a — Condiciones especiales de la campaña. Feedback Anna (A3): son CHECKBOXES
+// (no excluyentes salvo local/domicilio). El TEXTO LEGAL de cada una es BORRADOR
+// y DEBE validarlo Juan. Se combinan como viñetas en la cláusula de condiciones
+// del T&C — requiere agregar el placeholder {{TEXTO_CONDICIONES}} al template
+// (con bloque opcional FASE B para que, si no hay ninguna, no quede rastro).
+var SPECIAL_CONDITIONS_CATALOG = {
+  consumo_local:   { label: 'Aplica únicamente para consumo en el local',
+                     texto: 'El beneficio aplica exclusivamente para pedidos de consumo en el establecimiento y no para pedidos con envío a domicilio.',
+                     excluye: ['envio_domicilio'] },
+  envio_domicilio: { label: 'Aplica únicamente para envío a domicilio',
+                     texto: 'El beneficio aplica exclusivamente para pedidos con envío a domicilio y no para consumo en el establecimiento.',
+                     excluye: ['consumo_local'] },
+  limite_100_dia:  { label: 'Límite: Primeras 100 órdenes diarias',
+                     texto: 'El beneficio aplica únicamente para las primeras cien (100) órdenes de cada día durante la vigencia de la Campaña.' },
+  no_combos:       { label: 'No aplica para combos (solo precio regular)',
+                     texto: 'El beneficio no aplica sobre productos ofrecidos en combo; aplica únicamente sobre productos a precio regular.' },
+  tope_50pct:      { label: 'Límite de descuento 50% del total',
+                     texto: 'El descuento máximo aplicable no podrá superar el cincuenta por ciento (50%) del valor total del pedido.' }
+};
+//==SPECIAL_COND_END==
