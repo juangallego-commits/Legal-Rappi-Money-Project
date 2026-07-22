@@ -16,3 +16,9 @@
 !Helpers.gs.js
 !Setup.gs.js
 !WebApp.Html
+
+# Módulo CRM Campaign Manager (integración F1)
+!Crm.gs.js
+!CrmForm.html
+!CrmStatus.html
+!CrmAdmin.html

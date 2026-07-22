@@ -137,7 +137,7 @@ del solicitante sí lo capturan (sesión + owner).
 - **Cashback fuera de CO en v1:** pasa como ticket sin T&C (marca "T&C
   pendiente — país no habilitado") en vez de bloquear.
 
-## 6. Decisiones que necesita tomar Juan (bloqueantes para empezar)
+## 6. Decisiones que necesitaba tomar Juan — ✅ RESUELTAS (ver §7)
 
 1. **Arquitectura:** ¿Fusión en RappiMind (recomendado), o solo puente de datos
    (dos apps, RappiMind escribe el ticket), o montar copia /dev y decidir?
@@ -160,3 +160,56 @@ del solicitante sí lo capturan (sesión + owner).
 - Confirmar semántica exacta de `maximo_descuento` (por usuario vs por orden)
   para `TOPE_LETRAS`.
 - Su `appsscript.json` (scopes/`executeAs`/`access`) para replicar el despliegue.
+
+---
+
+## 7. Decisiones tomadas (2026-07-22) + insumos nuevos
+
+**Decisiones de Juan:**
+
+1. **Arquitectura: fusión en RappiMind** ✔ → **F1 implementada**: `Crm.gs.js` +
+   `CrmForm/CrmStatus/CrmAdmin.html` + router en `Código.js` (`?page=crm*`).
+   Ver `docs/RUNBOOK_F1_CRM_DEV.md`.
+2. **Datos v1: Sheet copia /dev** ✔ — config 100% por Script Properties
+   (`CRM_SPREADSHEET_ID`, `CRM_SLACK_BOT_TOKEN`, `CRM_SLACK_CHANNEL`,
+   `CRM_CSV_FOLDER_ID`, `CRM_TIMEZONE`); nada de prod hardcodeado.
+3. **Alcance:** Cashback = único tipo del CRM con **T&C específico** (motor
+   RappiMind, CO primero). `percentage/value/free_shipping/OBP/service_fee`
+   usan **T&C GENERALES** (link fijo por país/tipo) → construir catálogo de
+   links y autollenar `linkTyC`. **Concursos/carreras** no pasan por CRM
+   (siguen en RappiMind directo; MX los pide mucho — 10 sol/sem). **Cupones**
+   NO existe en el Campaign Manager (confirmado: 0 en 715 tickets y en Slack)
+   aunque PE/CL/BR los solicitan a Legal → aclarar con CRM por dónde van.
+   Rappicreditos: fuera de v1 (T&C de créditos propio, después).
+4. **Flujo: T&C primero.** En cashback CO: sin T&C válido (A1/A2) no se crea
+   el ticket; el ticket nace con `TC_DOC_URL` (Doc). El **link público** lo
+   publica el solicitante en Squarespace y se adjunta al ticket después
+   (conecta con P6). `linkTyC` queda reservado al link público.
+
+**Definiciones legales de Juan:**
+- **Organizador = SIEMPRE el aliado** (el esquema full_rappi/full_aliado es
+  interno y no aparece en el T&C) → la sección legal del form pedirá razón
+  social + ID fiscal del aliado (campos FASE C).
+- `maximo_descuento` = **tope por orden** → `TOPE_*`; el nº máx. de órdenes
+  por usuario ya lo pide su form (`max_ordenes_usuario`) → `TEXTO_ORDENES`.
+
+**Insumos nuevos (versionados en el repo):**
+- `data/country_settings_tropicalizacion.csv` — **config legal de los 9
+  países COMPLETA** (Paula Barahona; 15 campos por país; único hueco:
+  `url_tc_creditos` de MX). Fuente para sembrar `Country_Settings` y pasar el
+  guardarraíl A1 país por país.
+- `data/solicitudes_recurrentes_tcs.csv` — volumen/tipos de solicitudes de
+  T&C por país (PE 4-5/sem, CL 4-5, EC 1, BR 3-6, AR 4-5, MX 10).
+- `reference/plantillas/Plantilla_CO_Cashback_v2.{docx,txt}` — modelo vigente:
+  **30 placeholders**, todos resolubles por el motor. ⚠️ Antes del e2e
+  verificar en `DERIVED_FIELDS`: `NOMBRE_CAMPANA_UPPER`, `PRESUPUESTO_NUM`,
+  `TOPE_NUM`, `LIMITE_ORDENES`. Sin bloques opcionales `[[?…]]` todavía.
+- Datos reales del CRM (export 715 tickets): cashback 487 · OBP 189 · value
+  30 · percentage 4 · service_fee 3 · free_shipping 2; países MX 431, CO 168,
+  CL 64, AR 30, UY 22. **Solo 63/715 (9%) llevan link de T&C** — la brecha
+  que cierra esta integración. El CRM ya opera multi-país HOY.
+
+**UX (feedback de Anna Habermann):** el front debe volverse "super user
+friendly" y dejar clarísima la diferencia entre (i) generar el T&C y (ii) la
+Global Offer que monta CRM → guía de diseño para F2 (flujo por pasos:
+1. Genera tu T&C → 2. Publícalo → 3. Solicita la oferta a CRM).

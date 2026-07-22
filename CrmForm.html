@@ -1,0 +1,1909 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nueva Solicitud — Campaign Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --rappi:#FF441F;--rappi-light:#FF6B47;--rappi-dim:rgba(255,68,31,.08);
+  --bg:#F5F4F0;--surface:#FFF;--surface2:#F9F8F6;--surface3:#F0EEE9;
+  --border:#E5E2DA;--border2:#D4D0C8;
+  --tx:#1A1916;--txm:#6B6860;--txd:#A8A49C;
+  --green:#16A34A;--blue:#2563EB;--purple:#6D28D9;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;overflow-x:hidden;}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(245,244,240,.94);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:60px;}
+.nav-brand{display:flex;align-items:center;gap:9px;font-family:'Syne',sans-serif;font-weight:800;font-size:17px;letter-spacing:-.4px;color:var(--tx);cursor:pointer;}
+.nav-dot{width:7px;height:7px;background:var(--rappi);border-radius:50%;}
+.nav-links{display:flex;gap:4px;}
+.nav-btn{padding:6px 14px;border-radius:8px;font-size:13px;color:var(--txm);transition:all .2s;border:none;background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.nav-btn:hover{background:var(--surface3);color:var(--tx);}
+
+/* HERO */
+.hero{padding:40px 32px 28px;max-width:920px;margin:0 auto;animation:fadeUp .4s ease both;}
+.hero-tag{display:inline-flex;align-items:center;gap:5px;background:var(--rappi-dim);color:var(--rappi);border:1px solid rgba(255,68,31,.2);padding:3px 12px;border-radius:100px;font-size:11px;font-weight:600;margin-bottom:12px;}
+.hero h1{font-family:'Syne',sans-serif;font-size:clamp(24px,3.5vw,38px);font-weight:800;line-height:1.08;letter-spacing:-1px;margin-bottom:6px;}
+.hero h1 span{color:var(--rappi);}
+.hero p{font-size:14px;color:var(--txm);line-height:1.6;}
+
+/* PROGRESS BAR */
+.progress-nav{max-width:920px;margin:0 auto 8px;padding:0 32px;}
+.progress-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--rappi);border-radius:2px;transition:width .4s ease;}
+.progress-label{font-size:11px;color:var(--txd);margin-top:5px;text-align:right;}
+
+/* FORM WRAP */
+.form-wrap{max-width:920px;margin:0 auto 80px;padding:0 32px;animation:fadeUp .4s .06s ease both;}
+
+/* SECTION CARD */
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:box-shadow .2s;}
+.sc:focus-within{box-shadow:0 4px 20px rgba(255,68,31,.08);}
+.sc-vis{overflow:visible;}
+.sc-hid{overflow:hidden;}
+.sh{padding:13px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;background:var(--surface2);cursor:default;}
+.sn{width:22px;height:22px;background:var(--rappi);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;font-family:'Syne',sans-serif;flex-shrink:0;}
+.st{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--tx);}
+.st-sub{font-size:11px;color:var(--txm);font-family:'DM Sans',sans-serif;font-weight:400;margin-left:4px;}
+.sc-badge{margin-left:auto;padding:2px 9px;border-radius:100px;font-size:10px;font-weight:700;background:rgba(255,68,31,.1);color:var(--rappi);}
+.sc-badge.green{background:rgba(22,163,74,.1);color:var(--green);}
+.sb{padding:20px;}
+
+/* CONDITIONAL SECTION */
+.cond-section{display:none;}
+.cond-section.visible{display:block;}
+
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;}
+.cs2{grid-column:span 2;}.cs3{grid-column:span 3;}.cs4{grid-column:span 4;}
+
+/* FIELDS */
+.field{display:flex;flex-direction:column;gap:4px;}
+.field label{font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--txm);}
+.field label .opt{font-weight:400;text-transform:none;letter-spacing:0;color:var(--txd);font-size:10px;}
+.field label .req{color:var(--rappi);}
+.field input,.field select,.field textarea{background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 12px;transition:border-color .2s,box-shadow .2s;width:100%;}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--rappi);background:#fff;box-shadow:0 0 0 3px rgba(255,68,31,.1);}
+.field input::placeholder,.field textarea::placeholder{color:var(--txd);}
+.field textarea{resize:vertical;min-height:80px;}
+.field .hint{font-size:11px;color:var(--txd);margin-top:3px;line-height:1.4;}
+.field .error-msg{font-size:11px;color:#DC2626;margin-top:2px;display:none;}
+.field.has-error input,.field.has-error textarea,.field.has-error select{border-color:#DC2626;box-shadow:0 0 0 3px rgba(220,38,38,.1);}
+.field.has-error .error-msg{display:block;}
+
+/* DIVIDER */
+.divider{border:none;border-top:1px solid var(--border);margin:16px 0;}
+.divider-label{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txd);margin-bottom:10px;margin-top:16px;}
+
+/* COUNTRY SELECT */
+.pais-select{position:relative;}
+.pais-trigger{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;cursor:pointer;transition:border-color .2s;user-select:none;}
+.pais-trigger:hover,.pais-trigger.open{border-color:var(--rappi);background:#fff;box-shadow:0 0 0 3px rgba(255,68,31,.1);}
+.pais-flag{font-size:18px;line-height:1;}
+.pais-name{font-size:14px;color:var(--tx);flex:1;}
+.pais-arrow{font-size:10px;color:var(--txm);transition:transform .2s;}
+.pais-trigger.open .pais-arrow{transform:rotate(180deg);}
+.pais-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:200;overflow:hidden;display:none;}
+.pais-dropdown.open{display:block;animation:fadeUp .15s ease;}
+.pais-option{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background .15s;}
+.pais-option:hover{background:var(--surface2);}
+.pais-option.selected{background:var(--rappi-dim);}
+
+/* OFFER TYPE */
+.tipo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.tipo-card{padding:14px;border-radius:10px;cursor:pointer;border:1.5px solid var(--border);background:var(--surface2);transition:all .2s;display:flex;flex-direction:column;gap:4px;}
+.tipo-card:hover{border-color:var(--rappi);background:#fff;}
+.tipo-card.selected{border-color:var(--rappi);background:var(--rappi-dim);}
+.tipo-icon{font-size:20px;margin-bottom:2px;}
+.tipo-name{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--tx);}
+.tipo-card.selected .tipo-name{color:var(--rappi);}
+.tipo-desc{font-size:10px;color:var(--txm);line-height:1.3;}
+
+/* TOGGLE BUTTONS (2-option) */
+.toggle-2{display:flex;gap:7px;}
+.tog-btn{flex:1;padding:10px 14px;border-radius:8px;cursor:pointer;border:1.5px solid var(--border);background:var(--surface2);color:var(--txm);font-family:'Syne',sans-serif;font-weight:700;font-size:12px;text-align:center;transition:all .2s;}
+.tog-btn:hover{border-color:var(--rappi);color:var(--tx);}
+.tog-btn.selected{border-color:var(--rappi);background:var(--rappi-dim);color:var(--rappi);}
+
+/* COBERTURA */
+.cob-toggle{display:flex;gap:8px;}
+.cob-btn{flex:1;padding:12px;border-radius:10px;cursor:pointer;border:1.5px solid var(--border);background:var(--surface2);transition:all .2s;display:flex;align-items:center;gap:10px;}
+.cob-btn:hover{border-color:var(--rappi);background:#fff;}
+.cob-btn.selected{border-color:var(--rappi);background:var(--rappi-dim);}
+.cob-icon{font-size:18px;flex-shrink:0;}
+.cob-label{font-size:12px;font-weight:600;color:var(--tx);}
+.cob-btn.selected .cob-label{color:var(--rappi);}
+.cob-sub{font-size:10px;color:var(--txm);}
+
+/* STORE TYPE */
+.store-type-grid{display:flex;flex-wrap:wrap;gap:7px;}
+.stype-pill{padding:8px 14px;border-radius:100px;border:1.5px solid var(--border);background:var(--surface2);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;color:var(--txm);}
+.stype-pill:hover{border-color:var(--rappi);color:var(--tx);}
+.stype-pill.selected{border-color:var(--rappi);background:var(--rappi-dim);color:var(--rappi);font-weight:600;}
+
+/* DAYS_HOURS BUILDER */
+.days-builder{display:flex;flex-direction:column;gap:8px;}
+.day-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);transition:border-color .2s;}
+.day-row.active{border-color:var(--rappi);background:var(--rappi-dim);}
+.day-check{width:16px;height:16px;accent-color:var(--rappi);cursor:pointer;flex-shrink:0;}
+.day-name{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--tx);width:36px;flex-shrink:0;}
+.day-slots{display:flex;align-items:center;gap:8px;flex:1;flex-wrap:wrap;}
+.day-slot{display:flex;align-items:center;gap:4px;}
+.day-slot input[type=time]{padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:#fff;font-size:12px;color:var(--tx);font-family:'DM Sans',sans-serif;width:95px;}
+.day-slot-sep{font-size:11px;color:var(--txm);}
+.btn-add-slot{padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:#fff;font-size:11px;color:var(--txm);cursor:pointer;transition:all .2s;}
+.btn-add-slot:hover{border-color:var(--rappi);color:var(--rappi);}
+.btn-rm-slot{padding:2px 7px;border-radius:5px;background:transparent;border:none;color:var(--txd);cursor:pointer;font-size:14px;transition:color .2s;}
+.btn-rm-slot:hover{color:#DC2626;}
+.days-preview{margin-top:8px;padding:10px 12px;background:var(--surface3);border-radius:8px;font-family:monospace;font-size:11px;color:var(--txm);word-break:break-all;display:none;}
+.days-preview.visible{display:block;}
+
+/* PAGO */
+.pago-opts{display:flex;flex-direction:column;gap:7px;}
+.pago-opt{padding:12px 14px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:9px;}
+.pago-opt:hover{border-color:var(--rappi);background:#fff;}
+.pago-opt.selected{border-color:var(--rappi);background:var(--rappi-dim);}
+.pago-radio{width:15px;height:15px;border-radius:50%;border:2px solid var(--border2);flex-shrink:0;transition:all .2s;}
+.pago-opt.selected .pago-radio{border-color:var(--rappi);background:var(--rappi);box-shadow:0 0 0 3px rgba(255,68,31,.14);}
+.pago-label{font-size:13px;font-weight:500;color:var(--tx);}
+.pago-sub{font-size:11px;color:var(--txm);}
+.aliado-extra{background:var(--rappi-dim);border:1px solid rgba(255,68,31,.14);border-radius:9px;padding:16px;margin-top:10px;display:none;}
+.aliado-extra.visible{display:block;animation:fadeUp .2s ease;}
+
+/* SEGMENTO PILLS */
+.seg-pills{display:flex;flex-wrap:wrap;gap:6px;}
+.seg-pill{padding:7px 14px;border-radius:100px;border:1.5px solid var(--border);background:var(--surface2);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;color:var(--txm);}
+.seg-pill:hover{border-color:var(--rappi);color:var(--tx);}
+.seg-pill.selected{border-color:var(--rappi);background:var(--rappi-dim);color:var(--rappi);}
+
+/* METODOS PAGO */
+.metodo-grid{display:flex;flex-wrap:wrap;gap:6px;}
+.metodo-pill{padding:6px 12px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface2);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s;color:var(--txm);}
+.metodo-pill:hover{border-color:var(--blue);color:var(--tx);}
+.metodo-pill.selected{border-color:var(--blue);background:rgba(37,99,235,.07);color:var(--blue);}
+
+/* PRIME TOGGLE */
+.prime-opts{display:flex;gap:8px;}
+.prime-opt{flex:1;padding:11px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);cursor:pointer;transition:all .2s;text-align:center;}
+.prime-opt:hover{border-color:var(--border2);}
+.prime-opt.selected-yes{border-color:var(--green);background:rgba(22,163,74,.07);}
+.prime-opt.selected-no{border-color:#DC2626;background:rgba(220,38,38,.07);}
+.prime-opt.selected-all{border-color:var(--rappi);background:var(--rappi-dim);}
+.prime-opt-icon{font-size:16px;margin-bottom:3px;}
+.prime-opt-label{font-size:12px;font-weight:600;color:var(--tx);}
+.prime-opt.selected-yes .prime-opt-label{color:var(--green);}
+.prime-opt.selected-no .prime-opt-label{color:#DC2626;}
+.prime-opt.selected-all .prime-opt-label{color:var(--rappi);}
+.prime-opt-sub{font-size:10px;color:var(--txm);}
+
+/* INFO BOX */
+.info-box{background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.15);border-radius:9px;padding:12px 14px;font-size:12px;color:var(--blue);line-height:1.5;margin-top:4px;}
+.warn-box{background:rgba(217,119,6,.05);border:1px solid rgba(217,119,6,.15);border-radius:9px;padding:12px 14px;font-size:12px;color:#B45309;line-height:1.5;margin-top:4px;}
+
+/* AUTOCOMPLETE */
+.autocomplete-wrap{position:relative;}
+.autocomplete-wrap input{width:100%;}
+.ac-dropdown{position:absolute;top:calc(100% + 3px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:150;max-height:220px;overflow-y:auto;display:none;}
+.ac-dropdown.open{display:block;animation:fadeUp .15s ease;}
+.ac-item{padding:9px 13px;font-size:13px;cursor:pointer;color:var(--tx);transition:background .12s;border-bottom:1px solid rgba(229,226,218,.5);}
+.ac-item:last-child{border-bottom:none;}
+.ac-item:hover,.ac-item.highlighted{background:var(--rappi-dim);color:var(--rappi);}
+.ac-item mark{background:transparent;color:var(--rappi);font-weight:700;}
+.ac-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--txd);cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px;transition:color .2s;display:none;}
+.ac-clear:hover{color:var(--tx);}
+.ac-clear.visible{display:block;}
+.ac-selected-tag{display:inline-flex;align-items:center;gap:5px;background:var(--rappi-dim);border:1px solid rgba(255,68,31,.2);color:var(--rappi);padding:3px 10px;border-radius:100px;font-size:11px;font-weight:600;margin-top:5px;}
+.ac-selected-tag button{background:none;border:none;cursor:pointer;color:var(--rappi);font-size:12px;padding:0;line-height:1;}
+
+/* SUBMIT */
+.btn-submit{width:100%;padding:15px;background:var(--rappi);border:none;border-radius:11px;color:#fff;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 4px 14px rgba(255,68,31,.22);margin-top:6px;}
+.btn-submit:hover{background:var(--rappi-light);transform:translateY(-1px);}
+
+/* CONFIRM MODAL */
+.overlay{position:fixed;inset:0;background:rgba(26,25,22,.45);backdrop-filter:blur(5px);z-index:300;display:none;align-items:center;justify-content:center;padding:20px;}
+.overlay.open{display:flex;animation:fadeIn .18s ease;}
+.cmodal{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:680px;max-height:92vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.14);animation:scaleIn .2s ease;}
+.cm-hd{padding:22px 26px 18px;border-bottom:1px solid var(--border);}
+.cm-ey{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--rappi);margin-bottom:4px;}
+.cm-t{font-family:'Syne',sans-serif;font-size:21px;font-weight:800;letter-spacing:-.5px;color:var(--tx);margin-bottom:3px;}
+.cm-s{font-size:13px;color:var(--txm);}
+.cm-bd{padding:20px 26px;display:flex;flex-direction:column;gap:16px;}
+.cs-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--txd);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.cf{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;}
+.cf.accent{background:var(--rappi-dim);border-color:rgba(255,68,31,.18);}
+.cf-l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--txm);margin-bottom:2px;}
+.cf-v{font-size:13px;font-weight:500;color:var(--tx);}
+.cf.accent .cf-v{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;color:var(--rappi);}
+.cf.full{grid-column:span 2;}
+.cm-ft{padding:14px 26px 22px;display:flex;gap:9px;border-top:1px solid var(--border);}
+.btn-back{flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;color:var(--txm);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .2s;}
+.btn-back:hover{background:var(--surface3);}
+.btn-confirm{flex:2;padding:12px;background:var(--rappi);border:none;border-radius:9px;color:#fff;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;}
+.btn-confirm:hover{background:var(--rappi-light);}
+.btn-confirm:disabled{opacity:.5;cursor:not-allowed;}
+
+/* SUCCESS */
+.success-ov{position:fixed;inset:0;background:rgba(26,25,22,.45);backdrop-filter:blur(5px);z-index:400;display:none;align-items:center;justify-content:center;padding:20px;}
+.success-ov.open{display:flex;animation:fadeIn .2s ease;}
+.smodal{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:420px;padding:36px 28px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.14);animation:scaleIn .22s ease;}
+.s-icon{width:56px;height:56px;border-radius:50%;background:rgba(22,163,74,.08);border:1.5px solid rgba(22,163,74,.2);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 16px;}
+.s-t{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.4px;color:var(--tx);margin-bottom:6px;}
+.s-sub{font-size:13px;color:var(--txm);line-height:1.55;margin-bottom:20px;}
+.ticket-pill{display:inline-block;background:var(--rappi-dim);border:1.5px solid rgba(255,68,31,.2);color:var(--rappi);padding:8px 20px;border-radius:100px;font-family:'Syne',sans-serif;font-size:17px;font-weight:800;letter-spacing:1.5px;margin-bottom:5px;cursor:pointer;}
+.copy-hint{font-size:10px;color:var(--txd);margin-bottom:20px;}
+.s-meta{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:18px;text-align:left;}
+.s-meta-row{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;}
+.s-meta-row:not(:last-child){border-bottom:1px solid var(--border);margin-bottom:4px;}
+.s-meta-label{color:var(--txm);}
+.s-meta-val{font-weight:500;color:var(--tx);}
+.s-actions{display:flex;flex-direction:column;gap:7px;}
+.btn-snew{padding:11px;background:var(--rappi);border:none;border-radius:9px;color:#fff;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.btn-scheck{padding:11px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;color:var(--txm);font-size:13px;cursor:pointer;}
+
+/* REFERENCE BANNER */
+.ref-banner{max-width:920px;margin:0 auto 6px;padding:0 32px;}
+.ref-trigger{display:flex;align-items:center;gap:10px;padding:11px 16px;background:var(--surface);border:1.5px dashed var(--border2);border-radius:10px;cursor:pointer;transition:all .2s;}
+.ref-trigger:hover{border-color:var(--rappi);background:var(--rappi-dim);}
+.ref-trigger-icon{font-size:16px;}
+.ref-trigger-text{font-size:13px;color:var(--txm);flex:1;}
+.ref-trigger-text span{font-weight:600;color:var(--tx);}
+.ref-trigger-arrow{font-size:11px;color:var(--txd);transition:transform .2s;}
+.ref-trigger.open .ref-trigger-arrow{transform:rotate(180deg);}
+.ref-panel{background:var(--surface);border:1.5px solid var(--rappi);border-top:none;border-radius:0 0 10px 10px;padding:16px;display:none;animation:fadeUp .2s ease;}
+.ref-panel.open{display:block;}
+.ref-row{display:flex;gap:9px;align-items:center;}
+.ref-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 12px;transition:border-color .2s;}
+.ref-input:focus{outline:none;border-color:var(--rappi);background:#fff;box-shadow:0 0 0 3px rgba(255,68,31,.1);}
+.ref-input::placeholder{color:var(--txd);}
+.ref-btn{padding:9px 18px;background:var(--rappi);border:none;border-radius:8px;color:#fff;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s;}
+.ref-btn:hover{background:var(--rappi-light);}
+.ref-btn:disabled{opacity:.5;cursor:not-allowed;}
+.ref-status{margin-top:10px;font-size:12px;border-radius:8px;padding:9px 12px;display:none;}
+.ref-status.loading{display:block;background:var(--surface2);color:var(--txm);}
+.ref-status.success{display:block;background:rgba(22,163,74,.07);border:1px solid rgba(22,163,74,.2);color:#15803D;}
+.ref-status.error{display:block;background:rgba(220,38,38,.07);border:1px solid rgba(220,38,38,.2);color:#B91C1C;}
+
+/* UTILS */
+.hidden{display:none!important;}
+.spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+.mt8{margin-top:8px;} .mt12{margin-top:12px;} .mt16{margin-top:16px;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.96);}to{opacity:1;transform:scale(1);}}
+@keyframes spin{to{transform:rotate(360deg);}}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:var(--surface2);}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:640px){.g2,.g3,.g4{grid-template-columns:1fr;}.cs2,.cs3,.cs4{grid-column:span 1;}.cgrid{grid-template-columns:1fr;}.cf.full{grid-column:span 1;}.tipo-grid{grid-template-columns:1fr 1fr;}.hero,.form-wrap,.progress-nav{padding-left:16px;padding-right:16px;}nav{padding:0 16px;}.cob-toggle{flex-direction:column;}.prime-opts{flex-direction:column;}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand" onclick="navTo('crm')"><div class="nav-dot"></div>Campaign Manager</div>
+  <div class="nav-links">
+    <button class="nav-btn" onclick="navTo('crm')">← Inicio</button>
+    <button class="nav-btn" onclick="navTo('crm-status')">Consultar Ticket</button>
+    <button class="nav-btn" onclick="navTo('crm-admin')">Admin ↗</button>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">🎯 Nueva solicitud</div>
+  <h1>Solicitud de <span>campaña</span></h1>
+  <p>Completa los campos, revisa el resumen y recibe tu ticket automáticamente.</p>
+</div>
+
+<div class="progress-nav">
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:9%"></div></div>
+  <div class="progress-label" id="progressLabel">Sección 1 de 11</div>
+</div>
+
+<!-- REFERENCE BANNER -->
+<div class="ref-banner">
+  <div class="ref-trigger" id="refTrigger" onclick="toggleRefPanel()">
+    <span class="ref-trigger-icon">📋</span>
+    <span class="ref-trigger-text">¿Tienes una campaña similar? <span>Cargar como base</span></span>
+    <span class="ref-trigger-arrow">▼</span>
+  </div>
+  <div class="ref-panel" id="refPanel">
+    <div class="ref-row">
+      <input class="ref-input" id="refInput" placeholder="Ej: CAM-0042"
+             onkeydown="if(event.key==='Enter') loadReference()">
+      <button class="ref-btn" id="refBtn" onclick="loadReference()">Cargar</button>
+    </div>
+    <div class="ref-status" id="refStatus"></div>
+  </div>
+</div>
+
+<div class="form-wrap">
+
+  <!-- S0: PAÍS + OWNER -->
+  <div class="sc sc-vis">
+    <div class="sh"><div class="sn">1</div><div class="st">País & Owner</div></div>
+    <div class="sb">
+      <div class="g2">
+        <div class="field">
+          <label>País <span class="req">*</span></label>
+          <div class="pais-select" id="paisSelect">
+            <div class="pais-trigger" id="paisTrigger" onclick="togglePais()">
+              <span class="pais-flag" id="paisFlag">🌎</span>
+              <span class="pais-name" id="paisName" style="color:var(--txd)">Seleccionar país</span>
+              <span class="pais-arrow">▼</span>
+            </div>
+            <div class="pais-dropdown" id="paisDropdown"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Owner (email) <span class="req">*</span></label>
+          <input type="email" id="ownerEmail" placeholder="nombre@rappi.com">
+          <div class="hint">Email del responsable de la campaña</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- S1: TIPO DE OFERTA -->
+  <div class="sc sc-hid">
+    <div class="sh"><div class="sn">2</div><div class="st">Tipo de Oferta <span class="st-sub">— Define qué campos se muestran</span></div></div>
+    <div class="sb">
+      <div class="tipo-grid">
+        <div class="tipo-card selected" id="tipo-cashback" onclick="setTipo('cashback')">
+          <div class="tipo-icon">💰</div><div class="tipo-name">Cashback</div><div class="tipo-desc">Devuelve % en créditos al usuario</div>
+        </div>
+        <div class="tipo-card" id="tipo-percentage" onclick="setTipo('percentage')">
+          <div class="tipo-icon">🏷️</div><div class="tipo-name">Percentage</div><div class="tipo-desc">Descuento directo en porcentaje</div>
+        </div>
+        <div class="tipo-card" id="tipo-free_shipping" onclick="setTipo('free_shipping')">
+          <div class="tipo-icon">🚚</div><div class="tipo-name">Free Shipping</div><div class="tipo-desc">Envío gratuito para el usuario</div>
+        </div>
+        <div class="tipo-card" id="tipo-value" onclick="setTipo('value')">
+          <div class="tipo-icon">💵</div><div class="tipo-name">Value</div><div class="tipo-desc">Descuento en valor moneda local</div>
+        </div>
+        <div class="tipo-card" id="tipo-offer_by_product" onclick="setTipo('offer_by_product')">
+          <div class="tipo-icon">📦</div><div class="tipo-name">Offer By Product</div><div class="tipo-desc">Descuento sobre producto específico</div>
+        </div>
+        <div class="tipo-card" id="tipo-service_fee" onclick="setTipo('service_fee')">
+          <div class="tipo-icon">⚙️</div><div class="tipo-name">Service Fee</div><div class="tipo-desc">Descuento en tarifa de servicio</div>
+        </div>
+        <div class="tipo-card" id="tipo-rappicreditos" onclick="setTipo('rappicreditos')">
+          <div class="tipo-icon">🎁</div><div class="tipo-name">Rappicreditos</div><div class="tipo-desc">Carga de créditos a usuarios específicos</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- S2: FECHAS Y HORARIOS -->
+  <div class="sc sc-hid">
+    <div class="sh"><div class="sn">3</div><div class="st">Fechas y Horarios</div></div>
+    <div class="sb">
+      <div class="g2">
+        <div class="field"><label>Fecha Inicio <span class="req">*</span></label><input type="date" id="fechaInicio"></div>
+        <div class="field"><label>Fecha Fin <span class="req">*</span></label><input type="date" id="fechaFin"></div>
+        <div class="field"><label>Hora de inicio <span class="opt">(opcional)</span></label><input type="time" id="horaInicio"><div class="hint">Si queda vacío, inicia desde la hora de creación</div></div>
+        <div class="field"><label>Hora de fin <span class="opt">(opcional)</span></label><input type="time" id="horaFin"><div class="hint">Si queda vacío, termina a las 23:59</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- S3: BRAND & STORES -->
+  <div class="sc sc-hid" id="brand-stores-section">
+    <div class="sh"><div class="sn">4</div><div class="st">Brand & Stores</div></div>
+    <div class="sb" style="display:flex;flex-direction:column;gap:16px;">
+      <div class="field" id="verticalField">
+        <label>Vertical <span class="req">*</span> <span class="opt">(obligatorio para todas excepto Offer By Product)</span></label>
+        <select id="verticalSelect" onchange="updateProgress()">
+          <option value="">— Selecciona una vertical —</option>
+          <option value="FARMA">FARMA</option>
+          <option value="LICORES">LICORES</option>
+          <option value="MARKET">MARKET</option>
+          <option value="REST">REST</option>
+          <option value="EXPRESS">EXPRESS</option>
+          <option value="CPGS">CPGS</option>
+          <option value="SUPER_HIPER">SUPER_HIPER</option>
+          <option value="MASCOTAS">MASCOTAS</option>
+          <option value="HOGAR">HOGAR</option>
+          <option value="BELLEZA">BELLEZA</option>
+          <option value="BABIES_CHIL">BABIES_CHIL</option>
+          <option value="RAPPI">RAPPI</option>
+          <option value="E-COMMERCE">E-COMMERCE</option>
+        </select>
+        <div class="error-msg" id="verticalError">Selecciona una vertical</div>
+      </div>
+      <div class="field">
+        <label>Brand ID <span class="req">*</span></label>
+        <input type="text" id="brandId" placeholder="Ej: 12345 o 12345, 67890, 11111">
+        <div class="hint">Si son varios Brand IDs sepáralos por coma<span id="brandIdRestriction">. Si llenas brand_id NO puedes llenar store_ids</span>.</div>
+      </div>
+      <div class="field">
+        <label>Brand Name <span class="opt">(opcional)</span></label>
+        <input type="text" id="brandName" placeholder='Ej: "Walmart" o "Tiendas seleccionadas"'>
+      </div>
+      <div class="field">
+        <label>Cobertura del Brand <span class="opt">(opcional)</span></label>
+        <div class="cob-toggle">
+          <div class="cob-btn selected" id="cob-full" onclick="setCobertura('full')"><div class="cob-icon">🏪</div><div><div class="cob-label">Full Brand</div><div class="cob-sub">Todos los stores</div></div></div>
+          <div class="cob-btn" id="cob-ciudades" onclick="setCobertura('ciudades')"><div class="cob-icon">🏙️</div><div><div class="cob-label">Por Ciudades</div><div class="cob-sub">Ciudades específicas</div></div></div>
+          <div class="cob-btn" id="cob-zonas" onclick="setCobertura('zonas')"><div class="cob-icon">📍</div><div><div class="cob-label">Store IDs</div><div class="cob-sub">Stores específicos</div></div></div>
+        </div>
+      </div>
+      <div id="ciudades-fields" class="hidden">
+        <div class="field"><label>Ciudades <span class="opt">(separadas por coma)</span></label><input type="text" id="ciudades" placeholder="Ej: Bogotá, Medellín, Cali"></div>
+      </div>
+      <div id="zonas-fields" class="hidden" style="display:none;flex-direction:column;gap:12px;">
+        <div class="warn-box">⚠️ Si llenas store_ids NO puedes llenar brand_id y viceversa.</div>
+        <div class="field" id="fieldStoreIds">
+          <label>Store IDs <span class="req">*</span> <span class="opt">(solo números separados por coma, sin espacios)</span></label>
+          <textarea id="storeIds" placeholder="Ej: 900009528,10000893,900009168" rows="5" oninput="validateStores()" style="font-family:monospace;font-size:12px;"></textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+            <div class="hint" id="storeHint">Solo números separados por coma, sin espacios.</div>
+            <div id="storeCharCount" style="font-size:11px;color:var(--txd);flex-shrink:0;margin-left:8px;">0 / 25,000</div>
+          </div>
+          <div class="error-msg" id="storeError">Solo se permiten números separados por coma</div>
+        </div>
+        <div class="field">
+          <label>Exclude Store IDs <span class="opt">(opcional)</span></label>
+          <input type="text" id="excludeStoreIds" placeholder="Ej: 1111,2222,3333">
+        </div>
+      </div>
+      <div id="product-fields" class="hidden">
+        <div class="g2">
+          <div class="field cs2"><label>Product IDs <span class="req">*</span> <span class="opt">(separar por coma y espacio)</span></label><textarea id="productIds" placeholder="Ej: SKU001, SKU002" rows="2"></textarea></div>
+          <div class="field"><label>Máx. unidades con dcto. en una orden</label><input type="number" id="maxUnidades" placeholder="Ej: 2" min="1"></div>
+          <div class="field"><label>Max Quantity Global</label><input type="number" id="maxQuantityGlobal" placeholder="Valor > 0" min="1"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- S4: DESCUENTO -->
+  <div class="sc sc-hid" id="descuento-section">
+    <div class="sh"><div class="sn">5</div><div class="st">Descuento</div><div class="sc-badge" id="discountTypeBadge">Cashback %</div></div>
+    <div class="sb">
+      <div class="g3">
+        <div class="field">
+          <label id="discountLabel">Cashback (%) <span class="req">*</span></label>
+          <input type="number" id="discount" placeholder="Ej: 15" min="0">
+          <div class="hint" id="discountHint">Porcentaje sin el símbolo %</div>
+        </div>
+        <div class="field"><label>Mínimo de Compra <span class="opt">(moneda local, 0 si no aplica)</span></label><input type="number" id="minimoCompra" placeholder="0" min="0"></div>
+        <div class="field">
+          <label id="maxDctoLabel">Máximo Descuento <span class="opt">(moneda local)</span></label>
+          <input type="number" id="maximoDescuento" placeholder="Ej: 50000" min="0">
+          <div class="hint" id="maxDctoHint">Para Percentage/Cashback: monto máximo por usuario por orden</div>
+        </div>
+        <div class="field cs3" id="maxOrdenesFld">
+          <label>Máx. órdenes por usuario <span class="req">*</span> <span class="opt">(no dejar vacío)</span></label>
+          <input type="number" id="maxOrdenes" placeholder="Ej: 1, 3, 5..." min="1">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- S5: SEGMENTACIÓN -->
+  <div class="sc sc-hid" id="segmentacion-section">
+    <div class="sh"><div class="sn">6</div><div class="st">Segmentación</div></div>
+    <div class="sb" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="field">
+        <label>Segmento objetivo <span class="opt">(opcional)</span></label>
+        <div class="seg-pills">
+          <div class="seg-pill selected" data-val="Full users" onclick="setSeg(this)">Full users</div>
+          <div class="seg-pill" data-val="PRO" onclick="setSeg(this)">PRO</div>
+          <div class="seg-pill" data-val="NO PRO" onclick="setSeg(this)">NO PRO</div>
+          <div class="seg-pill" data-val="New to brand" onclick="setSeg(this)">New to brand (Nuevos + Reactivados)</div>
+          <div class="seg-pill" data-val="Otro" onclick="setSeg(this)">Otro</div>
+        </div>
+      </div>
+      <div id="segOtroWrap" class="hidden">
+        <div class="field"><label>Describe el segmento</label><textarea id="segOtro" placeholder="Ej: usuarios con más de 3 órdenes en los últimos 30 días..." rows="2"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- S6: DAYS_HOURS -->
+  <div class="sc sc-hid" id="dayshours-section">
+    <div class="sh"><div class="sn">7</div><div class="st">Cobertura Horaria <span class="st-sub">— Si la campaña aplica en días/horas específicos</span></div></div>
+    <div class="sb" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="info-box">📅 Configura los días y franjas horarias. Si aplica todo el día, deja las horas vacías. Máximo 5 franjas por día.</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button type="button" onclick="selectAllDays()" style="padding:8px 16px;border-radius:8px;border:1.5px solid var(--rappi);background:var(--rappi-dim);color:var(--rappi);font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer;">📅 Todos los días</button>
+        <button type="button" onclick="clearAllDays()" style="padding:8px 16px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface2);color:var(--txm);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;">✕ Limpiar</button>
+        <span style="font-size:11px;color:var(--txd);">Al activar todos los días puedes configurar el horario una sola vez y se aplica a todos.</span>
+      </div>
+      <div id="globalSlotWrap" class="hidden" style="background:var(--rappi-dim);border:1.5px solid rgba(255,68,31,.2);border-radius:10px;padding:14px 16px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--rappi);margin-bottom:10px;">Horario para todos los días</div>
+        <div id="globalSlots" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <div class="day-slot" id="globalSlot0">
+            <input type="time" class="global-slot-start" onchange="applyGlobalSlots()">
+            <span class="day-slot-sep">→</span>
+            <input type="time" class="global-slot-end" onchange="applyGlobalSlots()">
+          </div>
+        </div>
+        <button type="button" onclick="addGlobalSlot()" style="margin-top:8px;padding:4px 10px;border-radius:6px;border:1px solid rgba(255,68,31,.3);background:#fff;font-size:11px;color:var(--rappi);cursor:pointer;">+ Franja</button>
+      </div>
+      <div class="days-builder" id="daysBuilder"></div>
+      <div class="days-preview" id="daysPreview"></div>
+      <div class="field">
+        <label>Days_hours generado <span class="opt">(se completa automáticamente)</span></label>
+        <input type="text" id="daysHoursOutput" readonly style="background:var(--surface3);font-family:monospace;font-size:12px;" placeholder="Selecciona días y franjas arriba...">
+        <div class="hint">Formato: MO|08:00-11:00;TU|08:00-11:00...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- S7: PAGO -->
+  <div class="sc sc-hid">
+    <div class="sh"><div class="sn">8</div><div class="st">Esquema de Pago</div></div>
+    <div class="sb">
+      <div class="pago-opts">
+        <div class="pago-opt selected" id="pago-full_rappi" onclick="setPago('full_rappi')">
+          <div class="pago-radio"></div>
+          <div><div class="pago-label">Full Rappi</div><div class="pago-sub">100% financiado por Rappi</div></div>
+        </div>
+        <div class="pago-opt" id="pago-full_aliado" onclick="setPago('full_aliado')">
+          <div class="pago-radio"></div>
+          <div><div class="pago-label">Full Aliado</div><div class="pago-sub">100% financiado por el aliado</div></div>
+        </div>
+      </div>
+      <div class="aliado-extra" id="aliado-extra">
+        <div class="g3">
+          <div class="field"><label>% Asumido por Alianza <span class="req">*</span> <span class="opt">(sin puntos, comas ni %)</span></label><input type="number" id="pctAlianza" placeholder="Ej: 100" min="0" max="100"></div>
+          <div class="field"><label>ID Alianza CMS <span class="req">*</span> <span class="opt">(solo números)</span></label><input type="text" id="idAlianza" placeholder="Ej: 98765"></div>
+          <div class="field"><label>ID Orden de Compra CMS <span class="req">*</span> <span class="opt">(alfanumérico)</span></label><input type="text" id="ordenCompra" placeholder="Ej: OC-12345 o 98765A"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RC: USUARIOS Y MONTOS -->
+  <div class="sc sc-vis cond-section" id="rc-users-section">
+    <div class="sh"><div class="sn">9</div><div class="st">Usuarios y Montos</div><div class="sc-badge green">Solo Rappicreditos</div></div>
+    <div class="sb" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="toggle-2" style="max-width:360px;">
+        <div class="tog-btn selected" id="usersmode-manual" onclick="setUsersMode('manual')">✍️ Ingreso manual</div>
+        <div class="tog-btn" id="usersmode-file" onclick="setUsersMode('file')">📎 Subir archivo</div>
+      </div>
+      <div id="usersManualWrap">
+        <div id="userRowsBuilder" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <button type="button" onclick="addUserRow()" style="margin-top:10px;padding:8px 14px;border-radius:8px;border:1.5px solid var(--rappi);background:var(--rappi-dim);color:var(--rappi);font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer;">+ Fila</button>
+      </div>
+      <div id="usersFileWrap" class="hidden">
+        <div class="field">
+          <label>Archivo con user_id / monto <span class="req">*</span> <span class="opt">(CSV o XLSX, máx. 5MB)</span></label>
+          <input type="file" id="usersFileInput" accept=".csv,.xlsx" onchange="handleFileSelect(this)">
+          <div class="hint" id="usersFileHint">Columnas esperadas: user_id, monto</div>
+          <div class="error-msg" id="usersFileError">Archivo inválido</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RC: TOPE Y COBERTURA DE REDENCIÓN -->
+  <div class="sc sc-vis cond-section" id="rc-tope-section">
+    <div class="sh"><div class="sn">9</div><div class="st">Tope por Pedido y Cobertura de Redención</div><div class="sc-badge green">Solo Rappicreditos</div></div>
+    <div class="sb" style="display:flex;flex-direction:column;gap:16px;">
+      <div class="field">
+        <label>Tope por pedido <span class="opt">(moneda local, opcional)</span></label>
+        <input type="number" id="topePedido" placeholder="Ej: 5000" min="0">
+      </div>
+      <div class="field">
+        <label>Cobertura de Redención <span class="opt">(dónde se pueden usar los créditos)</span></label>
+        <div class="toggle-2" style="max-width:360px;">
+          <div class="tog-btn selected" id="coberturaRC-abierto" onclick="setCoberturaRC('abierto')">🌎 Abierto</div>
+          <div class="tog-btn" id="coberturaRC-restringido" onclick="setCoberturaRC('restringido')">📍 Store IDs</div>
+        </div>
+      </div>
+      <div id="coberturaRCStoreIdsWrap" class="hidden">
+        <div class="field" id="fieldRcStoreIds">
+          <label>Store IDs <span class="req">*</span> <span class="opt">(solo números separados por coma, sin espacios)</span></label>
+          <textarea id="rcStoreIds" placeholder="Ej: 900009528,10000893" rows="4" oninput="validateRcStores()" style="font-family:monospace;font-size:12px;"></textarea>
+          <div class="hint" id="rcStoreHint">Solo números separados por coma, sin espacios.</div>
+          <div class="error-msg" id="rcStoreError">Solo se permiten números separados por coma</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RC: VIGENCIA -->
+  <div class="sc sc-vis cond-section" id="rc-vigencia-section">
+    <div class="sh"><div class="sn">9</div><div class="st">Vigencia de los Créditos</div><div class="sc-badge green">Solo Rappicreditos</div></div>
+    <div class="sb" style="display:flex;flex-direction:column;gap:16px;">
+      <div class="field">
+        <label>Vigencia <span class="req">*</span> <span class="opt">(los créditos siempre tienen vencimiento)</span></label>
+        <div class="toggle-2" style="max-width:360px;">
+          <div class="tog-btn selected" id="vigenciatipo-dias" onclick="setVigenciaTipo('dias')">📅 Días desde la carga</div>
+          <div class="tog-btn" id="vigenciatipo-fecha" onclick="setVigenciaTipo('fecha')">🗓️ Fecha fija</div>
+        </div>
+      </div>
+      <div class="field" id="vigenciaDiasField">
+        <label>Días de vigencia <span class="req">*</span></label>
+        <input type="number" id="vigenciaDias" placeholder="Ej: 30" min="1">
+      </div>
+      <div class="field hidden" id="vigenciaFechaField">
+        <label>Fecha de vencimiento <span class="req">*</span></label>
+        <input type="date" id="vigenciaFecha">
+      </div>
+    </div>
+  </div>
+
+  <!-- S8: CASHBACK -->
+  <div class="sc sc-hid cond-section" id="cashback-section">
+    <div class="sh"><div class="sn">9</div><div class="st">Configuración Cashback</div><div class="sc-badge green">Solo Cashback</div></div>
+    <div class="sb" style="display:flex;flex-direction:column;gap:16px;">
+      <div class="g2">
+        <div class="field">
+          <label>Cashback Days to End <span class="opt">(días que dura la redención de créditos)</span></label>
+          <input type="number" id="cashbackDaysToEnd" placeholder="Ej: 7" min="1" oninput="toggleRedencionFechas()">
+          <div class="hint">Si llenas este campo, las fechas de redención se desactivan.</div>
+        </div>
+        <div class="field"><label>Store Types donde se redimen créditos <span class="opt">(opcional)</span></label><input type="text" id="storeTypeRedencion" placeholder="Ej: hiper, super"></div>
+      </div>
+      <div id="redencionFechasWrap">
+        <div class="divider-label" id="redencionFechasLabel">Fechas de Redención <span style="font-weight:400;color:var(--txd)">(solo si NO llenaste días arriba)</span></div>
+        <div class="g2" style="margin-top:0">
+          <div class="field"><label>Fecha inicio redención <span class="opt">(opcional)</span></label><input type="date" id="fechaInicioRedencion"></div>
+          <div class="field"><label>Fecha fin redención <span class="opt">(opcional)</span></label><input type="date" id="fechaFinRedencion"></div>
+          <div class="field"><label>Hora inicio redención <span class="opt">(opcional)</span></label><input type="time" id="horaInicioRedencion"></div>
+          <div class="field"><label>Hora fin redención <span class="opt">(opcional)</span></label><input type="time" id="horaFinRedencion"></div>
+        </div>
+      </div>
+      <div class="g2">
+        <div class="field"><label>Stores donde SE PUEDE redimir <span class="opt">(IDs, separados por coma)</span></label><input type="text" id="storesRedencionSi" placeholder="Ej: 1234, 5678"></div>
+        <div class="field"><label>Stores donde NO se puede redimir <span class="opt">(IDs, separados por coma)</span></label><input type="text" id="storesRedencionNo" placeholder="Ej: 9999, 8888"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- S8b: OBP -->
+  <div class="sc sc-hid cond-section" id="obp-section">
+    <div class="sh"><div class="sn">9</div><div class="st">Config. Offer By Product</div><div class="sc-badge green">Solo OBP</div></div>
+    <div class="sb" style="display:flex;flex-direction:column;gap:12px;">
+      <div class="g2">
+        <div class="field">
+          <label>Is Deal of the Day? <span class="opt">(solo Turbo)</span></label>
+          <div class="toggle-2"><div class="tog-btn" id="ddotd-si" onclick="setDDOTD('SI')">✅ Sí</div><div class="tog-btn selected" id="ddotd-no" onclick="setDDOTD('NO')">❌ No</div></div>
+        </div>
+        <div class="field">
+          <label>Send Products to Braze? <span class="opt">(opcional)</span></label>
+          <div class="toggle-2"><div class="tog-btn" id="braze-si" onclick="setBraze('SI')">✅ Sí</div><div class="tog-btn selected" id="braze-no" onclick="setBraze('NO')">❌ No</div></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Is Offer On Top? <span class="opt">(solo para experiencia OnTop)</span></label>
+        <div class="toggle-2" style="max-width:260px;"><div class="tog-btn" id="ontop-si" onclick="setOnTop('SI')">✅ Sí</div><div class="tog-btn selected" id="ontop-no" onclick="setOnTop('NO')">❌ No</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- S9: CONFIGURACIÓN ADICIONAL -->
+  <div class="sc sc-hid" id="config-adicional-section">
+    <div class="sh"><div class="sn">10</div><div class="st">Configuración Adicional</div></div>
+    <div class="sb" style="display:flex;flex-direction:column;gap:18px;">
+      <div class="field">
+        <label>PRIME <span class="opt">(opcional)</span></label>
+        <div class="prime-opts">
+          <div class="prime-opt" id="prime-SI" onclick="setPrime('SI')"><div class="prime-opt-icon">💎</div><div class="prime-opt-label">Sí aplica</div><div class="prime-opt-sub">Solo usuarios PRIME</div></div>
+          <div class="prime-opt" id="prime-NO" onclick="setPrime('NO')"><div class="prime-opt-icon">🚫</div><div class="prime-opt-label">No aplica</div><div class="prime-opt-sub">Excluye usuarios PRIME</div></div>
+          <div class="prime-opt selected-all" id="prime-TODOS" onclick="setPrime('TODOS')"><div class="prime-opt-icon">👥</div><div class="prime-opt-label">Todos</div><div class="prime-opt-sub">Campo vacío — aplica a todos</div></div>
+        </div>
+      </div>
+      <div id="metodospagoWrap">
+        <div class="field">
+          <label>Métodos de Pago <span class="opt">(selecciona los que aplican)</span></label>
+          <div class="metodo-grid">
+            <div class="metodo-pill" data-val="cc" onclick="toggleMetodo(this)">💳 cc</div>
+            <div class="metodo-pill" data-val="dc" onclick="toggleMetodo(this)">🏦 dc</div>
+            <div class="metodo-pill" data-val="cash" onclick="toggleMetodo(this)">💵 cash</div>
+            <div class="metodo-pill" data-val="rappi_pay" onclick="toggleMetodo(this)">📱 rappi_pay</div>
+            <div class="metodo-pill" data-val="rappi_pay_gateway" onclick="toggleMetodo(this)">🔗 rappi_pay_gateway</div>
+            <div class="metodo-pill" data-val="google_pay" onclick="toggleMetodo(this)">🔵 google_pay</div>
+            <div class="metodo-pill" data-val="apple_pay" onclick="toggleMetodo(this)">🍎 apple_pay</div>
+            <div class="metodo-pill" data-val="paypal" onclick="toggleMetodo(this)">🅿️ paypal</div>
+          </div>
+          <div class="hint mt8">Si no seleccionas ninguno, aplica a todos los métodos de pago.</div>
+        </div>
+        <div id="ccTypeWrap" class="hidden">
+          <div class="field">
+            <label>CC Type <span class="opt">(tipo de tarjeta)</span></label>
+            <div class="metodo-grid">
+              <div class="metodo-pill" data-val="visa" onclick="toggleCCType(this)">Visa</div>
+              <div class="metodo-pill" data-val="master_card" onclick="toggleCCType(this)">Mastercard</div>
+              <div class="metodo-pill" data-val="american_express" onclick="toggleCCType(this)">Amex</div>
+              <div class="metodo-pill" data-val="vi" onclick="toggleCCType(this)">vi</div>
+              <div class="metodo-pill" data-val="mc" onclick="toggleCCType(this)">mc</div>
+              <div class="metodo-pill" data-val="master" onclick="toggleCCType(this)">master</div>
+              <div class="metodo-pill" data-val="ax" onclick="toggleCCType(this)">ax</div>
+            </div>
+          </div>
+          <div class="field mt8"><label>BIN <span class="opt">(números de BIN separados por coma)</span></label><input type="text" id="binInput" placeholder="Ej: 1234, 2123, 3121"></div>
+        </div>
+      </div>
+      <div class="field"><label>Link Términos y Condiciones <span class="opt">(opcional)</span></label><input type="url" id="linkTyC" placeholder="https://..."></div>
+    </div>
+  </div>
+
+  <!-- S10: BUDGET + DESCRIPCIÓN + SQUAD + STRATEGY -->
+  <div class="sc sc-hid">
+    <div class="sh"><div class="sn">11</div><div class="st">Budget & Descripción</div></div>
+    <div class="sb" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="field">
+        <label>Budget <span class="req">*</span> <span class="opt">(moneda local, sin puntos ni comas)</span></label>
+        <input type="number" id="budget" placeholder="Ej: 5000000" min="0">
+      </div>
+      <div class="field">
+        <label>Squad <span class="req">*</span></label>
+        <div class="autocomplete-wrap" id="squadWrap">
+          <input type="text" id="squadInput" placeholder="Escribe para buscar squad..." autocomplete="off"
+                 oninput="acFilter('squad')" onfocus="acFilter('squad')" onkeydown="acKey(event,'squad')">
+          <button class="ac-clear" id="squadClear" onclick="acClear('squad')" title="Limpiar">✕</button>
+          <div class="ac-dropdown" id="squadDropdown"></div>
+        </div>
+        <div id="squadTag"></div>
+        <div class="hint">¿De qué squad sale el dinero de Rappi?</div>
+      </div>
+      <div class="field">
+        <label>Strategy <span class="req">*</span></label>
+        <div class="autocomplete-wrap" id="strategyWrap">
+          <input type="text" id="strategyInput" placeholder="Escribe para buscar strategy..." autocomplete="off"
+                 oninput="acFilter('strategy')" onfocus="acFilter('strategy')" onkeydown="acKey(event,'strategy')">
+          <button class="ac-clear" id="strategyClear" onclick="acClear('strategy')" title="Limpiar">✕</button>
+          <div class="ac-dropdown" id="strategyDropdown"></div>
+        </div>
+        <div id="strategyTag"></div>
+        <div class="hint">¿Bajo qué strategy se imputa?</div>
+      </div>
+      <div class="field">
+        <label>Descripción de la campaña <span class="opt">(opcional)</span></label>
+        <textarea id="descripcionCamp" placeholder="Explica el contexto, objetivo o detalle relevante de la campaña..." rows="3"></textarea>
+        <div class="hint">Esta descripción quedará registrada en el ticket y en Slack.</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-submit" onclick="openConfirm()">Revisar y Enviar Solicitud →</button>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="overlay" id="confirmOv">
+  <div class="cmodal">
+    <div class="cm-hd">
+      <div class="cm-ey">Revisa antes de enviar</div>
+      <div class="cm-t">Resumen de tu solicitud</div>
+      <div class="cm-s">Verifica que todo esté correcto antes de confirmar.</div>
+    </div>
+    <div class="cm-bd" id="cmBd"></div>
+    <div class="cm-ft">
+      <button class="btn-back" onclick="closeConfirm()">← Editar</button>
+      <button class="btn-confirm" id="confirmBtn" onclick="submitForm()">
+        <span id="confirmLabel">Confirmar y Enviar ✓</span>
+        <div class="spinner hidden" id="confirmSpinner"></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="success-ov" id="successOv">
+  <div class="smodal">
+    <div class="s-icon">✅</div>
+    <div class="s-t">¡Solicitud enviada!</div>
+    <div class="s-sub">Tu solicitud fue registrada. Guarda tu ticket para consultar el estado.</div>
+    <div class="ticket-pill" id="successTicket" onclick="copyTicket()">—</div>
+    <div class="copy-hint">Toca para copiar</div>
+    <div class="s-meta" id="successMeta"></div>
+    <div class="s-actions">
+      <button class="btn-snew" onclick="navTo('crm')">Nueva Solicitud</button>
+      <button class="btn-scheck" id="btnVerTicket">Ver estado →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ──────────────────── LISTAS AUTOCOMPLETE ─────────────────── */
+var AC_LISTS = {
+  squad: [
+    'TURBO','TRAVEL','TELEVISION','REVENUE','RESTAURANTS','REFUNDS_USER_PAYMENTS',
+    'REACTIVATION','RAPPI_CORP','RAPPIPAY','RAPPI PAY','PRODUCT MARKETING','PRIME',
+    'PRICING','PARTNERSHIPS','PAID_SOCIAL','PAID_SEARCH','OTHER','OPS','ONBOARDING',
+    'OFFLINE','NEW_VERTICALS','MOMENTUM','LOYALTY_PROGRAMS','INFLUENCERS','HHRR',
+    'GROWTH_OPS','E_COMMERCE','DISPLAY','CPGS','CONSOLIDATION','COMPENSATIONS','CARGO',
+    'CAC_DEALS','BRANDING','AFFILIATES','ADMINISTRATIVE'
+  ],
+  strategy: [
+    'RETAILERS_ON_TOP','GROSS_MARGIN_DISCOUNTS_CATEGORY_ROTATION','UE_EXPANSION',
+    'PAID_BY_ALLY_RETAILERS','TURBO','TURBO_DISCOUNTS2','TURBO_DISCOUNTS1',
+    'GROSS_MARGIN_DISCOUNTS_GROWTH','GROSS_MARGIN_DISCOUNTS_SHRINKAGE',
+    'TRAVEL_4_BUSINESS','FLIGHTS','HOTEL','TELEVISION','R4B_BUDGET_EM',
+    'REVENUE_B_BY_VFD','REVENUE_B_DIRECT_INVEST','REVENUE_A_REINVEST',
+    'REVENUE_A_BY_VFD','CROSS_SELLING','EXPERIMENTS_WBR','VFD_TREASURY',
+    'REACTIVATION_SUBVERTICAL','VENDOR_FUNDED_DEALS','RESTAURANTS_AID','UNKNOWN',
+    'UPSELLING','PARTNER_GROWTH','NEW_ALLIES','EXECUTED_EM',
+    'RESTAURANTS_COMMERCIAL_COMMITMENTS','EXPANSION','RESTAURANTS',
+    'ALLY_RESTAURANT_FUND','PRIORITY_PARTNER','RESTAURANTS_GUARANTEES',
+    'REFUNDS_USER_PAYMENTS','REACTIVATION','BIG_WHALES','PRIME_EXPERIMENTS',
+    'MASS_MARKET','CPGS_GUARANTEES','RESURRECTION','BUDGET_PREPAID','BUDGET_EM',
+    'CREDIT_CARD','UX_DESIGN_RESEARCH','RAPPIPAY','FACEBOOK','REWARDS','FASTLANE',
+    'PRIME_DISCOUNT','MULTIVERTICALITY','PRIME CASHBACK','PRIME_DISCOUNTS',
+    'EXPERIMENTS','PRIME_SUSBCRIPTIONS','PRIME_OTHERS','PRIME_DELIVERY',
+    'SHORT_DISTANCE_DISCOUNT','PRIME','PRICING','PRICING_OTHERS','E_COMMERCE',
+    'CPGS','PARTNERSHIPS','LOYALTY_PROGRAMS','OVS_BAD_CONFIGURATION','TIK TOK',
+    'TWITTER','ADGLOW','YOUTUBE','ASO','APPLE SEARCH ADS','ORGANIC','GOOGLE SEM',
+    'PLA','TEST','CUSTOMER_SERVICE','OPS','ONBOARDING','MARKETING_CAMPAIGN',
+    'ONLINE TOOLS','SPONSORSHIPS','OTHER BRANDING','BETS','MOMENTUM',
+    'RESTAURANT_GUARANTEES','INFLUENCERS','RAPPICREDITS_PMS','HHRR','BENEFITS',
+    'SHOPPERS','UAC','WINCLAP','CPGS_TREASURY_NF','CPGS_TREASURY_ND','DARK_STORES',
+    'DISCOUNTS_TO_ALLIES','RETENTION_SUBVERTICAL','CONSOLIDATION','ALLY_COMPENSATIONS',
+    'PROMO_NO_APLICO','DEFECT_COMPENSATIONS','ALLY_COMPENSATIONS_ADJUSTMENT',
+    'FRAUD_COMPENSATIONS','NSS_COMPENSATIONS','COMPENSATION','DEFECTIVE_REACTIVE_COMP',
+    'CARGO','CAC_DEALS','PRODUCTION','BRANDING','RTS_BAGS_BRANDING','RESEARCH',
+    'BRAZE REACTIVATION','BRAZE ACQUISITION','TV M4E','AMAZON','UX_OTHER',
+    'FOCUS_GROUPS'
+  ]
+};
+
+var AC_STATE = {
+  squad:    { value: '', highlighted: -1 },
+  strategy: { value: '', highlighted: -1 }
+};
+
+function acFilter(key) {
+  var input = document.getElementById(key+'Input');
+  var dd    = document.getElementById(key+'Dropdown');
+  var q     = input.value.trim().toLowerCase();
+  var clearBtn = document.getElementById(key+'Clear');
+  clearBtn.classList.toggle('visible', input.value.length > 0);
+  var matches = q.length === 0
+    ? AC_LISTS[key].slice(0, 50)
+    : AC_LISTS[key].filter(function(item){ return item.toLowerCase().includes(q); });
+  AC_STATE[key].highlighted = -1;
+  if (matches.length === 0) { dd.classList.remove('open'); return; }
+  dd.innerHTML = matches.map(function(item, i) {
+    var hl = q ? item.replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')', 'gi'), '<mark>$1</mark>') : item;
+    return '<div class="ac-item" data-val="'+item+'" data-idx="'+i+'" onmousedown="acSelect(\''+key+'\',\''+item+'\')">' + hl + '</div>';
+  }).join('');
+  dd.classList.add('open');
+}
+
+function acSelect(key, val) {
+  AC_STATE[key].value = val;
+  document.getElementById(key+'Input').value = val;
+  document.getElementById(key+'Dropdown').classList.remove('open');
+  document.getElementById(key+'Clear').classList.add('visible');
+  document.getElementById(key+'Tag').innerHTML = '<div class="ac-selected-tag">✓ '+val+'</div>';
+  updateProgress();
+}
+
+function acClear(key) {
+  AC_STATE[key].value = '';
+  AC_STATE[key].highlighted = -1;
+  document.getElementById(key+'Input').value = '';
+  document.getElementById(key+'Dropdown').classList.remove('open');
+  document.getElementById(key+'Clear').classList.remove('visible');
+  document.getElementById(key+'Tag').innerHTML = '';
+  updateProgress();
+}
+
+function acKey(e, key) {
+  var dd    = document.getElementById(key+'Dropdown');
+  var items = dd.querySelectorAll('.ac-item');
+  var st    = AC_STATE[key];
+  if (!dd.classList.contains('open')) return;
+  if (e.key === 'ArrowDown') { e.preventDefault(); st.highlighted = Math.min(st.highlighted + 1, items.length - 1); acHighlight(key, items); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); st.highlighted = Math.max(st.highlighted - 1, -1); acHighlight(key, items); }
+  else if (e.key === 'Enter' && st.highlighted >= 0) { e.preventDefault(); acSelect(key, items[st.highlighted].dataset.val); }
+  else if (e.key === 'Escape') { dd.classList.remove('open'); }
+}
+
+function acHighlight(key, items) {
+  var idx = AC_STATE[key].highlighted;
+  items.forEach(function(el, i){ el.classList.toggle('highlighted', i === idx); if (i === idx) el.scrollIntoView({ block: 'nearest' }); });
+}
+
+document.addEventListener('click', function(e) {
+  ['squad','strategy'].forEach(function(key){
+    var wrap = document.getElementById(key+'Wrap');
+    if (wrap && !wrap.contains(e.target)) document.getElementById(key+'Dropdown').classList.remove('open');
+  });
+});
+
+/* ──────────────────── STATE ─────────────────────────────── */
+var SCRIPT_URL = '';
+var sTipo = 'cashback', sPais = '', sPaisFlag = '', sPaisName = '';
+var sCobertura = 'full', sPago = 'full_rappi', sSeg = 'Full users', sPrime = 'TODOS';
+var sDDOTD = 'NO', sBraze = 'NO', sOnTop = 'NO';
+var ticketId = '';
+var selectedMetodos = [], selectedCCTypes = [];
+var allDaysMode = false;
+
+var PAISES = [
+  {flag:'🇨🇴',name:'Colombia'},{flag:'🇲🇽',name:'México'},
+  {flag:'🇦🇷',name:'Argentina'},{flag:'🇨🇱',name:'Chile'},
+  {flag:'🇵🇪',name:'Perú'},{flag:'🇺🇾',name:'Uruguay'},
+  {flag:'🇪🇨',name:'Ecuador'},{flag:'🇨🇷',name:'Costa Rica'}
+];
+var TIPO_LABELS = {
+  cashback:'Cashback', percentage:'Percentage', free_shipping:'Free Shipping',
+  value:'Value', offer_by_product:'Offer By Product', service_fee:'Service Fee'
+};
+var PAGO_LABELS = { full_rappi:'Full Rappi', full_aliado:'Full Aliado' };
+var DAYS_MAP = [
+  {code:'MO',name:'Lunes'},{code:'TU',name:'Martes'},{code:'WE',name:'Miércoles'},
+  {code:'TH',name:'Jueves'},{code:'FR',name:'Viernes'},{code:'SA',name:'Sábado'},{code:'SU',name:'Domingo'}
+];
+
+/* ──────────────────── INIT ─────────────────────────────── */
+if (typeof google !== 'undefined' && google.script) {
+  google.script.run.withSuccessHandler(function(url){ SCRIPT_URL = url; }).getScriptUrl();
+}
+window.addEventListener('DOMContentLoaded', function() {
+  buildPaisDropdown();
+  buildDaysBuilder();
+  setTipo('cashback');
+  setPago('full_rappi');
+  updateProgress();
+});
+
+/* ──────────────────── NAV ──────────────────────────────── */
+function navTo(page) {
+  if (SCRIPT_URL) window.top.location.href = SCRIPT_URL + '?page=' + page;
+  else if (typeof google !== 'undefined' && google.script)
+    google.script.run.withSuccessHandler(function(url){ window.top.location.href = url+'?page='+page; }).getScriptUrl();
+}
+
+/* ──────────────────── PROGRESS ─────────────────────────── */
+function updateProgress() {
+  var total = 11, filled = 0;
+  if (sPais) filled++;
+  if (document.getElementById('ownerEmail') && document.getElementById('ownerEmail').value.trim()) filled++;
+  if (sTipo) filled++;
+  if (document.getElementById('fechaInicio') && document.getElementById('fechaInicio').value) filled++;
+  if (document.getElementById('brandId') && document.getElementById('brandId').value.trim()) filled++;
+  if (document.getElementById('discount') && document.getElementById('discount').value) filled++;
+  if (sSeg) filled++;
+  if (sPago) filled++;
+  if (document.getElementById('budget') && document.getElementById('budget').value) filled++;
+  var pct = Math.round((filled/total)*100);
+  document.getElementById('progressFill').style.width = pct+'%';
+  document.getElementById('progressLabel').textContent = filled + ' de ' + total + ' secciones completas';
+}
+document.querySelectorAll('input,select,textarea').forEach(function(el){ el.addEventListener('input', updateProgress); });
+
+/* ──────────────────── PAÍS ─────────────────────────────── */
+function buildPaisDropdown() {
+  var dd = document.getElementById('paisDropdown');
+  PAISES.forEach(function(p){
+    var div = document.createElement('div');
+    div.className = 'pais-option';
+    div.innerHTML = '<span style="font-size:20px">'+p.flag+'</span><span style="font-size:14px;color:var(--tx)">'+p.name+'</span>';
+    div.onclick = function(){ selectPais(p); };
+    dd.appendChild(div);
+  });
+}
+function togglePais() {
+  var trigger = document.getElementById('paisTrigger');
+  var dd = document.getElementById('paisDropdown');
+  var open = dd.classList.contains('open');
+  trigger.classList.toggle('open',!open);
+  dd.classList.toggle('open',!open);
+}
+function selectPais(p, targetEl) {
+  sPais = p.name; sPaisFlag = p.flag; sPaisName = p.name;
+  document.getElementById('paisFlag').textContent = p.flag;
+  document.getElementById('paisName').textContent = p.name;
+  document.getElementById('paisName').style.color = 'var(--tx)';
+  document.getElementById('paisTrigger').classList.remove('open');
+  document.getElementById('paisDropdown').classList.remove('open');
+  document.querySelectorAll('.pais-option').forEach(function(el){ el.classList.remove('selected'); });
+  // Marcar opción: desde click usa targetEl, desde applyReference busca por nombre
+  var el = targetEl || (typeof event !== 'undefined' && event && event.currentTarget) || null;
+  if (el) {
+    el.classList.add('selected');
+  } else {
+    document.querySelectorAll('.pais-option').forEach(function(opt) {
+      if (opt.textContent.trim().includes(p.name)) opt.classList.add('selected');
+    });
+  }
+  updateProgress();
+}
+document.addEventListener('click', function(e){
+  var ps = document.getElementById('paisSelect');
+  if (ps && !ps.contains(e.target)){
+    document.getElementById('paisTrigger').classList.remove('open');
+    document.getElementById('paisDropdown').classList.remove('open');
+  }
+});
+
+/* ──────────────────── TIPO DE OFERTA ───────────────────── */
+function setTipo(t) {
+  sTipo = t;
+  document.querySelectorAll('.tipo-card').forEach(function(c){ c.classList.remove('selected'); });
+  document.getElementById('tipo-'+t).classList.add('selected');
+  document.getElementById('discountTypeBadge').textContent = TIPO_LABELS[t];
+  var lbl = document.getElementById('discountLabel');
+  var hnt = document.getElementById('discountHint');
+  var mxhnt = document.getElementById('maxDctoHint');
+  var disc = document.getElementById('discount');
+  disc.removeAttribute('readonly'); disc.style.background = '';
+  if (t==='cashback'){lbl.innerHTML='Cashback (%) <span class="req">*</span>';hnt.textContent='Porcentaje sin el símbolo %';mxhnt.textContent='Monto máximo que se devuelve por usuario por orden';disc.placeholder='Ej: 15';disc.value='';}
+  else if(t==='percentage'){lbl.innerHTML='Descuento (%) <span class="req">*</span>';hnt.textContent='Porcentaje de descuento sin el símbolo %';mxhnt.textContent='Monto máximo descontado por usuario por orden';disc.placeholder='Ej: 10';disc.value='';}
+  else if(t==='free_shipping'){lbl.innerHTML='Discount <span class="req">*</span> <span class="opt">(siempre 1)</span>';hnt.textContent='Para Free Shipping el valor siempre es 1';mxhnt.textContent='AR 6000 | UY 400 | CL 8000 | MX 180 | CO 20000 | EC 6 | CR 5300 | PE 38';disc.value='1';disc.setAttribute('readonly','true');disc.style.background='var(--surface3)';}
+  else if(t==='value'){lbl.innerHTML='Valor (moneda local) <span class="req">*</span>';hnt.textContent='Valor en moneda local sin signos ni puntos';mxhnt.textContent='Para Value: colocar 0';disc.placeholder='Ej: 5000';disc.value='';}
+  else if(t==='service_fee'){lbl.innerHTML='Service Fee <span class="opt">(siempre 100)</span>';hnt.textContent='Para Service Fee el valor siempre es 100';mxhnt.textContent='Monto máximo por usuario por orden';disc.value='100';disc.setAttribute('readonly','true');disc.style.background='var(--surface3)';}
+  else if(t==='offer_by_product'){lbl.innerHTML='Descuento (%) o Valor <span class="req">*</span>';hnt.textContent='Porcentaje o valor en moneda local según corresponda';mxhnt.textContent='Para Offer By Product: colocar 0';disc.placeholder='Ej: 20';disc.value='';}
+  toggleConditionalSection('cashback-section', t==='cashback');
+  toggleConditionalSection('obp-section', t==='offer_by_product');
+  toggleConditionalSection('rc-users-section', t==='rappicreditos');
+  toggleConditionalSection('rc-tope-section', t==='rappicreditos');
+  toggleConditionalSection('rc-vigencia-section', t==='rappicreditos');
+  // Ocultar aviso brand_id/store_ids en cashback (no aplica esa restricción)
+  var brandIdRestriction = document.getElementById('brandIdRestriction');
+  if (brandIdRestriction) brandIdRestriction.style.display = t==='cashback' ? 'none' : '';
+  var mpWrap = document.getElementById('metodospagoWrap');
+  if (mpWrap) { mpWrap.style.display = t==='cashback'?'none':''; if(t==='cashback'){selectedMetodos=[];selectedCCTypes=[];document.querySelectorAll('.metodo-pill').forEach(function(p){p.classList.remove('selected');});document.getElementById('ccTypeWrap').classList.add('hidden');}}
+  var pf = document.getElementById('product-fields');
+  if (pf) pf.classList.toggle('hidden', t!=='offer_by_product');
+  var vlbl = document.getElementById('verticalField') ? document.getElementById('verticalField').querySelector('label') : null;
+  if (vlbl) vlbl.innerHTML = t==='offer_by_product' ? 'Vertical <span class="opt">(opcional para Offer By Product)</span>' : 'Vertical <span class="req">*</span> <span class="opt">(obligatorio para todas excepto Offer By Product)</span>';
+  // Rappicreditos: ocultar secciones que no aplican a este tipo de solicitud
+  ['brand-stores-section','descuento-section','segmentacion-section','dayshours-section','config-adicional-section'].forEach(function(id){
+    var sec = document.getElementById(id);
+    if (sec) sec.classList.toggle('hidden', t==='rappicreditos');
+  });
+  recalcBudgetFromRows();
+  updateProgress();
+}
+function toggleConditionalSection(id, show) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('visible', show);
+}
+function toggleRedencionFechas() {
+  var dias = document.getElementById('cashbackDaysToEnd').value.trim();
+  var wrap = document.getElementById('redencionFechasWrap');
+  var hasDias = dias !== '' && dias !== '0';
+  wrap.style.opacity = hasDias ? '0.35' : '1';
+  wrap.style.pointerEvents = hasDias ? 'none' : '';
+  wrap.querySelectorAll('input').forEach(function(i){
+    if (hasDias) { i.value=''; i.setAttribute('disabled','true'); }
+    else i.removeAttribute('disabled');
+  });
+  document.getElementById('redencionFechasLabel').innerHTML = hasDias
+    ? 'Fechas de Redención <span style="font-weight:400;color:#DC2626">— Desactivado: estás usando días</span>'
+    : 'Fechas de Redención <span style="font-weight:400;color:var(--txd)">(solo si NO llenaste días arriba)</span>';
+}
+
+/* ──────────────────── COBERTURA ────────────────────────── */
+function setCobertura(c) {
+  sCobertura = c;
+  ['full','ciudades','zonas'].forEach(function(id){ document.getElementById('cob-'+id).classList.toggle('selected', id===c); });
+  document.getElementById('ciudades-fields').classList.toggle('hidden', c!=='ciudades');
+  var zf = document.getElementById('zonas-fields');
+  if (c==='zonas') { zf.style.display='flex'; zf.classList.remove('hidden'); } else { zf.style.display='none'; }
+  if (c!=='ciudades') document.getElementById('ciudades').value='';
+  if (c!=='zonas') { document.getElementById('storeIds').value=''; document.getElementById('storeCharCount').textContent='0 / 25,000'; document.getElementById('storeHint').textContent='Solo números separados por coma, sin espacios.'; }
+}
+
+/* ──────────────────── RAPPICREDITOS: USUARIOS Y MONTOS ─── */
+var sUsersMode = 'manual';
+var userRows = [];
+var uploadedFile = null;
+var USERS_FILE_MAX_BYTES = 5 * 1024 * 1024;
+
+function setUsersMode(mode) {
+  sUsersMode = mode;
+  document.getElementById('usersmode-manual').classList.toggle('selected', mode === 'manual');
+  document.getElementById('usersmode-file').classList.toggle('selected', mode === 'file');
+  document.getElementById('usersManualWrap').classList.toggle('hidden', mode !== 'manual');
+  document.getElementById('usersFileWrap').classList.toggle('hidden', mode !== 'file');
+  if (mode === 'manual') {
+    uploadedFile = null;
+    document.getElementById('usersFileInput').value = '';
+  } else {
+    userRows = [];
+    renderUserRows();
+  }
+  recalcBudgetFromRows();
+}
+
+function addUserRow() {
+  userRows.push({ userId: '', monto: '' });
+  renderUserRows();
+}
+
+function removeUserRow(idx) {
+  userRows.splice(idx, 1);
+  renderUserRows();
+}
+
+function updateUserRow(idx, field, value) {
+  userRows[idx][field] = value;
+  if (field === 'monto') recalcBudgetFromRows();
+}
+
+function renderUserRows() {
+  var container = document.getElementById('userRowsBuilder');
+  container.innerHTML = '';
+  userRows.forEach(function(r, idx) {
+    var row = document.createElement('div');
+    row.className = 'day-row active';
+    row.innerHTML =
+      '<input type="text" placeholder="User ID" value="' + (r.userId || '') + '" style="flex:1;padding:8px 10px;border-radius:6px;border:1px solid var(--border2);font-family:\'DM Sans\',sans-serif;font-size:13px;" oninput="updateUserRow(' + idx + ',\'userId\',this.value)">' +
+      '<input type="number" placeholder="Monto" value="' + (r.monto || '') + '" min="0" style="width:140px;padding:8px 10px;border-radius:6px;border:1px solid var(--border2);font-family:\'DM Sans\',sans-serif;font-size:13px;" oninput="updateUserRow(' + idx + ',\'monto\',this.value)">' +
+      '<button class="btn-rm-slot" onclick="removeUserRow(' + idx + ')" title="Eliminar fila">×</button>';
+    container.appendChild(row);
+  });
+  if (userRows.length === 0) {
+    container.innerHTML = '<span style="font-size:12px;color:var(--txd)">Todavía no agregaste ninguna fila. Usa "+ Fila".</span>';
+  }
+}
+
+function recalcBudgetFromRows() {
+  var budgetInput = document.getElementById('budget');
+  if (!budgetInput) return;
+  if (sTipo !== 'rappicreditos') {
+    budgetInput.removeAttribute('readonly');
+    budgetInput.style.background = '';
+    return;
+  }
+  if (sUsersMode === 'manual') {
+    var total = userRows.reduce(function(sum, r) { return sum + (Number(r.monto) || 0); }, 0);
+    budgetInput.value = total;
+    budgetInput.setAttribute('readonly', 'true');
+    budgetInput.style.background = 'var(--surface3)';
+  } else {
+    budgetInput.removeAttribute('readonly');
+    budgetInput.style.background = '';
+  }
+}
+
+function handleFileSelect(inputEl) {
+  var file = inputEl.files[0];
+  var errorEl = document.getElementById('usersFileError');
+  errorEl.style.display = 'none';
+  uploadedFile = null;
+  if (!file) return;
+  var validExt = /\.(csv|xlsx)$/i.test(file.name);
+  if (!validExt) {
+    errorEl.textContent = 'Solo se aceptan archivos .csv o .xlsx';
+    errorEl.style.display = 'block';
+    inputEl.value = '';
+    return;
+  }
+  if (file.size > USERS_FILE_MAX_BYTES) {
+    errorEl.textContent = 'El archivo supera el límite de 5MB';
+    errorEl.style.display = 'block';
+    inputEl.value = '';
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var base64 = e.target.result.split(',')[1];
+    uploadedFile = { base64: base64, name: file.name, mime: file.type || 'text/csv', size: file.size };
+    document.getElementById('usersFileHint').textContent = '✓ ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)';
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ──────────────────── RAPPICREDITOS: TOPE Y COBERTURA ──── */
+var sCoberturaRC = 'abierto';
+function setCoberturaRC(c) {
+  sCoberturaRC = c;
+  document.getElementById('coberturaRC-abierto').classList.toggle('selected', c === 'abierto');
+  document.getElementById('coberturaRC-restringido').classList.toggle('selected', c === 'restringido');
+  document.getElementById('coberturaRCStoreIdsWrap').classList.toggle('hidden', c !== 'restringido');
+  if (c === 'abierto') document.getElementById('rcStoreIds').value = '';
+}
+
+function validateRcStores() {
+  var ta = document.getElementById('rcStoreIds');
+  var field = document.getElementById('fieldRcStoreIds');
+  var trimmed = ta.value.trim();
+  if (!trimmed) { field.classList.remove('has-error'); document.getElementById('rcStoreHint').textContent = 'Solo números separados por coma, sin espacios.'; return true; }
+  var clean = trimmed.replace(/\s/g, '');
+  var valid = /^[0-9]+(,[0-9]+)*$/.test(clean);
+  field.classList.toggle('has-error', !valid);
+  var count = clean ? clean.split(',').filter(function(x){return x;}).length : 0;
+  document.getElementById('rcStoreHint').textContent = valid ? (count + ' store' + (count!==1?'s':'') + ' ingresados.') : 'Solo números separados por coma, sin espacios.';
+  return valid;
+}
+
+/* ──────────────────── RAPPICREDITOS: VIGENCIA ──────────── */
+var sVigenciaTipo = 'dias';
+function setVigenciaTipo(t) {
+  sVigenciaTipo = t;
+  document.getElementById('vigenciatipo-dias').classList.toggle('selected', t === 'dias');
+  document.getElementById('vigenciatipo-fecha').classList.toggle('selected', t === 'fecha');
+  document.getElementById('vigenciaDiasField').classList.toggle('hidden', t !== 'dias');
+  document.getElementById('vigenciaFechaField').classList.toggle('hidden', t !== 'fecha');
+  if (t === 'dias') document.getElementById('vigenciaFecha').value = '';
+  else document.getElementById('vigenciaDias').value = '';
+}
+
+/* ──────────────────── VERTICAL ─────────────────────────── */
+function getVertical() { return document.getElementById('verticalSelect').value; }
+
+/* ──────────────────── TODOS LOS DÍAS ───────────────────── */
+function selectAllDays() {
+  allDaysMode = true;
+  document.getElementById('globalSlotWrap').classList.remove('hidden');
+  DAYS_MAP.forEach(function(d){
+    var chk = document.getElementById('chk-'+d.code);
+    if (chk && !chk.checked) { chk.checked = true; toggleDay(d.code); }
+  });
+  applyGlobalSlots();
+}
+function clearAllDays() {
+  allDaysMode = false;
+  document.getElementById('globalSlotWrap').classList.add('hidden');
+  DAYS_MAP.forEach(function(d){
+    var chk = document.getElementById('chk-'+d.code);
+    if (chk && chk.checked) { chk.checked = false; toggleDay(d.code); }
+  });
+  document.getElementById('daysHoursOutput').value = '';
+  document.getElementById('daysPreview').classList.remove('visible');
+}
+function addGlobalSlot() {
+  var container = document.getElementById('globalSlots');
+  if (container.querySelectorAll('.day-slot').length >= 5) return;
+  var div = document.createElement('div');
+  div.className = 'day-slot';
+  div.innerHTML = '<input type="time" class="global-slot-start" onchange="applyGlobalSlots()"><span class="day-slot-sep">→</span><input type="time" class="global-slot-end" onchange="applyGlobalSlots()"><button class="btn-rm-slot" onclick="removeGlobalSlot(this)">×</button>';
+  container.appendChild(div);
+}
+function removeGlobalSlot(btn) { btn.parentElement.remove(); applyGlobalSlots(); }
+function applyGlobalSlots() {
+  if (!allDaysMode) return;
+  var franjas = [];
+  document.getElementById('globalSlots').querySelectorAll('.day-slot').forEach(function(slot){
+    var s = slot.querySelector('.global-slot-start').value;
+    var e = slot.querySelector('.global-slot-end').value;
+    if (s && e) franjas.push(s+'-'+e);
+  });
+  DAYS_MAP.forEach(function(d){
+    var chk = document.getElementById('chk-'+d.code);
+    if (!chk || !chk.checked) return;
+    var sc = document.getElementById('slots-'+d.code);
+    sc.innerHTML = '';
+    if (franjas.length===0) { sc.innerHTML='<span style="font-size:11px;color:var(--txd)">Todo el día</span>'; return; }
+    franjas.forEach(function(f){
+      var parts = f.split('-');
+      var div = document.createElement('div');
+      div.className = 'day-slot';
+      div.innerHTML = '<input type="time" class="slot-start" value="'+parts[0]+'" readonly style="background:var(--surface3)"><span class="day-slot-sep">→</span><input type="time" class="slot-end" value="'+parts[1]+'" readonly style="background:var(--surface3)">';
+      sc.appendChild(div);
+    });
+  });
+  buildDaysHours();
+}
+
+/* ──────────────────── PAGO ─────────────────────────────── */
+function setPago(p) {
+  sPago = p;
+  ['full_rappi','full_aliado'].forEach(function(id){ document.getElementById('pago-'+id).classList.toggle('selected', id===p); });
+  document.getElementById('aliado-extra').classList.toggle('visible', p==='full_aliado');
+}
+
+/* ──────────────────── SEGMENTO ─────────────────────────── */
+function setSeg(el) {
+  sSeg = el.dataset.val;
+  document.querySelectorAll('.seg-pill').forEach(function(e){ e.classList.remove('selected'); });
+  el.classList.add('selected');
+  var wrap = document.getElementById('segOtroWrap');
+  if (sSeg==='Otro') { wrap.classList.remove('hidden'); document.getElementById('segOtro').focus(); }
+  else { wrap.classList.add('hidden'); document.getElementById('segOtro').value=''; }
+}
+
+/* ──────────────────── PRIME ────────────────────────────── */
+function setPrime(v) {
+  sPrime = v;
+  document.getElementById('prime-SI').className   = 'prime-opt'+(v==='SI'?' selected-yes':'');
+  document.getElementById('prime-NO').className   = 'prime-opt'+(v==='NO'?' selected-no':'');
+  document.getElementById('prime-TODOS').className = 'prime-opt'+(v==='TODOS'?' selected-all':'');
+}
+
+/* ──────────────────── OBP ──────────────────────────────── */
+function setDDOTD(v) { sDDOTD=v; setToggle('ddotd',v); }
+function setBraze(v) { sBraze=v; setToggle('braze',v); }
+function setOnTop(v) { sOnTop=v; setToggle('ontop',v); }
+function setToggle(prefix,v) {
+  document.getElementById(prefix+'-si').classList.toggle('selected',v==='SI');
+  document.getElementById(prefix+'-no').classList.toggle('selected',v==='NO');
+}
+
+/* ──────────────────── MÉTODOS PAGO ─────────────────────── */
+function toggleMetodo(el) {
+  el.classList.toggle('selected');
+  var val = el.dataset.val;
+  var idx = selectedMetodos.indexOf(val);
+  if (idx===-1) selectedMetodos.push(val); else selectedMetodos.splice(idx,1);
+  var hasCCard = selectedMetodos.indexOf('cc')!==-1 || selectedMetodos.indexOf('dc')!==-1;
+  document.getElementById('ccTypeWrap').classList.toggle('hidden', !hasCCard);
+}
+function toggleCCType(el) {
+  el.classList.toggle('selected');
+  var val = el.dataset.val;
+  var idx = selectedCCTypes.indexOf(val);
+  if (idx===-1) selectedCCTypes.push(val); else selectedCCTypes.splice(idx,1);
+}
+
+/* ──────────────────── DAYS / HOURS ─────────────────────── */
+function buildDaysBuilder() {
+  var container = document.getElementById('daysBuilder');
+  DAYS_MAP.forEach(function(d){
+    var row = document.createElement('div');
+    row.className = 'day-row'; row.id = 'row-'+d.code;
+    row.innerHTML = '<input type="checkbox" class="day-check" id="chk-'+d.code+'" onchange="toggleDay(\''+d.code+'\')"><label class="day-name" for="chk-'+d.code+'">'+d.code+'</label><div class="day-slots" id="slots-'+d.code+'"><span style="font-size:11px;color:var(--txd)">Activa el día para agregar horarios</span></div>';
+    container.appendChild(row);
+  });
+}
+function toggleDay(code) {
+  var chk = document.getElementById('chk-'+code);
+  var row = document.getElementById('row-'+code);
+  var slots = document.getElementById('slots-'+code);
+  row.classList.toggle('active', chk.checked);
+  if (chk.checked) { slots.innerHTML=''; addSlot(code); }
+  else slots.innerHTML = '<span style="font-size:11px;color:var(--txd)">Activa el día para agregar horarios</span>';
+  buildDaysHours();
+}
+function addSlot(code) {
+  var slots = document.getElementById('slots-'+code);
+  var current = slots.querySelectorAll('.day-slot').length;
+  if (current >= 5) return;
+  var div = document.createElement('div');
+  div.className = 'day-slot';
+  div.innerHTML = '<input type="time" class="slot-start" onchange="buildDaysHours()"><span class="day-slot-sep">→</span><input type="time" class="slot-end" onchange="buildDaysHours()"><button class="btn-rm-slot" onclick="removeSlot(this,\''+code+'\')" title="Eliminar franja">×</button>';
+  var existing = slots.querySelector('.btn-add-slot');
+  if (existing) existing.remove();
+  slots.appendChild(div);
+  if (current+1 < 5) {
+    var addBtn = document.createElement('button');
+    addBtn.className = 'btn-add-slot'; addBtn.textContent = '+ Franja';
+    addBtn.onclick = function(){ addSlot(code); };
+    slots.appendChild(addBtn);
+  }
+}
+function removeSlot(btn, code) {
+  btn.parentElement.remove();
+  var slots = document.getElementById('slots-'+code);
+  if (!slots.querySelector('.day-slot')) {
+    slots.innerHTML = '<span style="font-size:11px;color:var(--txd)">Activa el día para agregar horarios</span>';
+    document.getElementById('chk-'+code).checked = false;
+    document.getElementById('row-'+code).classList.remove('active');
+  }
+  var current = slots.querySelectorAll('.day-slot').length;
+  if (current>0 && current<5 && !slots.querySelector('.btn-add-slot')) {
+    var addBtn = document.createElement('button');
+    addBtn.className = 'btn-add-slot'; addBtn.textContent = '+ Franja';
+    addBtn.onclick = function(){ addSlot(code); };
+    slots.appendChild(addBtn);
+  }
+  buildDaysHours();
+}
+function buildDaysHours() {
+  var parts = [];
+  DAYS_MAP.forEach(function(d){
+    var chk = document.getElementById('chk-'+d.code);
+    if (!chk || !chk.checked) return;
+    document.getElementById('slots-'+d.code).querySelectorAll('.day-slot').forEach(function(slot){
+      var s = slot.querySelector('.slot-start').value;
+      var e = slot.querySelector('.slot-end').value;
+      if (s && e) parts.push(d.code+'|'+s+'-'+e);
+    });
+  });
+  var result = parts.join(';');
+  document.getElementById('daysHoursOutput').value = result;
+  var prev = document.getElementById('daysPreview');
+  if (result) { prev.textContent=result; prev.classList.add('visible'); } else prev.classList.remove('visible');
+}
+
+/* ──────────────────── STORE IDS VALIDATION ─────────────── */
+var STORE_IDS_MAX = 25000;
+function validateStores() {
+  var ta = document.getElementById('storeIds');
+  var field = document.getElementById('fieldStoreIds');
+  var val = ta.value;
+  if (val.length > STORE_IDS_MAX) {
+    ta.value = val.substring(0, STORE_IDS_MAX);
+    val = ta.value;
+    alert('Has alcanzado el límite de '+STORE_IDS_MAX.toLocaleString()+' caracteres. Divide la campaña en múltiples solicitudes.');
+  }
+  var charCount = document.getElementById('storeCharCount');
+  if (charCount) {
+    var pct = val.length / STORE_IDS_MAX;
+    charCount.textContent = val.length.toLocaleString()+' / '+STORE_IDS_MAX.toLocaleString();
+    charCount.style.color = pct>0.9?'#DC2626':pct>0.75?'#D97706':'var(--txd)';
+  }
+  var trimmed = val.trim();
+  if (!trimmed) { if(field) field.classList.remove('has-error'); document.getElementById('storeHint').textContent='Solo números separados por coma, sin espacios.'; return true; }
+  var clean = trimmed.replace(/\s/g,'');
+  var valid = /^[0-9]+(,[0-9]+)*$/.test(clean);
+  if (field) field.classList.toggle('has-error', !valid);
+  var count = clean ? clean.split(',').filter(function(x){return x;}).length : 0;
+  document.getElementById('storeHint').textContent = valid ? (count+' store'+(count!==1?'s':'')+' ingresados.') : 'Solo números separados por coma, sin espacios.';
+  return valid;
+}
+
+/* ──────────────────── CONFIRM ──────────────────────────── */
+function getSquadVal()    { return AC_STATE.squad.value    || document.getElementById('squadInput').value.trim(); }
+function getStrategyVal() { return AC_STATE.strategy.value || document.getElementById('strategyInput').value.trim(); }
+
+function openConfirm() {
+  if (!sPais){ alert('Selecciona el país'); return; }
+  if (!document.getElementById('ownerEmail').value.trim()){ alert('Ingresa el email del Owner'); return; }
+  if (!document.getElementById('fechaInicio').value){ alert('Ingresa la fecha de inicio'); return; }
+  if (!document.getElementById('fechaFin').value){ alert('Ingresa la fecha de fin'); return; }
+
+  if (sTipo === 'rappicreditos') {
+    if (sUsersMode === 'manual') {
+      var validRows = userRows.filter(function(r){ return r.userId && r.userId.trim() && Number(r.monto) > 0; });
+      if (validRows.length === 0) { alert('Agrega al menos un usuario con monto...'); return; }
+    } else {
+      if (!uploadedFile) { alert('Sube el archivo con la lista de usuarios'); return; }
+    }
+    if (!document.getElementById('budget').value){ alert('Ingresa el budget'); return; }
+    if (!getSquadVal()){ alert('Selecciona un Squad'); return; }
+    if (!getStrategyVal()){ alert('Selecciona una Strategy'); return; }
+    if (sPago === 'full_aliado') {
+      if (!document.getElementById('pctAlianza').value){ alert('Full Aliado requiere el % Asumido por Alianza'); return; }
+      if (!document.getElementById('idAlianza').value.trim()){ alert('Full Aliado requiere el ID Alianza CMS'); return; }
+      if (!document.getElementById('ordenCompra').value.trim()){ alert('Full Aliado requiere el ID Orden de Compra CMS'); return; }
+    }
+    if (!document.getElementById('vigenciaDias').value && !document.getElementById('vigenciaFecha').value) {
+      alert('Indica los días de vigencia o la fecha de vencimiento'); return;
+    }
+    if (sCoberturaRC === 'restringido') {
+      if (!validateRcStores() || !document.getElementById('rcStoreIds').value.trim()) {
+        alert('Ingresa al menos un Store ID válido para la cobertura de redención'); return;
+      }
+    }
+
+    var userCountLabel = sUsersMode === 'manual'
+      ? userRows.filter(function(r){ return r.userId && r.userId.trim(); }).length + ' usuario(s) (manual)'
+      : (uploadedFile ? uploadedFile.name : '—');
+    var vigenciaLabel = sVigenciaTipo === 'dias' ? (document.getElementById('vigenciaDias').value || '—') + ' días' : (document.getElementById('vigenciaFecha').value || '—');
+
+    var html =
+      '<div><div class="cs-lbl">Solicitud</div><div class="cgrid">' +
+      cf('País', sPaisFlag + ' ' + sPaisName, true) + cf('Owner', document.getElementById('ownerEmail').value, false) +
+      cf('Fechas', document.getElementById('fechaInicio').value + ' → ' + document.getElementById('fechaFin').value, false) +
+      cf('Budget', '* ' + Number(document.getElementById('budget').value || 0).toLocaleString(), true) +
+      '</div></div>' +
+      '<div><div class="cs-lbl">Usuarios y Montos</div><div class="cgrid">' +
+      cf('Origen', userCountLabel, false) +
+      cf('Tope por pedido', document.getElementById('topePedido').value || '—', false) +
+      '</div></div>' +
+      '<div><div class="cs-lbl">Vigencia & Cobertura</div><div class="cgrid">' +
+      cf('Vigencia', vigenciaLabel, false) +
+      cf('Cobertura de redención', sCoberturaRC === 'abierto' ? 'Abierto' : ('Store IDs: ' + document.getElementById('rcStoreIds').value.trim()), false) +
+      '</div></div>' +
+      '<div><div class="cs-lbl">Imputación</div><div class="cgrid">' +
+      cf('Squad', getSquadVal(), false) + cf('Strategy', getStrategyVal(), false) +
+      cf('Esquema de Pago', sPago === 'full_rappi' ? 'Full Rappi' : 'Full Aliado', false) +
+      '</div></div>';
+    var descRC = document.getElementById('descripcionCamp').value.trim();
+    if (descRC) html += '<div><div class="cs-lbl">Descripción</div><div class="cf full" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;"><div class="cf-v" style="font-size:13px;color:var(--txm);font-style:italic">"'+descRC+'"</div></div></div>';
+
+    document.getElementById('cmBd').innerHTML = html;
+    document.getElementById('confirmOv').classList.add('open');
+    return;
+  }
+
+  if (!document.getElementById('brandId').value.trim()){ alert('Ingresa el Brand ID'); return; }
+  if (sTipo !== 'offer_by_product' && !getVertical()){ alert('Selecciona una Vertical'); return; }
+  if (!document.getElementById('discount').value){ alert('Ingresa el valor del descuento'); return; }
+  if (!document.getElementById('budget').value){ alert('Ingresa el budget'); return; }
+  if (!getSquadVal()){ alert('Selecciona un Squad'); return; }
+  if (!getStrategyVal()){ alert('Selecciona una Strategy'); return; }
+  if (sPago === 'full_aliado') {
+    if (!document.getElementById('pctAlianza').value){ alert('Full Aliado requiere el % Asumido por Alianza'); return; }
+    if (!document.getElementById('idAlianza').value.trim()){ alert('Full Aliado requiere el ID Alianza CMS'); return; }
+    if (!document.getElementById('ordenCompra').value.trim()){ alert('Full Aliado requiere el ID Orden de Compra CMS'); return; }
+  }
+
+  var vertical = getVertical();
+  var storeBlock = sCobertura==='full'?'🏪 Full Brand':sCobertura==='ciudades'?'🏙️ '+(document.getElementById('ciudades').value.trim()||'Sin especificar'):'📍 Store IDs: '+(document.getElementById('storeIds').value.trim()||'Sin especificar');
+  var segFinal = sSeg==='Otro'?('Otro: '+(document.getElementById('segOtro').value.trim()||'(sin detalle)')):sSeg;
+  var daysHours = document.getElementById('daysHoursOutput').value.trim();
+  var metodos = selectedMetodos.join(', ')||'Todos';
+  var primeMap = {SI:'Solo PRIME',NO:'Excluye PRIME',TODOS:'Todos los usuarios'};
+  var squadVal    = getSquadVal();
+  var strategyVal = getStrategyVal();
+
+  var html =
+    '<div><div class="cs-lbl">Campaña</div><div class="cgrid">'+
+    cf('País',sPaisFlag+' '+sPaisName,true)+cf('Owner',document.getElementById('ownerEmail').value,false)+
+    cf('Tipo',TIPO_LABELS[sTipo],true)+cf('Brand ID',document.getElementById('brandId').value,false)+
+    cf('Descuento',document.getElementById('discount').value+(sTipo==='cashback'||sTipo==='percentage'?'%':''),true)+
+    cf('Budget','* '+Number(document.getElementById('budget').value||0).toLocaleString(),true)+
+    cf('Fechas',document.getElementById('fechaInicio').value+' → '+document.getElementById('fechaFin').value,false)+
+    (document.getElementById('horaInicio').value?cf('Horario',document.getElementById('horaInicio').value+' - '+document.getElementById('horaFin').value,false):'')+
+    '</div></div>'+
+    '<div><div class="cs-lbl">Stores & Cobertura</div><div class="cgrid">'+
+    cf('Vertical',vertical||'—',false)+cf('Cobertura',storeBlock,false)+
+    (document.getElementById('brandName').value?cf('Brand Name',document.getElementById('brandName').value,false):'')+
+    '</div></div>'+
+    '<div><div class="cs-lbl">Descuento</div><div class="cgrid">'+
+    cf('Mín. Compra',document.getElementById('minimoCompra').value?'* '+document.getElementById('minimoCompra').value:'0',false)+
+    cf('Máx. Descuento',document.getElementById('maximoDescuento').value?'* '+document.getElementById('maximoDescuento').value:'—',false)+
+    cf('Máx. órdenes/usuario',document.getElementById('maxOrdenes').value||'—',false)+
+    '</div></div>'+
+    '<div><div class="cs-lbl">Segmentación & Pago</div><div class="cgrid">'+
+    cf('Segmento',segFinal,false)+cf('Pago',PAGO_LABELS[sPago],false)+
+    (sPago!=='full_rappi'&&document.getElementById('ordenCompra').value?cf('Orden Compra',document.getElementById('ordenCompra').value,false):'')+
+    (sPago!=='full_rappi'&&document.getElementById('idAlianza').value?cf('ID Alianza',document.getElementById('idAlianza').value,false):'')+
+    '</div></div>'+
+    '<div><div class="cs-lbl">Config. Adicional</div><div class="cgrid">'+
+    cf('PRIME',primeMap[sPrime]||'Todos',false)+cf('Métodos de Pago',metodos,false)+
+    (daysHours?cf('Days Hours',daysHours,false):'')+
+    '</div></div>'+
+    '<div><div class="cs-lbl">Budget & Imputación</div><div class="cgrid">'+
+    cf('Budget','* '+Number(document.getElementById('budget').value||0).toLocaleString(),true)+
+    (squadVal?cf('Squad',squadVal,false):'')+
+    (strategyVal?cf('Strategy',strategyVal,false):'')+
+    '</div></div>';
+
+  if (sTipo==='cashback') {
+    html += '<div><div class="cs-lbl">Cashback — Redención</div><div class="cgrid">'+
+    cf('Days to End',document.getElementById('cashbackDaysToEnd').value||'—',false)+
+    cf('Store Types Redención',document.getElementById('storeTypeRedencion').value||'—',false)+
+    '</div></div>';
+  }
+  var desc = document.getElementById('descripcionCamp').value.trim();
+  if (desc) html += '<div><div class="cs-lbl">Descripción</div><div class="cf full" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;"><div class="cf-v" style="font-size:13px;color:var(--txm);font-style:italic">"'+desc+'"</div></div></div>';
+
+  document.getElementById('cmBd').innerHTML = html;
+  document.getElementById('confirmOv').classList.add('open');
+}
+
+function cf(label, value, accent) {
+  return '<div class="cf'+(accent?' accent':'')+'"><div class="cf-l">'+label+'</div><div class="cf-v">'+(value||'—')+'</div></div>';
+}
+function closeConfirm(){ document.getElementById('confirmOv').classList.remove('open'); }
+
+/* ──────────────────── SUBMIT ───────────────────────────── */
+function submitForm() {
+  if (sTipo === 'rappicreditos') {
+    var rcData = {
+      pais: sPaisName,
+      ownerEmail: document.getElementById('ownerEmail').value.trim(),
+      fechaInicio: document.getElementById('fechaInicio').value,
+      fechaFin: document.getElementById('fechaFin').value,
+      horaInicio: document.getElementById('horaInicio').value,
+      horaFin: document.getElementById('horaFin').value,
+      usersMode: sUsersMode,
+      userRows: sUsersMode === 'manual' ? userRows.filter(function(r){ return r.userId && r.userId.trim(); }) : [],
+      usersFileBase64: sUsersMode === 'file' && uploadedFile ? uploadedFile.base64 : '',
+      usersFileName: sUsersMode === 'file' && uploadedFile ? uploadedFile.name : '',
+      usersFileMime: sUsersMode === 'file' && uploadedFile ? uploadedFile.mime : '',
+      topePedido: document.getElementById('topePedido').value,
+      storeIds: sCoberturaRC === 'restringido' ? document.getElementById('rcStoreIds').value.trim().replace(/\s/g,'') : '',
+      vigenciaDias: sVigenciaTipo === 'dias' ? document.getElementById('vigenciaDias').value : '',
+      vigenciaFecha: sVigenciaTipo === 'fecha' ? document.getElementById('vigenciaFecha').value : '',
+      pago: sPago,
+      pctAlianza: document.getElementById('pctAlianza') ? document.getElementById('pctAlianza').value : '',
+      idAlianza: document.getElementById('idAlianza').value,
+      ordenCompra: document.getElementById('ordenCompra').value,
+      budget: document.getElementById('budget').value,
+      squad: getSquadVal(),
+      strategy: getStrategyVal(),
+      descripcion: document.getElementById('descripcionCamp').value.trim()
+    };
+
+    document.getElementById('confirmBtn').disabled = true;
+    document.getElementById('confirmLabel').classList.add('hidden');
+    document.getElementById('confirmSpinner').classList.remove('hidden');
+
+    if (typeof google !== 'undefined' && google.script) {
+      google.script.run
+        .withSuccessHandler(function(res){
+          document.getElementById('confirmBtn').disabled = false;
+          document.getElementById('confirmLabel').classList.remove('hidden');
+          document.getElementById('confirmSpinner').classList.add('hidden');
+          closeConfirm();
+          if (res.success) {
+            ticketId = res.ticketId;
+            document.getElementById('successTicket').textContent = res.ticketId;
+            document.getElementById('successMeta').innerHTML =
+              '<div class="s-meta-row"><span class="s-meta-label">País</span><span class="s-meta-val">'+sPaisFlag+' '+sPaisName+'</span></div>'+
+              '<div class="s-meta-row"><span class="s-meta-label">Fecha</span><span class="s-meta-val">'+(res.fecha||'—')+'</span></div>'+
+              '<div class="s-meta-row"><span class="s-meta-label">Email</span><span class="s-meta-val">'+(res.email||'—')+'</span></div>'+
+              '<div class="s-meta-row"><span class="s-meta-label">Status</span><span class="s-meta-val" style="color:#D97706;font-weight:600">⏳ Pendiente</span></div>';
+            document.getElementById('btnVerTicket').onclick = function(){ navTo('status&ticket='+ticketId); };
+            document.getElementById('successOv').classList.add('open');
+          } else { alert('Error al guardar: '+(res.message||'Error desconocido')); }
+        })
+        .withFailureHandler(function(err){
+          document.getElementById('confirmBtn').disabled = false;
+          document.getElementById('confirmLabel').classList.remove('hidden');
+          document.getElementById('confirmSpinner').classList.add('hidden');
+          alert('Error: '+(err.message||'Error desconocido'));
+        })
+        .saveRappiCreditosRequest(rcData);
+    } else {
+      document.getElementById('confirmBtn').disabled = false;
+      document.getElementById('confirmLabel').classList.remove('hidden');
+      document.getElementById('confirmSpinner').classList.add('hidden');
+      closeConfirm();
+      alert('Preview: en Apps Script se enviaría la solicitud correctamente.');
+    }
+    return;
+  }
+
+  var data = {
+    pais:              sPaisName,
+    ownerEmail:        document.getElementById('ownerEmail').value.trim(),
+    tipoOferta:        TIPO_LABELS[sTipo],
+    fechaInicio:       document.getElementById('fechaInicio').value,
+    fechaFin:          document.getElementById('fechaFin').value,
+    horaInicio:        document.getElementById('horaInicio').value,
+    horaFin:           document.getElementById('horaFin').value,
+    vertical:          getVertical(),
+    brandId:           document.getElementById('brandId').value.trim(),
+    brandName:         document.getElementById('brandName').value.trim(),
+    cobertura:         sCobertura==='full'?'Full Brand':sCobertura==='ciudades'?'Por Ciudades':'Por Zonas',
+    ciudades:          sCobertura==='ciudades'?document.getElementById('ciudades').value.trim():'',
+    storeIds:          sCobertura==='zonas'?document.getElementById('storeIds').value.trim().replace(/\s/g,''):'',
+    excludeStoreIds:   document.getElementById('excludeStoreIds')?document.getElementById('excludeStoreIds').value.trim():'',
+    productIds:        sTipo==='offer_by_product'?document.getElementById('productIds').value.trim():'',
+    maxUnidades:       sTipo==='offer_by_product'?document.getElementById('maxUnidades').value:'',
+    maxQuantityGlobal: sTipo==='offer_by_product'?document.getElementById('maxQuantityGlobal').value:'',
+    discount:          document.getElementById('discount').value,
+    minimoCompra:      document.getElementById('minimoCompra').value,
+    maximoDescuento:   document.getElementById('maximoDescuento').value,
+    maxOrdenes:        document.getElementById('maxOrdenes').value,
+    segmento:          sSeg==='Otro'?('Otro: '+document.getElementById('segOtro').value.trim()):sSeg,
+    daysHours:         document.getElementById('daysHoursOutput').value.trim(),
+    pago:              sPago,
+    squad:             getSquadVal(),
+    strategy:          getStrategyVal(),
+    pctAlianza:        document.getElementById('pctAlianza')?document.getElementById('pctAlianza').value:'',
+    idAlianza:         document.getElementById('idAlianza').value,
+    ordenCompra:       document.getElementById('ordenCompra').value,
+    cashbackDaysToEnd: sTipo==='cashback'?document.getElementById('cashbackDaysToEnd').value:'',
+    storeTypeRedencion:sTipo==='cashback'?document.getElementById('storeTypeRedencion').value:'',
+    fechaInicioRedencion:sTipo==='cashback'?document.getElementById('fechaInicioRedencion').value:'',
+    fechaFinRedencion: sTipo==='cashback'?document.getElementById('fechaFinRedencion').value:'',
+    horaInicioRedencion:sTipo==='cashback'?document.getElementById('horaInicioRedencion').value:'',
+    horaFinRedencion:  sTipo==='cashback'?document.getElementById('horaFinRedencion').value:'',
+    storesRedencionSi: sTipo==='cashback'?document.getElementById('storesRedencionSi').value:'',
+    storesRedencionNo: sTipo==='cashback'?document.getElementById('storesRedencionNo').value:'',
+    isDealOfTheDay:    sTipo==='offer_by_product'?sDDOTD:'',
+    isOfferOnTop:      sTipo==='offer_by_product'?sOnTop:'',
+    sendProductsToBraze:sTipo==='offer_by_product'?sBraze:'',
+    prime:             sPrime==='TODOS'?'':sPrime,
+    metodosPago:       selectedMetodos.join(','),
+    ccType:            selectedCCTypes.join(','),
+    bin:               document.getElementById('binInput').value.trim(),
+    linkTyC:           document.getElementById('linkTyC').value.trim(),
+    userNotInTag:      '',
+    tipoUsuarioApp:    '',
+    budget:            document.getElementById('budget').value,
+    descripcion:       document.getElementById('descripcionCamp').value.trim(),
+    comentariosSolicitud: document.getElementById('descripcionCamp').value.trim()
+  };
+
+  document.getElementById('confirmBtn').disabled = true;
+  document.getElementById('confirmLabel').classList.add('hidden');
+  document.getElementById('confirmSpinner').classList.remove('hidden');
+
+  if (typeof google !== 'undefined' && google.script) {
+    google.script.run
+      .withSuccessHandler(function(res){
+        document.getElementById('confirmBtn').disabled = false;
+        document.getElementById('confirmLabel').classList.remove('hidden');
+        document.getElementById('confirmSpinner').classList.add('hidden');
+        closeConfirm();
+        if (res.success) {
+          ticketId = res.ticketId;
+          document.getElementById('successTicket').textContent = res.ticketId;
+          document.getElementById('successMeta').innerHTML =
+            '<div class="s-meta-row"><span class="s-meta-label">País</span><span class="s-meta-val">'+sPaisFlag+' '+sPaisName+'</span></div>'+
+            '<div class="s-meta-row"><span class="s-meta-label">Tipo</span><span class="s-meta-val">'+TIPO_LABELS[sTipo]+'</span></div>'+
+            '<div class="s-meta-row"><span class="s-meta-label">Fecha</span><span class="s-meta-val">'+(res.fecha||'—')+'</span></div>'+
+            '<div class="s-meta-row"><span class="s-meta-label">Email</span><span class="s-meta-val">'+(res.email||'—')+'</span></div>'+
+            '<div class="s-meta-row"><span class="s-meta-label">Status</span><span class="s-meta-val" style="color:#D97706;font-weight:600">⏳ Pendiente</span></div>';
+          document.getElementById('btnVerTicket').onclick = function(){ navTo('status&ticket='+ticketId); };
+          document.getElementById('successOv').classList.add('open');
+        } else { alert('Error al guardar: '+(res.message||'Error desconocido')); }
+      })
+      .withFailureHandler(function(err){
+        document.getElementById('confirmBtn').disabled = false;
+        document.getElementById('confirmLabel').classList.remove('hidden');
+        document.getElementById('confirmSpinner').classList.add('hidden');
+        alert('Error: '+(err.message||'Error desconocido'));
+      })
+      .saveRequest(data);
+  } else {
+    document.getElementById('confirmBtn').disabled = false;
+    document.getElementById('confirmLabel').classList.remove('hidden');
+    document.getElementById('confirmSpinner').classList.add('hidden');
+    closeConfirm();
+    alert('Preview: en Apps Script se enviaría la solicitud correctamente.');
+  }
+}
+
+function copyTicket(){ try{ navigator.clipboard.writeText(ticketId); }catch(e){} }
+
+/* ──────────────────── REFERENCIA ───────────────────────── */
+function toggleRefPanel() {
+  var trigger = document.getElementById('refTrigger');
+  var panel   = document.getElementById('refPanel');
+  var open    = panel.classList.contains('open');
+  trigger.classList.toggle('open', !open);
+  // Ajustar bordes del trigger para conectar visualmente con el panel
+  trigger.style.borderRadius = !open ? '10px 10px 0 0' : '10px';
+  trigger.style.borderStyle  = !open ? 'solid' : 'dashed';
+  trigger.style.borderColor  = !open ? 'var(--rappi)' : '';
+  panel.classList.toggle('open', !open);
+  if (!open) document.getElementById('refInput').focus();
+}
+
+function loadReference() {
+  var id = document.getElementById('refInput').value.trim();
+  if (!id) return;
+
+  var btn    = document.getElementById('refBtn');
+  var status = document.getElementById('refStatus');
+
+  btn.disabled = true;
+  status.className = 'ref-status loading';
+  status.textContent = '⏳ Buscando ticket ' + id + '...';
+
+  if (typeof google !== 'undefined' && google.script) {
+    google.script.run
+      .withSuccessHandler(function(res) {
+        btn.disabled = false;
+        if (res.found) {
+          applyReference(res.ticket);
+          status.className = 'ref-status success';
+          status.textContent = '✅ Campos cargados desde ' + res.ticket.ticketId + ' — revisa y ajusta lo necesario.';
+        } else {
+          status.className = 'ref-status error';
+          status.textContent = '❌ Ticket no encontrado. Verifica el ID.';
+        }
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        status.className = 'ref-status error';
+        status.textContent = '❌ Error: ' + (err.message || 'desconocido');
+      })
+      .getTicketStatus(id);
+  } else {
+    btn.disabled = false;
+    status.className = 'ref-status error';
+    status.textContent = '❌ Solo disponible dentro de Apps Script.';
+  }
+}
+
+function applyReference(t) {
+  // País — t.pais llega como código (mx, co, ar…), hay que mapearlo a nombre
+  var countryCodeToName = {
+    co:'Colombia', mx:'México', ar:'Argentina', cl:'Chile',
+    pe:'Perú', uy:'Uruguay', ec:'Ecuador', cr:'Costa Rica'
+  };
+  var paisNombre = countryCodeToName[(t.pais || '').toLowerCase()] || t.pais;
+  var paisObj = PAISES.find(function(p) { return p.name === paisNombre; });
+  if (paisObj) selectPais(paisObj, null);
+
+  // Owner
+  if (t.owner) document.getElementById('ownerEmail').value = t.owner;
+
+  // Tipo de oferta — viene como 'cashback', 'free_shipping', etc.
+  var tipoRaw = (t.tipoOferta || '').toLowerCase().replace(/ /g, '_').replace(/-/g, '_');
+  if (tipoRaw && document.getElementById('tipo-' + tipoRaw)) {
+    setTipo(tipoRaw);
+  }
+
+  // Vertical
+  if (t.vertical) document.getElementById('verticalSelect').value = t.vertical;
+
+  // Brand
+  if (t.brandId)   document.getElementById('brandId').value   = t.brandId;
+  if (t.brandName) document.getElementById('brandName').value = t.brandName;
+
+  // Cobertura
+  if (t.storeIds && t.storeIds.trim()) {
+    setCobertura('zonas');
+    document.getElementById('storeIds').value = t.storeIds;
+    validateStores();
+  } else {
+    setCobertura('full');
+  }
+  if (t.excludeStoreIds) document.getElementById('excludeStoreIds').value = t.excludeStoreIds;
+
+  // Descuento (NO se pre-llenan fechas para forzar que las actualicen)
+  if (t.discount)       document.getElementById('discount').value       = t.discount;
+  if (t.minimoCompra)   document.getElementById('minimoCompra').value   = t.minimoCompra;
+  if (t.maximoDescuento)document.getElementById('maximoDescuento').value= t.maximoDescuento;
+  if (t.maxOrdenes)     document.getElementById('maxOrdenes').value     = t.maxOrdenes;
+
+  // Segmento
+  var segPill = document.querySelector('.seg-pill[data-val="' + t.segmento + '"]');
+  if (segPill) setSeg(segPill);
+  else if (t.segmento) {
+    var otroP = document.querySelector('.seg-pill[data-val="Otro"]');
+    if (otroP) { setSeg(otroP); document.getElementById('segOtro').value = t.segmento; }
+  }
+
+  // Days hours
+  if (t.daysHours) document.getElementById('daysHoursOutput').value = t.daysHours;
+
+  // Pago
+  if (t.pctAlianza || t.idAlianza || t.ordenCompra) {
+    setPago('full_aliado');
+    if (t.pctAlianza)  document.getElementById('pctAlianza').value  = t.pctAlianza;
+    if (t.idAlianza)   document.getElementById('idAlianza').value   = t.idAlianza;
+    if (t.ordenCompra) document.getElementById('ordenCompra').value = t.ordenCompra;
+  } else {
+    setPago('full_rappi');
+  }
+
+  // Squad & Strategy (autocomplete)
+  if (t.squad) {
+    acSelect('squad', t.squad);
+    document.getElementById('squadInput').value = t.squad;
+  }
+  if (t.strategy) {
+    acSelect('strategy', t.strategy);
+    document.getElementById('strategyInput').value = t.strategy;
+  }
+
+  // Prime
+  if (t.prime === 'SI' || t.prime === 'NO') setPrime(t.prime);
+  else setPrime('TODOS');
+
+  // Métodos de pago
+  if (t.metodosPago) {
+    selectedMetodos = [];
+    document.querySelectorAll('.metodo-pill').forEach(function(p){ p.classList.remove('selected'); });
+    t.metodosPago.split(',').forEach(function(m) {
+      m = m.trim();
+      var pill = document.querySelector('.metodo-pill[data-val="' + m + '"]');
+      if (pill) { pill.classList.add('selected'); selectedMetodos.push(m); }
+    });
+    var hasCCard = selectedMetodos.indexOf('cc') !== -1 || selectedMetodos.indexOf('dc') !== -1;
+    document.getElementById('ccTypeWrap').classList.toggle('hidden', !hasCCard);
+  }
+
+  // CC Type & BIN
+  if (t.ccType) {
+    selectedCCTypes = [];
+    document.querySelectorAll('#ccTypeWrap .metodo-pill').forEach(function(p){ p.classList.remove('selected'); });
+    t.ccType.split(',').forEach(function(c) {
+      c = c.trim();
+      var pill = document.querySelector('#ccTypeWrap .metodo-pill[data-val="' + c + '"]');
+      if (pill) { pill.classList.add('selected'); selectedCCTypes.push(c); }
+    });
+  }
+  if (t.bin) document.getElementById('binInput').value = t.bin;
+  if (t.terminosYCondiciones) document.getElementById('linkTyC').value = t.terminosYCondiciones;
+
+  // Cashback específico
+  if (tipoRaw === 'cashback') {
+    if (t.cashbackDaysToEnd)    document.getElementById('cashbackDaysToEnd').value    = t.cashbackDaysToEnd;
+    if (t.storeTypesRedencion)  document.getElementById('storeTypeRedencion').value   = t.storeTypesRedencion;
+    if (t.storesRedencionSi)    document.getElementById('storesRedencionSi').value    = t.storesRedencionSi;
+    if (t.storesRedencionNo)    document.getElementById('storesRedencionNo').value    = t.storesRedencionNo;
+    toggleRedencionFechas();
+  }
+
+  // OBP específico
+  if (tipoRaw === 'offer_by_product') {
+    if (t.isDealOfTheDay)      setDDOTD(t.isDealOfTheDay);
+    if (t.isOfferOnTop)        setOnTop(t.isOfferOnTop);
+    if (t.sendProductsToBraze) setBraze(t.sendProductsToBraze);
+  }
+
+  // Presupuesto y descripción NO se pre-llenan (deben ser nuevos por solicitud)
+
+  updateProgress();
+}
+</script>
+</body>
+</html>
